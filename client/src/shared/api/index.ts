@@ -1,2 +1,2 @@
-// Exportación del cliente API y peticiones HTTP comunes
-export {};
+// Exportación unificada del cliente API
+export * from './http';

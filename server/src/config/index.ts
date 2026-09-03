@@ -1,4 +1,7 @@
 // Configuración global de variables de entorno y constantes del backend
+import dotenv from 'dotenv';
+dotenv.config();
+
 export const config = {
   port: process.env.PORT || 3000,
   oracleConnection: {
