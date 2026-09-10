@@ -45,4 +45,29 @@ export class SolicitudCompraClientService {
       return null;
     }
   }
+
+  /**
+   * Crea una nueva solicitud de compra en la base de datos Oracle
+   */
+  static async crearSolicitud(payload: import('@erp/contracts').ISolicitudCompraCreateDTO): Promise<ISolicitudCompra> {
+    try {
+      const response = await fetch(API_BASE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.message || 'Error al crear la solicitud de compra');
+      }
+
+      return resData.data;
+    } catch (error) {
+      console.error('[SolicitudCompraClientService.crearSolicitud Error]:', error);
+      throw error;
+    }
+  }
 }

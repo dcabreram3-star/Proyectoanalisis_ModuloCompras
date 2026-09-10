@@ -15,6 +15,7 @@ import { Button, StatCard, DataTable, Pagination, StatusBadge } from '../../comp
 import { SolicitudCompraClientService } from './services/solicitudCompraClientService';
 import { MatrizCotizacionesView } from './components/MatrizCotizacionesView';
 import { SolicitudOriginalInfo } from './components/SolicitudOriginalCard';
+import { SolicitudCreacionView } from './components/SolicitudCreacionView';
 import { ISolicitudCompra } from '@erp/contracts';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
@@ -200,6 +201,20 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         solicitud={getSolicitudInfoForMatriz(selectedSolicitudForMatriz)}
         onBack={handleCloseMatriz}
         onSuccess={handleCloseMatriz}
+      />
+    );
+  }
+
+  // Renderizar la vista de creación de solicitudes si el tab activo es 'solicitudes'
+  if (activeTab === 'solicitudes') {
+    return (
+      <SolicitudCreacionView 
+        onSuccess={() => {
+          if (onTabChange) {
+            onTabChange('registros');
+          }
+          loadData();
+        }}
       />
     );
   }

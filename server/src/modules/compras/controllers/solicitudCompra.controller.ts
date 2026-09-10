@@ -51,4 +51,23 @@ export class SolicitudCompraController {
       });
     }
   }
+
+  static async crear(req: Request, res: Response): Promise<void> {
+    try {
+      const payload = req.body;
+      const nuevaSolicitud = await SolicitudCompraService.crearSolicitud(payload);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Solicitud de compra creada exitosamente',
+        data: nuevaSolicitud
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: 'Error al crear la solicitud de compra',
+        error: error.message,
+      });
+    }
+  }
 }
