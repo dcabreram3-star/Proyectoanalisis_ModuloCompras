@@ -10,6 +10,7 @@ import { BancosView } from '../modules/bancos/BancosView';
 export default function App() {
   const [activeModule, setActiveModule] = useState<string>('compras');
   const [activeComprasTab, setActiveComprasTab] = useState<string>('registros');
+  const [activeInventarioTab, setActiveInventarioTab] = useState<string>('categorias');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const comprasTabs: TabItem[] = [
@@ -17,6 +18,10 @@ export default function App() {
     { id: 'registros', label: 'Registros' },
   ];
 
+  const inventarioTabs: TabItem[] = [
+    { id: 'categorias', label: 'Categorías' },
+    { id: 'marcas', label: 'Marcas' },
+  ];
 
   const renderModuleView = () => {
     switch (activeModule) {
@@ -30,7 +35,12 @@ export default function App() {
           />
         );
       case 'inventario':
-        return <InventarioView />;
+        return (
+          <InventarioView
+            activeTab={activeInventarioTab}
+            onTabChange={(tabId: string) => setActiveInventarioTab(tabId)}
+          />
+        );
       case 'cuentas_pagar':
       case 'cxp':
         return <CxpView />;
@@ -49,17 +59,31 @@ export default function App() {
     }
   };
 
+  const currentTabs = activeModule === 'compras'
+    ? comprasTabs
+    : activeModule === 'inventario'
+    ? inventarioTabs
+    : [];
+
+  const currentActiveTab = activeModule === 'compras'
+    ? activeComprasTab
+    : activeModule === 'inventario'
+    ? activeInventarioTab
+    : undefined;
+
   return (
     <AppLayout
       activeModule={activeModule}
       onSelectModule={(moduleId: string) => setActiveModule(moduleId)}
-      activeTab={activeModule === 'compras' ? activeComprasTab : undefined}
+      activeTab={currentActiveTab}
       onTabChange={(tabId: string) => {
         if (activeModule === 'compras') {
           setActiveComprasTab(tabId);
+        } else if (activeModule === 'inventario') {
+          setActiveInventarioTab(tabId);
         }
       }}
-      tabs={activeModule === 'compras' ? comprasTabs : []}
+      tabs={currentTabs}
       searchQuery={searchQuery}
       onSearchChange={(query: string) => setSearchQuery(query)}
     >
