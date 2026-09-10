@@ -15,6 +15,7 @@ import { Button, StatCard, DataTable, Pagination, StatusBadge } from '../../comp
 import { SolicitudCompraClientService } from './services/solicitudCompraClientService';
 import { MatrizCotizacionesView } from './components/MatrizCotizacionesView';
 import { SolicitudOriginalInfo } from './components/SolicitudOriginalCard';
+import { SolicitudCreacionView } from './components/SolicitudCreacionView';
 import { ISolicitudCompra } from '@erp/contracts';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
@@ -25,6 +26,7 @@ export interface ComprasViewProps {
 
 export const ComprasView: React.FC<ComprasViewProps> = ({
   activeTab = 'dashboard',
+  onTabChange,
 }) => {
   // Solicitudes list from Oracle Database
   const [solicitudes, setSolicitudes] = useState<ISolicitudCompra[]>([]);
@@ -60,7 +62,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeTab]);
 
 
   // Filtered dataset
@@ -200,6 +202,21 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         solicitud={getSolicitudInfoForMatriz(selectedSolicitudForMatriz)}
         onBack={handleCloseMatriz}
         onSuccess={handleCloseMatriz}
+      />
+    );
+  }
+
+  // Renderizar la vista de creación de solicitudes si el tab activo es 'solicitudes'
+  if (activeTab === 'solicitudes') {
+    return (
+      <SolicitudCreacionView 
+        onReload={loadData}
+        onSuccess={() => {
+          loadData();
+          if (onTabChange) {
+            onTabChange('registros');
+          }
+        }}
       />
     );
   }

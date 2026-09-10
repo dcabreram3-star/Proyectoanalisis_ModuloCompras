@@ -10,15 +10,19 @@ import { BancosView } from '../modules/bancos/BancosView';
 export default function App() {
   const [activeModule, setActiveModule] = useState<string>('compras');
   const [activeComprasTab, setActiveComprasTab] = useState<string>('registros');
-  const [activeInventarioTab, setActiveInventarioTab] = useState<string>('categorias');
+  const [activeInventarioTab, setActiveInventarioTab] = useState<string>('articulos');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const comprasTabs: TabItem[] = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'solicitudes', label: 'Crear Solicitud' },
     { id: 'registros', label: 'Registros' },
   ];
 
   const inventarioTabs: TabItem[] = [
+    { id: 'articulos', label: 'Artículos' },
+    { id: 'movimientos', label: 'Movimientos' },
+    { id: 'auditoria', label: 'Auditoría' },
     { id: 'categorias', label: 'Categorías' },
     { id: 'marcas', label: 'Marcas' },
   ];
@@ -62,14 +66,14 @@ export default function App() {
   const currentTabs = activeModule === 'compras'
     ? comprasTabs
     : activeModule === 'inventario'
-    ? inventarioTabs
-    : [];
+      ? inventarioTabs
+      : [];
 
   const currentActiveTab = activeModule === 'compras'
     ? activeComprasTab
     : activeModule === 'inventario'
-    ? activeInventarioTab
-    : undefined;
+      ? activeInventarioTab
+      : undefined;
 
   return (
     <AppLayout

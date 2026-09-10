@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { config } from './config/index.js';
 import { initializePool, closePool, checkDatabaseHealth } from './config/database.js';
 import comprasRouter from './modules/compras/routes/index.js';
@@ -7,6 +8,7 @@ import inventarioRouter from './modules/inventario/routes/index.js';
 const app = express();
 const PORT = config.port;
 
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -24,6 +26,9 @@ app.get('/health', async (_req, res) => {
 // Registro de módulos del sistema
 app.use('/api/compras', comprasRouter);
 app.use('/api/inventario', inventarioRouter);
+
+app.use('/api/inventario', inventarioRouter);
+
 
 const server = app.listen(PORT, async () => {
   console.log(`[ERP Server]: API base corriendo en http://localhost:${PORT}`);

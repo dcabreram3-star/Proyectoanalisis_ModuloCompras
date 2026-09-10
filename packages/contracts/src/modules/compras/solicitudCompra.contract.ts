@@ -27,3 +27,17 @@ export interface ISolicitudCompraFilterParams {
   idDepartamento?: number;
   idEstado?: number;
 }
+
+export interface ISolicitudCompraDetalleCreateDTO {
+  codigoArticulo?: string;
+  cantidadPedida: number;
+  isNuevo: boolean;
+  nombreArticuloNuevo?: string;
+}
+
+export interface ISolicitudCompraCreateDTO {
+  idUsuarioResponsable: number;
+  idDepartamento: number;
+  notas?: string;
+  detalles: ISolicitudCompraDetalleCreateDTO[];
+}

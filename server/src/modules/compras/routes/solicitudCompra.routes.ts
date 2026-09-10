@@ -5,5 +5,6 @@ const router = Router();
 
 router.get('/', SolicitudCompraController.listar);
 router.get('/:noDocumento', SolicitudCompraController.obtenerPorNoDocumento);
+router.post('/', SolicitudCompraController.crear);
 
 export default router;
