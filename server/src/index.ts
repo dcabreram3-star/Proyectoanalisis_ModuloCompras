@@ -25,6 +25,7 @@ app.get('/health', async (_req, res) => {
 
 // Registro de módulos del sistema
 app.use('/api/compras', comprasRouter);
+app.use('/api/inventario', inventarioRouter);
 
 app.use('/api/inventario', inventarioRouter);
 

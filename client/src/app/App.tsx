@@ -10,8 +10,8 @@ import { BancosView } from '../modules/bancos/BancosView';
 export default function App() {
   const [activeModule, setActiveModule] = useState<string>('compras');
   const [activeComprasTab, setActiveComprasTab] = useState<string>('registros');
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeInventarioTab, setActiveInventarioTab] = useState<string>('articulos');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const comprasTabs: TabItem[] = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -23,6 +23,8 @@ export default function App() {
     { id: 'articulos', label: 'Artículos' },
     { id: 'movimientos', label: 'Movimientos' },
     { id: 'auditoria', label: 'Auditoría' },
+    { id: 'categorias', label: 'Categorías' },
+    { id: 'marcas', label: 'Marcas' },
   ];
 
   const renderModuleView = () => {
@@ -38,7 +40,7 @@ export default function App() {
         );
       case 'inventario':
         return (
-          <InventarioView 
+          <InventarioView
             activeTab={activeInventarioTab}
             onTabChange={(tabId: string) => setActiveInventarioTab(tabId)}
           />
@@ -61,28 +63,31 @@ export default function App() {
     }
   };
 
-  const getActiveTabForModule = () => {
-    if (activeModule === 'compras') return activeComprasTab;
-    if (activeModule === 'inventario') return activeInventarioTab;
-    return undefined;
-  };
+  const currentTabs = activeModule === 'compras'
+    ? comprasTabs
+    : activeModule === 'inventario'
+      ? inventarioTabs
+      : [];
 
-  const getTabsForModule = () => {
-    if (activeModule === 'compras') return comprasTabs;
-    if (activeModule === 'inventario') return inventarioTabs;
-    return [];
-  };
+  const currentActiveTab = activeModule === 'compras'
+    ? activeComprasTab
+    : activeModule === 'inventario'
+      ? activeInventarioTab
+      : undefined;
 
   return (
     <AppLayout
       activeModule={activeModule}
       onSelectModule={(moduleId: string) => setActiveModule(moduleId)}
-      activeTab={getActiveTabForModule()}
+      activeTab={currentActiveTab}
       onTabChange={(tabId: string) => {
-        if (activeModule === 'compras') setActiveComprasTab(tabId);
-        if (activeModule === 'inventario') setActiveInventarioTab(tabId);
+        if (activeModule === 'compras') {
+          setActiveComprasTab(tabId);
+        } else if (activeModule === 'inventario') {
+          setActiveInventarioTab(tabId);
+        }
       }}
-      tabs={getTabsForModule()}
+      tabs={currentTabs}
       searchQuery={searchQuery}
       onSearchChange={(query: string) => setSearchQuery(query)}
     >
