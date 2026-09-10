@@ -6,6 +6,7 @@ import { SolicitudCompraClientService } from '../services/solicitudCompraClientS
 
 interface SolicitudCreacionViewProps {
   onSuccess?: () => void;
+  onReload?: () => void;
 }
 
 // === Mocks para los Selectores con Búsqueda ===
@@ -114,7 +115,7 @@ const AutocompleteSelect = ({
 };
 
 
-export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ onSuccess }) => {
+export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ onSuccess, onReload }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -195,6 +196,12 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
       };
 
       const nuevaSolicitud = await SolicitudCompraClientService.crearSolicitud(payload);
+      
+      // Ejecutar de inmediato la función encargada de recargar o consultar la lista de solicitudes
+      if (onReload) {
+        onReload();
+      }
+
       setSuccessMsg(`Solicitud creada exitosamente con número: ${nuevaSolicitud.solNoDocumento}`);
       
       setNotas('');
@@ -202,7 +209,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
       setDetalles([{ cantidadPedida: 1, isNuevo: false, codigoArticulo: '' }]);
       
       if (onSuccess) {
-        setTimeout(() => onSuccess(), 2000);
+        onSuccess();
       }
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocurrió un error al crear la solicitud.');

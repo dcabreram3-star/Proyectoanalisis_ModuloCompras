@@ -26,6 +26,7 @@ export interface ComprasViewProps {
 
 export const ComprasView: React.FC<ComprasViewProps> = ({
   activeTab = 'dashboard',
+  onTabChange,
 }) => {
   // Solicitudes list from Oracle Database
   const [solicitudes, setSolicitudes] = useState<ISolicitudCompra[]>([]);
@@ -61,7 +62,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeTab]);
 
 
   // Filtered dataset
@@ -209,11 +210,12 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   if (activeTab === 'solicitudes') {
     return (
       <SolicitudCreacionView 
+        onReload={loadData}
         onSuccess={() => {
+          loadData();
           if (onTabChange) {
             onTabChange('registros');
           }
-          loadData();
         }}
       />
     );
