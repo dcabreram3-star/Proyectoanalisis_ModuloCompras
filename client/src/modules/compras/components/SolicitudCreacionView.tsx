@@ -7,6 +7,7 @@ import { SolicitudCompraClientService } from '../services/solicitudCompraClientS
 interface SolicitudCreacionViewProps {
   onSuccess?: () => void;
   onReload?: () => void;
+  isModal?: boolean;
 }
 
 // === Mocks para los Selectores con Búsqueda ===
@@ -115,7 +116,7 @@ const AutocompleteSelect = ({
 };
 
 
-export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ onSuccess, onReload }) => {
+export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ onSuccess, onReload, isModal }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -219,16 +220,18 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
-      <div className="border-b border-slate-200 pb-4">
-        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-          <ShoppingCart className="text-blue-600" size={28} />
-          Nueva Solicitud de Compra
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Ingrese los artículos que necesita reabastecer en bodega o solicite artículos nuevos.
-        </p>
-      </div>
+    <div className={`max-w-5xl mx-auto space-y-6 ${isModal ? 'pb-2' : 'pb-12'}`}>
+      {!isModal && (
+        <div className="border-b border-slate-200 pb-4">
+          <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+            <ShoppingCart className="text-blue-600" size={28} />
+            Nueva Solicitud de Compra
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Ingrese los artículos que necesita reabastecer en bodega o solicite artículos nuevos.
+          </p>
+        </div>
+      )}
 
       {errorMsg && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium flex items-center gap-2">
