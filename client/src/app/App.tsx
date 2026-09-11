@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppLayout, TabItem } from '../components/ui/AppLayout';
 import { DashboardView } from '../modules/dashboard/DashboardView';
 import { ComprasView } from '../modules/compras/ComprasView';
+import { ProductosView } from '../modules/productos/ProductosView';
 import { InventarioView } from '../modules/inventario/InventarioView';
 import { CxpView } from '../modules/cxp/CxpView';
 import { CxcView } from '../modules/cxc/CxcView';
@@ -10,21 +11,31 @@ import { BancosView } from '../modules/bancos/BancosView';
 export default function App() {
   const [activeModule, setActiveModule] = useState<string>('compras');
   const [activeComprasTab, setActiveComprasTab] = useState<string>('registros');
-  const [activeInventarioTab, setActiveInventarioTab] = useState<string>('articulos');
+  const [activeProductosTab, setActiveProductosTab] = useState<string>('articulos');
+  const [activeInventarioTab, setActiveInventarioTab] = useState<string>('bodegas');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const comprasTabs: TabItem[] = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'solicitudes', label: 'Crear Solicitud' },
     { id: 'registros', label: 'Registros' },
+    { id: 'proveedores', label: 'Proveedores' },
+    { id: 'estados', label: 'Estados' },
+  ];
+
+  const productosTabs: TabItem[] = [
+    { id: 'articulos', label: 'Artículos' },
+    { id: 'categorias', label: 'Categorías' },
+    { id: 'marcas', label: 'Marcas' },
+    { id: 'unidades-medida', label: 'Unidades de Medida' },
   ];
 
   const inventarioTabs: TabItem[] = [
-    { id: 'articulos', label: 'Artículos' },
-    { id: 'movimientos', label: 'Movimientos' },
+    { id: 'bodegas', label: 'Bodegas' },
+    { id: 'ubicaciones', label: 'Ubicaciones' },
+    { id: 'lotes', label: 'Lotes' },
+    { id: 'movimientos', label: 'Movimientos / Kardex' },
+    { id: 'tipos-movimiento', label: 'Tipos de Movimiento' },
     { id: 'auditoria', label: 'Auditoría' },
-    { id: 'categorias', label: 'Categorías' },
-    { id: 'marcas', label: 'Marcas' },
   ];
 
   const renderModuleView = () => {
@@ -36,6 +47,13 @@ export default function App() {
           <ComprasView
             activeTab={activeComprasTab}
             onTabChange={(tabId: string) => setActiveComprasTab(tabId)}
+          />
+        );
+      case 'productos':
+        return (
+          <ProductosView
+            activeTab={activeProductosTab}
+            onTabChange={(tabId: string) => setActiveProductosTab(tabId)}
           />
         );
       case 'inventario':
@@ -65,15 +83,19 @@ export default function App() {
 
   const currentTabs = activeModule === 'compras'
     ? comprasTabs
-    : activeModule === 'inventario'
-      ? inventarioTabs
-      : [];
+    : activeModule === 'productos'
+      ? productosTabs
+      : activeModule === 'inventario'
+        ? inventarioTabs
+        : [];
 
   const currentActiveTab = activeModule === 'compras'
     ? activeComprasTab
-    : activeModule === 'inventario'
-      ? activeInventarioTab
-      : undefined;
+    : activeModule === 'productos'
+      ? activeProductosTab
+      : activeModule === 'inventario'
+        ? activeInventarioTab
+        : undefined;
 
   return (
     <AppLayout
@@ -83,6 +105,8 @@ export default function App() {
       onTabChange={(tabId: string) => {
         if (activeModule === 'compras') {
           setActiveComprasTab(tabId);
+        } else if (activeModule === 'productos') {
+          setActiveProductosTab(tabId);
         } else if (activeModule === 'inventario') {
           setActiveInventarioTab(tabId);
         }

@@ -41,3 +41,39 @@ export interface ISolicitudCompraCreateDTO {
   notas?: string;
   detalles: ISolicitudCompraDetalleCreateDTO[];
 }
+
+export interface ISolicitudCompraDetalle {
+  dsoIdDetalleSolicitud: number;
+  dsoNoDocumento: string;
+  dsoCodigoArticulo: string;
+  artDescripcion?: string | null;
+  umeNombreUnidad?: string | null;
+  umeAbreviatura?: string | null;
+  dsoCantidadPedida: number;
+  dsoCantidadAprobada: number;
+}
+
+export interface ISolicitudCompraCompleta extends ISolicitudCompra {
+  detalles: ISolicitudCompraDetalle[];
+}
+
+export interface IUpdateSolicitudDetalleItemDTO {
+  idDetalle: number;
+  cantidadPedida?: number;
+  cantidadAprobada: number;
+}
+
+export interface IUpdateSolicitudCompraDTO {
+  notas?: string;
+  detalles?: IUpdateSolicitudDetalleItemDTO[];
+}
+
+export interface IAprobarSolicitudDTO {
+  notasAprobacion?: string;
+  detalles?: IUpdateSolicitudDetalleItemDTO[];
+}
+
+export interface IRechazarSolicitudDTO {
+  motivoRechazo: string;
+}
+
