@@ -4,10 +4,8 @@ import {
   ICreateProveedorDTO,
   IUpdateProveedorDTO,
   IProveedorFilterParams,
+  validarIdentificacionProveedor,
 } from '@erp/contracts';
-
-// Expresión regular que valida formato de NIT: ÚNICAMENTE dígitos numéricos (0-9)
-const NIT_NUMERICO_REGEX = /^[0-9]+$/;
 
 // Expresión regular que valida Nombre o Razón Social: permite letras (con tildes y eñes), números, espacios, puntos y guiones
 const NOMBRE_PROVEEDOR_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,\-]+$/;
@@ -50,21 +48,13 @@ export class ProveedorService {
 
     data.proNombreEntidad = nombreTrimmed;
 
-    if (!data.proNit || data.proNit.trim() === '') {
-      throw new Error('El NIT del proveedor es estrictamente obligatorio.');
+    // Validación estricta de identificación (NIT / DPI): 8 a 13 caracteres numéricos
+    const validacionNit = validarIdentificacionProveedor(data.proNit);
+    if (!validacionNit.valido) {
+      throw new Error(validacionNit.mensaje);
     }
 
-    const nitTrimmed = data.proNit.trim();
-
-    if (!NIT_NUMERICO_REGEX.test(nitTrimmed)) {
-      throw new Error('El NIT debe contener exclusivamente dígitos numéricos (0-9). No se permiten letras, guiones ni caracteres especiales.');
-    }
-
-    if (nitTrimmed.length > 20) {
-      throw new Error('El NIT no puede exceder 20 dígitos numéricos.');
-    }
-
-    data.proNit = nitTrimmed;
+    data.proNit = data.proNit.trim();
 
     if (data.proActivo !== undefined && ![0, 1].includes(data.proActivo)) {
       throw new Error('El campo activo solo admite valores 0 o 1.');
@@ -96,21 +86,13 @@ export class ProveedorService {
     }
 
     if (data.proNit !== undefined) {
-      if (!data.proNit || data.proNit.trim() === '') {
-        throw new Error('El NIT del proveedor es estrictamente obligatorio y no puede estar vacío.');
+      // Validación estricta de identificación (NIT / DPI): 8 a 13 caracteres numéricos
+      const validacionNit = validarIdentificacionProveedor(data.proNit);
+      if (!validacionNit.valido) {
+        throw new Error(validacionNit.mensaje);
       }
 
-      const nitTrimmed = data.proNit.trim();
-
-      if (!NIT_NUMERICO_REGEX.test(nitTrimmed)) {
-        throw new Error('El NIT debe contener exclusivamente dígitos numéricos (0-9). No se permiten letras, guiones ni caracteres especiales.');
-      }
-
-      if (nitTrimmed.length > 20) {
-        throw new Error('El NIT no puede exceder 20 dígitos numéricos.');
-      }
-
-      data.proNit = nitTrimmed;
+      data.proNit = data.proNit ? data.proNit.trim() : '';
     }
 
     if (data.proActivo !== undefined && ![0, 1].includes(data.proActivo)) {
