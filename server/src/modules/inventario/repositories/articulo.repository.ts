@@ -19,7 +19,7 @@ export class ArticuloRepository {
         NVL(SUM(I.INV_EXISTENCIA_ACTUAL), 0) AS STOCK_TOTAL
       FROM CMP_ARTICULO A
       LEFT JOIN CMP_INVENTARIO I ON A.ART_CODIGO_ARTICULO = I.INV_CODIGO_ARTICULO
-      WHERE A.ART_ACTIVO = 1
+      WHERE 1=1
       GROUP BY 
         A.ART_CODIGO_ARTICULO, 
         A.ART_DESCRIPCION, 
@@ -58,15 +58,38 @@ export class ArticuloRepository {
     return (resultado.rowsAffected ?? 0) > 0;
   }
 
-  // 3. Eliminación Lógica (Desactivar en lugar de borrar para no romper historial)
+  // 3. Eliminación Física Permanente (Hard Delete)
   static async eliminar(codigo: string): Promise<boolean> {
     const sql = `
-      UPDATE CMP_ARTICULO 
-      SET ART_ACTIVO = 0 
+      DELETE FROM CMP_ARTICULO 
       WHERE ART_CODIGO_ARTICULO = :codigo
     `;
     
     const binds = { codigo };
+    const options = { autoCommit: true };
+
+    try {
+      const resultado = await db.execute(sql, binds, options);
+      return (resultado.rowsAffected ?? 0) > 0;
+    } catch (error: any) {
+      if (error?.errorNum === 2292 || (error?.message && error.message.includes('ORA-02292'))) {
+        throw new Error(
+          `No se puede eliminar permanentemente el artículo "${codigo}" porque posee registros vinculados (compras, recepciones, lotes, inventario o movimientos asociados).`
+        );
+      }
+      throw error;
+    }
+  }
+
+  // 3.1 Cambiar Estado Activo (Activar o Desactivar)
+  static async cambiarEstado(codigo: string, activo: number): Promise<boolean> {
+    const sql = `
+      UPDATE CMP_ARTICULO 
+      SET ART_ACTIVO = :activo 
+      WHERE ART_CODIGO_ARTICULO = :codigo
+    `;
+    
+    const binds = { codigo, activo };
     const options = { autoCommit: true };
 
     const resultado = await db.execute(sql, binds, options);

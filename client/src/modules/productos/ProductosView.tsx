@@ -1,5 +1,5 @@
 import React from 'react';
-import { CatalogoArticulos } from '../inventario/views/CatalogoArticulos';
+import { ArticulosCatalogView } from '../inventario/components/ArticulosCatalogView';
 import { CategoriasCatalogView } from '../inventario/components/CategoriasCatalogView';
 import { MarcasCatalogView } from '../inventario/components/MarcasCatalogView';
 import { UnidadesMedidaCatalogView } from '../inventario/components/UnidadesMedidaCatalogView';
@@ -15,7 +15,11 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
 }) => {
   return (
     <div className="h-full w-full">
-      {activeTab === 'articulos' && <CatalogoArticulos />}
+      {activeTab === 'articulos' && (
+        <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
+          <ArticulosCatalogView />
+        </div>
+      )}
       {activeTab === 'categorias' && (
         <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
           <CategoriasCatalogView />

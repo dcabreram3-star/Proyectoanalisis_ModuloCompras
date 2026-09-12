@@ -33,8 +33,8 @@ export default function App() {
     { id: 'bodegas', label: 'Bodegas' },
     { id: 'ubicaciones', label: 'Ubicaciones' },
     { id: 'lotes', label: 'Lotes' },
-    { id: 'movimientos', label: 'Movimientos / Kardex' },
     { id: 'tipos-movimiento', label: 'Tipos de Movimiento' },
+    { id: 'movimientos', label: 'Movimientos / Kardex' },
     { id: 'auditoria', label: 'Auditoría' },
   ];
 
