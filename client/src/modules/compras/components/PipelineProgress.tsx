@@ -25,7 +25,8 @@ export type PipelineStageId =
   | 'seleccion'
   | 'presupuesto'
   | 'bodega'
-  | '3way';
+  | '3way'
+  | 'rechazada';
 
 export interface PipelineStage {
   key: PipelineStageId;
@@ -94,13 +95,14 @@ export interface PipelineStageOption {
 }
 
 export const PIPELINE_STAGE_OPTIONS: PipelineStageOption[] = [
-  { value: 'TODAS', label: 'Todas las Etapas (6)' },
+  { value: 'TODAS', label: 'Todas las Etapas Operativas (6)' },
   { value: 'aprobacion', label: '1. Aprobación Inicial', stageKey: 'aprobacion' },
   { value: 'matriz', label: '2. Matriz de Cotizaciones', stageKey: 'matriz' },
   { value: 'seleccion', label: '3. Selección Financiera (PO)', stageKey: 'seleccion' },
   { value: 'presupuesto', label: '4. Validación Presupuesto', stageKey: 'presupuesto' },
   { value: 'bodega', label: '5. Recepción en Bodega', stageKey: 'bodega' },
   { value: '3way', label: '6. 3-Way Match / Liquidación', stageKey: '3way' },
+  { value: 'rechazada', label: '🚫 Solicitudes Rechazadas', stageKey: 'rechazada' },
 ];
 
 // ─── Normalization & Status Helpers ─────────────────────────────────────────
@@ -114,21 +116,35 @@ export function normalizeStatus(status?: string | null): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-export function isStatusRejected(status?: string | null): boolean {
+export function isStatusRejected(status?: string | null, notas?: string | null): boolean {
   const norm = normalizeStatus(status);
-  return norm.includes('RECHAZAD') || norm.includes('DENEGAD') || norm.includes('CANCELAD');
+  const normNotas = normalizeStatus(notas);
+  return (
+    norm.includes('RECHAZAD') ||
+    norm.includes('DENEGAD') ||
+    norm.includes('CANCELAD') ||
+    norm.includes('ANULAD') ||
+    normNotas.includes('[RECHAZADA]') ||
+    normNotas.includes('RECHAZAD')
+  );
 }
 
-export function isStatusFullyComplete(status?: string | null): boolean {
+export function isStatusFullyComplete(status?: string | null, notas?: string | null): boolean {
+  if (isStatusRejected(status, notas)) return false;
   const norm = normalizeStatus(status);
-  return norm.includes('FINALIZ') || norm.includes('3WAY') || norm.includes('CERRAD') || norm.includes('LIQUID');
+  return (
+    norm.includes('FINALIZ') ||
+    norm.includes('3WAY') ||
+    norm.includes('LIQUID') ||
+    (norm.includes('CERRAD') && !isStatusRejected(status, notas))
+  );
 }
 
-export function getStageIndexForStatus(status?: string | null): number {
+export function getStageIndexForStatus(status?: string | null, notas?: string | null): number {
+  if (isStatusRejected(status, notas)) return 0;
   const norm = normalizeStatus(status);
-  if (!norm) return 1;
+  if (!norm) return 0;
 
-  if (isStatusRejected(norm)) return 0;
   if (
     norm.includes('PENDIENTE') ||
     norm.includes('SOLICITAD') ||
@@ -171,7 +187,7 @@ export function getStageIndexForStatus(status?: string | null): number {
     return 1;
   }
 
-  return 1;
+  return 0;
 }
 
 // ─── Shared Summary Helper ──────────────────────────────────────────────────
@@ -190,11 +206,11 @@ export interface PipelineSummary {
   statusLabel: string;
 }
 
-export function getPipelineSummary(status?: string | null): PipelineSummary {
+export function getPipelineSummary(status?: string | null, notas?: string | null): PipelineSummary {
   const raw = (status || '').trim();
-  const isRejected = isStatusRejected(raw);
-  const isComplete = isStatusFullyComplete(raw);
-  const activeIndex = getStageIndexForStatus(raw);
+  const isRejected = isStatusRejected(raw, notas);
+  const isComplete = isStatusFullyComplete(raw, notas);
+  const activeIndex = getStageIndexForStatus(raw, notas);
   const isPending = !isRejected && activeIndex === 0;
   const totalSteps = PIPELINE_STAGES.length;
 
@@ -215,7 +231,7 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
     stateBadgeText = 'Pendiente';
     stageSubtitle = 'Aprobación';
   } else {
-    const basePercentByStage = [16, 33, 50, 66, 83, 95];
+    const basePercentByStage = [16, 33, 50, 66, 83, 100];
     globalPercent = basePercentByStage[activeIndex] || 33;
     const stageNames = ['Pendiente', 'Aprobada', 'Cotizada', 'Presupuesto', 'Recepción', 'Finalizada'];
     stateBadgeText = stageNames[activeIndex] || 'Aprobada';
@@ -224,7 +240,7 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
 
   return {
     activeIndex,
-    stepNumber: activeIndex + 1,
+    stepNumber: isRejected ? 0 : activeIndex + 1,
     totalSteps,
     stage: PIPELINE_STAGES[activeIndex] || PIPELINE_STAGES[0],
     globalPercent,
@@ -233,20 +249,28 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
     isPending,
     stateBadgeText,
     stageSubtitle,
-    statusLabel: raw || stateBadgeText.toUpperCase(),
+    statusLabel: isRejected ? 'RECHAZADA' : (raw || stateBadgeText.toUpperCase()),
   };
 }
 
-export function getStageForSolicitud(solicitud: ISolicitudCompra): PipelineStageId {
+export function getStageForSolicitud(
+  solicitud?: Partial<ISolicitudCompra> | { solNombreEstado?: string | null; estado?: string | null; solNotas?: string | null; [key: string]: any } | null
+): PipelineStageId {
+  if (!solicitud) return 'aprobacion';
+  const estado = solicitud.solNombreEstado || (solicitud as any).estado || '';
+  const notas = solicitud.solNotas || (solicitud as any).notas || '';
+
+  if (isStatusRejected(estado, notas)) {
+    return 'rechazada';
+  }
   if ((solicitud as any).stage && PIPELINE_STAGES.some((s) => s.key === (solicitud as any).stage)) {
     return (solicitud as any).stage as PipelineStageId;
   }
   if ((solicitud as any).etapa && PIPELINE_STAGES.some((s) => s.key === (solicitud as any).etapa)) {
     return (solicitud as any).etapa as PipelineStageId;
   }
-  const estado = solicitud.solNombreEstado || 'Aprobada';
-  const idx = getStageIndexForStatus(estado);
-  return PIPELINE_STAGES[idx]?.key || 'matriz';
+  const idx = getStageIndexForStatus(estado, notas);
+  return PIPELINE_STAGES[idx]?.key || 'aprobacion';
 }
 
 export type StageState = 'done' | 'active' | 'pending' | 'blocked' | 'rejected';
@@ -269,16 +293,20 @@ export function getStageState(
 
 export interface PipelineProgressCardProps {
   status?: string;
+  notas?: string | null;
+  solicitud?: ISolicitudCompra;
   onStageClick: (stageKey: PipelineStageId) => void;
   className?: string;
 }
 
 export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
   status = 'Aprobada',
+  notas = '',
+  solicitud,
   onStageClick,
   className = '',
 }) => {
-  const summary = getPipelineSummary(status);
+  const summary = getPipelineSummary(solicitud?.solNombreEstado || status, solicitud?.solNotas || notas);
   const { activeIndex, globalPercent, isRejected, isComplete } = summary;
 
   return (
@@ -489,7 +517,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const rawStatus = statusProp || solicitud?.solNombreEstado || 'Aprobada';
-  const summary = getPipelineSummary(rawStatus);
+  const rawNotas = solicitud?.solNotas || '';
+  const summary = getPipelineSummary(rawStatus, rawNotas);
 
   const activeStage = currentStage
     ? PIPELINE_STAGES.find((s) => s.key === currentStage) || summary.stage
@@ -565,6 +594,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     return (
       <PipelineProgressCard
         status={rawStatus}
+        notas={rawNotas}
+        solicitud={solicitud}
         onStageClick={handleStageSelection}
       />
     );
@@ -660,6 +691,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
         >
           <PipelineProgressCard
             status={rawStatus}
+            notas={rawNotas}
+            solicitud={solicitud}
             onStageClick={handleStageSelection}
           />
         </div>,

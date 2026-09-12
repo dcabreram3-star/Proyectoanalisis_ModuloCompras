@@ -112,9 +112,15 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
   }, [solicitud.noDocumento]);
 
   const estadoActual = (solicitudData?.solNombreEstado || solicitud.estado || 'PENDIENTE').toUpperCase();
-  const isPendiente = estadoActual.includes('PENDIENTE') || estadoActual.includes('REVISION') || estadoActual.includes('SOLICITADO');
-  const isAprobada = estadoActual.includes('APROBADA') || estadoActual.includes('APROBADO');
-  const isRechazada = estadoActual.includes('RECHAZAD') || estadoActual.includes('CERRAD');
+  const notasRaw = (solicitudData?.solNotas || '').toUpperCase();
+  const isRechazada =
+    estadoActual.includes('RECHAZAD') ||
+    estadoActual.includes('DENEGAD') ||
+    estadoActual.includes('CANCELAD') ||
+    notasRaw.includes('[RECHAZADA]') ||
+    notasRaw.includes('RECHAZADA');
+  const isPendiente = !isRechazada && (estadoActual.includes('PENDIENTE') || estadoActual.includes('REVISION') || estadoActual.includes('SOLICITADO'));
+  const isAprobada = !isRechazada && (estadoActual.includes('APROBADA') || estadoActual.includes('APROBADO'));
 
   // Métricas
   const totalItems = items.length;
@@ -297,12 +303,12 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
       )}
 
       {isRechazada && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-900 text-sm">
-          <Ban size={20} className="text-amber-600 flex-shrink-0" />
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-900 text-sm">
+          <Ban size={20} className="text-rose-600 flex-shrink-0" />
           <div>
-            <p className="font-bold">Esta solicitud se encuentra Rechazada / Cerrada</p>
-            <p className="text-xs text-amber-700">
-              No puede avanzar a cotizaciones debido a su denegación formal.
+            <p className="font-bold">Esta solicitud se encuentra Rechazada</p>
+            <p className="text-xs text-rose-700">
+              El ciclo de compras ha sido detenido formalmente. La solicitud no avanzará a las etapas posteriores (Matriz, Selección, Presupuesto, Bodega o 3-Way Match).
             </p>
           </div>
         </div>

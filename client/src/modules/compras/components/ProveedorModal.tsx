@@ -1,7 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { X, Building2, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
-import { IProveedor, ICreateProveedorDTO, IUpdateProveedorDTO } from '@erp/contracts';
+import type { IProveedor, ICreateProveedorDTO, IUpdateProveedorDTO } from '@erp/contracts';
+
+export const PROVEEDOR_NIT_MIN_LENGTH = 8;
+export const PROVEEDOR_NIT_MAX_LENGTH = 13;
+
+/**
+ * Valida de forma estricta el formato y longitud del número de identificación (NIT / DPI) del proveedor.
+ * Exige exclusivamente dígitos numéricos y una longitud de entre 8 y 13 caracteres.
+ */
+export function validarIdentificacionProveedor(nit?: string | null): { valido: boolean; mensaje?: string } {
+  if (!nit || typeof nit !== 'string' || nit.trim() === '') {
+    return {
+      valido: false,
+      mensaje: 'El número de identificación (NIT / DPI) es estrictamente obligatorio.',
+    };
+  }
+
+  const trimmed = nit.trim();
+
+  if (!/^[0-9]+$/.test(trimmed)) {
+    return {
+      valido: false,
+      mensaje: 'El número de identificación (NIT / DPI) debe contener exclusivamente dígitos numéricos (0-9).',
+    };
+  }
+
+  if (trimmed.length < PROVEEDOR_NIT_MIN_LENGTH || trimmed.length > PROVEEDOR_NIT_MAX_LENGTH) {
+    return {
+      valido: false,
+      mensaje: `El número de identificación (NIT / DPI) debe tener entre ${PROVEEDOR_NIT_MIN_LENGTH} y ${PROVEEDOR_NIT_MAX_LENGTH} caracteres (actualmente tiene ${trimmed.length}).`,
+    };
+  }
+
+  // Regla: Los NITs (menos de 13 dígitos) no pueden iniciar con cero.
+  // Los DPIs de 13 dígitos sí pueden iniciar con cero (códigos de departamento 01 al 22 de Guatemala).
+  if (trimmed.startsWith('0') && trimmed.length < 13) {
+    return {
+      valido: false,
+      mensaje: 'El NIT no puede iniciar con cero (únicamente permitido para DPI de 13 dígitos).',
+    };
+  }
+
+  return { valido: true };
+}
 
 export interface ProveedorModalProps {
   isOpen: boolean;
@@ -33,8 +76,8 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
   useEffect(() => {
     if (proveedor) {
       setNombreEntidad(proveedor.proNombreEntidad || '');
-      // Saneamiento de NIT para proveedores existentes a solo dígitos
-      setNit((proveedor.proNit || '').replace(/\D/g, ''));
+      // Saneamiento de NIT para proveedores existentes a solo dígitos (máximo 13)
+      setNit((proveedor.proNit || '').replace(/\D/g, '').slice(0, PROVEEDOR_NIT_MAX_LENGTH));
       setActivo(proveedor.proActivo === 1);
     } else {
       setNombreEntidad('');
@@ -68,18 +111,24 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
     setNombreEntidad(val);
   };
 
-  // Validación y saneamiento en tiempo real para NIT (exclusivamente números 0-9)
+  // Validación y saneamiento en tiempo real para NIT / DPI (exclusivamente 8 a 13 números 0-9)
   const handleNitChange = (val: string) => {
-    // Detecta si intentó tipear o pegar caracteres no numéricos
-    if (/[^0-9]/.test(val)) {
-      setNitError('El NIT acepta exclusivamente dígitos numéricos (0-9).');
+    const hasNonNumeric = /[^0-9]/.test(val);
+    // Limitar a máximo 13 dígitos numéricos en tiempo real
+    const sanitized = val.replace(/\D/g, '').slice(0, PROVEEDOR_NIT_MAX_LENGTH);
+    setNit(sanitized);
+
+    if (hasNonNumeric) {
+      setNitError('El número de identificación (NIT / DPI) acepta exclusivamente dígitos numéricos (0-9).');
+    } else if (sanitized.startsWith('0') && sanitized.length < 13) {
+      setNitError('El NIT no puede iniciar con cero (únicamente permitido para DPI de 13 dígitos).');
+    } else if (sanitized.length > 0 && sanitized.length < PROVEEDOR_NIT_MIN_LENGTH) {
+      setNitError(
+        `La identificación (NIT / DPI) debe tener al menos ${PROVEEDOR_NIT_MIN_LENGTH} dígitos (actualmente tiene ${sanitized.length}).`
+      );
     } else {
       setNitError(null);
     }
-
-    // Remueve de forma inmediata cualquier carácter que no sea dígito
-    const sanitized = val.replace(/\D/g, '');
-    setNit(sanitized);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,16 +153,11 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       setNombreError(null);
     }
 
-    // Validación estricta del NIT
+    // Validación estricta del NIT / DPI (8 a 13 caracteres numéricos)
     const trimmedNit = nit.trim();
-    if (!trimmedNit) {
-      setNitError('El NIT del proveedor es estrictamente obligatorio.');
-      hasValidationErrors = true;
-    } else if (!NIT_NUMERICO_REGEX.test(trimmedNit)) {
-      setNitError('El NIT debe contener exclusivamente dígitos numéricos (0-9).');
-      hasValidationErrors = true;
-    } else if (trimmedNit.length > 20) {
-      setNitError('El NIT no puede exceder los 20 dígitos numéricos.');
+    const validacionNit = validarIdentificacionProveedor(trimmedNit);
+    if (!validacionNit.valido) {
+      setNitError(validacionNit.mensaje || 'Número de identificación (NIT / DPI) inválido.');
       hasValidationErrors = true;
     } else {
       setNitError(null);
@@ -198,14 +242,14 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
           />
 
           <TextInput
-            label="NIT / IDENTIFICACIÓN TRIBUTARIA"
+            label="NIT / DPI (IDENTIFICACIÓN TRIBUTARIA O PERSONAL)"
             required
-            placeholder="Ej. 12345678"
+            placeholder="Ej. 12345678 (8 a 13 dígitos)"
             value={nit}
             onChange={(e) => handleNitChange(e.target.value)}
             error={nitError || undefined}
-            helperText="Exclusivamente números (0-9). No se admiten letras ni símbolos."
-            maxLength={20}
+            helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9). Los NITs no pueden iniciar con 0 (permitido para DPI de 13 dígitos)."
+            maxLength={PROVEEDOR_NIT_MAX_LENGTH}
           />
 
           <div className="pt-1">

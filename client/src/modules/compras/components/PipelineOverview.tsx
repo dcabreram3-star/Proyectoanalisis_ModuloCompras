@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, RotateCcw } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Ban } from 'lucide-react';
 import {
   PIPELINE_STAGES,
   PipelineStageId,
@@ -34,13 +34,19 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
 }) => {
   const total = registros.length;
 
-  // Conteo exacto de cuántos registros se ubican actualmente en cada una de las 6 etapas
+  // Conteo exacto de cuántos registros se ubican actualmente en cada una de las 6 etapas operativas
   const counts = PIPELINE_STAGES.map((stage) => {
     return registros.filter((r) => {
       const stageKey = getStageForSolicitud(r as ISolicitudCompra);
       return stageKey === stage.key;
     }).length;
   });
+
+  // Conteo de solicitudes rechazadas (ciclo detenido fuera del flujo operativo regular)
+  const rejectedCount = registros.filter((r) => {
+    const stageKey = getStageForSolicitud(r as ISolicitudCompra);
+    return stageKey === 'rechazada';
+  }).length;
 
   const completedCount = counts[PIPELINE_STAGES.length - 1] || 0;
   const isFiltering = Boolean(activeStage && activeStage !== 'TODAS');
@@ -58,6 +64,21 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
             <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
               6 Etapas
             </span>
+            {rejectedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onStageClick && onStageClick(activeStage === 'rechazada' ? 'TODAS' : ('rechazada' as any))}
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-full border transition-all cursor-pointer ${
+                  activeStage === 'rechazada'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                }`}
+                title={activeStage === 'rechazada' ? 'Quitar filtro de rechazadas' : `Filtrar ${rejectedCount} solicitud(es) rechazada(s)`}
+              >
+                <Ban className="w-3 h-3" />
+                <span>{rejectedCount} Rechazada{rejectedCount > 1 ? 's' : ''}</span>
+              </button>
+            )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             {subtitle ||
@@ -172,20 +193,35 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
 
       {/* Footer summary */}
       <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span className="tabular-nums font-bold text-slate-800">{completedCount}</span>
           <span>de</span>
           <span className="tabular-nums font-bold text-slate-800">{total}</span>
           <span>registros han completado la etapa 6 (3-Way Match)</span>
+          {rejectedCount > 0 && (
+            <span className="text-slate-400 pl-1">
+              • <strong className="text-rose-600 font-semibold">{rejectedCount}</strong> {rejectedCount === 1 ? 'solicitud rechazada' : 'solicitudes rechazadas'} (ciclo detenido)
+            </span>
+          )}
         </div>
 
         {isFiltering && (
-          <div className="text-xs text-blue-700 font-medium">
-            Mostrando registros filtrados por etapa:{' '}
-            <strong className="font-bold uppercase underline">
-              {PIPELINE_STAGES.find((s) => s.key === activeStage)?.label || activeStage}
-            </strong>
+          <div className="text-xs font-medium">
+            {activeStage === 'rechazada' ? (
+              <span className="text-rose-700 flex items-center gap-1">
+                <Ban className="w-3.5 h-3.5 text-rose-600" />
+                Mostrando solicitudes con ciclo detenido:{' '}
+                <strong className="font-bold uppercase underline">RECHAZADAS</strong>
+              </span>
+            ) : (
+              <span className="text-blue-700">
+                Mostrando registros filtrados por etapa:{' '}
+                <strong className="font-bold uppercase underline">
+                  {PIPELINE_STAGES.find((s) => s.key === activeStage)?.label || activeStage}
+                </strong>
+              </span>
+            )}
           </div>
         )}
       </div>

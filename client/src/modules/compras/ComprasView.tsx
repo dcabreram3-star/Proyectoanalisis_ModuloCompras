@@ -23,6 +23,7 @@ import {
   PipelineProgress,
   PipelineStageId,
   getStageForSolicitud,
+  isStatusRejected,
   PIPELINE_STAGE_OPTIONS,
 } from './components/PipelineProgress';
 import { PipelineOverview } from './components/PipelineOverview';
@@ -95,14 +96,17 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         item.solNoDocumento.toLowerCase().includes(queryLower) ||
         (item.solNotas && item.solNotas.toLowerCase().includes(queryLower));
 
+      const isItemRej = isStatusRejected(item.solNombreEstado, item.solNotas);
       const estadoName = (item.solNombreEstado || '').toUpperCase();
       const filterUpper = filterEstado.toUpperCase();
       const matchEstado =
         filterEstado === 'TODOS' ||
-        estadoName === filterUpper ||
-        (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
-        (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT')) ||
-        (filterUpper.startsWith('RECHAZAD') && estadoName.startsWith('RECHAZAD'));
+        (filterUpper.startsWith('RECHAZAD') && isItemRej) ||
+        (!isItemRej && (
+          estadoName === filterUpper ||
+          (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
+          (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT'))
+        ));
 
       const itemStage = getStageForSolicitud(item);
       const matchEtapa = filterEtapa === 'TODAS' || itemStage === filterEtapa;
@@ -121,10 +125,10 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   // Stat metrics
   const totalCount = solicitudes.length;
   const aprobadasCount = solicitudes.filter(
-    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
+    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
   ).length;
   const pendientesCount = solicitudes.filter(
-    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
+    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
   ).length;
   const totalMontoEstimado = solicitudes.reduce((acc, curr) => acc + (curr.solMontoTotalEstimado || 0), 0);
 
@@ -229,7 +233,8 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={row}
             status={row.solNombreEstado || undefined}
             onSelectStage={(stageId, solicitud) => {
-              setActiveStageView({ stage: stageId, solicitud });
+              const targetStage = stageId === 'rechazada' ? 'aprobacion' : stageId;
+              setActiveStageView({ stage: targetStage, solicitud });
             }}
           />
         </div>
@@ -467,7 +472,8 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         isLoading={isLoading}
         onRowClick={(sol) => {
           const defaultStage = getStageForSolicitud(sol);
-          setActiveStageView({ stage: defaultStage, solicitud: sol });
+          const targetStage = defaultStage === 'rechazada' ? 'aprobacion' : defaultStage;
+          setActiveStageView({ stage: targetStage, solicitud: sol });
         }}
         emptyText="No se encontraron solicitudes de compra en la base de datos."
       />
