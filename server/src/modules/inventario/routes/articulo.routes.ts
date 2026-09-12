@@ -13,6 +13,10 @@ router.put('/:codigo/descripcion', ArticuloController.actualizarDescripcion);
 // Endpoint para eliminar lógicamente
 router.delete('/:codigo', ArticuloController.eliminar);
 
+// Endpoint para activar o desactivar
+router.patch('/:codigo/estado', ArticuloController.cambiarEstado);
+router.put('/:codigo/estado', ArticuloController.cambiarEstado);
+
 // Endpoint para crear un artículo
 router.post('/', ArticuloController.crear);
 

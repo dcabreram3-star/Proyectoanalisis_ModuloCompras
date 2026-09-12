@@ -32,19 +32,25 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
           <LotesCatalogView />
         </div>
       )}
-      {activeTab === 'movimientos' && (
-        <MovimientoCreacionView 
-          onSuccess={() => {
-            if (onTabChange) onTabChange('movimientos');
-          }}
-        />
-      )}
       {activeTab === 'tipos-movimiento' && (
         <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
           <TiposMovimientoCatalogView />
         </div>
       )}
-      {activeTab === 'auditoria' && <AuditoriaView />}
+      {activeTab === 'movimientos' && (
+        <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
+          <MovimientoCreacionView 
+            onSuccess={() => {
+              if (onTabChange) onTabChange('movimientos');
+            }}
+          />
+        </div>
+      )}
+      {activeTab === 'auditoria' && (
+        <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
+          <AuditoriaView />
+        </div>
+      )}
     </div>
   );
 };

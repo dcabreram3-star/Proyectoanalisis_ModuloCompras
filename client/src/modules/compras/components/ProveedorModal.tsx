@@ -21,12 +21,20 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
   const [nit, setNit] = useState<string>('');
   const [activo, setActivo] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [nombreError, setNombreError] = useState<string | null>(null);
+  const [nitError, setNitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Expresiones regulares de validación y seguridad
+  const CARACTERES_PROHIBIDOS_REGEX = /[*\/@<>=;\\!$%#^?{}[\]~+&|`]/;
+  const NOMBRE_PERMITIDO_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,\-]*$/;
+  const NIT_NUMERICO_REGEX = /^[0-9]+$/;
 
   useEffect(() => {
     if (proveedor) {
       setNombreEntidad(proveedor.proNombreEntidad || '');
-      setNit(proveedor.proNit || '');
+      // Saneamiento de NIT para proveedores existentes a solo dígitos
+      setNit((proveedor.proNit || '').replace(/\D/g, ''));
       setActivo(proveedor.proActivo === 1);
     } else {
       setNombreEntidad('');
@@ -34,48 +42,84 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       setActivo(true);
     }
     setError(null);
+    setNombreError(null);
+    setNitError(null);
   }, [proveedor, isOpen]);
 
   if (!isOpen) return null;
 
+  // Validación y saneamiento en tiempo real para Nombre
+  const handleNombreChange = (val: string) => {
+    // Si intenta ingresar caracteres peligrosos como *, /, @, <, >, =, etc.
+    if (CARACTERES_PROHIBIDOS_REGEX.test(val)) {
+      setNombreError('No se permiten caracteres especiales no válidos (*, /, @, <, >, =, etc.).');
+      // Filtra de inmediato el carácter peligroso
+      const sanitized = val.replace(/[*\/@<>=;\\!$%#^?{}[\]~+&|`]/g, '');
+      setNombreEntidad(sanitized);
+      return;
+    }
+
+    if (val && !NOMBRE_PERMITIDO_REGEX.test(val)) {
+      setNombreError('Solo se permiten letras, números, espacios, puntos y guiones.');
+    } else {
+      setNombreError(null);
+    }
+
+    setNombreEntidad(val);
+  };
+
+  // Validación y saneamiento en tiempo real para NIT (exclusivamente números 0-9)
   const handleNitChange = (val: string) => {
-    // Convierte el texto a mayúsculas y permite únicamente números, guiones y la letra K
-    const sanitized = val.toUpperCase().replace(/[^0-9\-K]/g, '');
+    // Detecta si intentó tipear o pegar caracteres no numéricos
+    if (/[^0-9]/.test(val)) {
+      setNitError('El NIT acepta exclusivamente dígitos numéricos (0-9).');
+    } else {
+      setNitError(null);
+    }
+
+    // Remueve de forma inmediata cualquier carácter que no sea dígito
+    const sanitized = val.replace(/\D/g, '');
     setNit(sanitized);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombreEntidad.trim()) {
-      setError('El nombre o razón social del proveedor es obligatorio.');
-      return;
+    let hasValidationErrors = false;
+
+    // Validación estricta del Nombre
+    const trimmedNombre = nombreEntidad.trim();
+    if (!trimmedNombre) {
+      setNombreError('El nombre o razón social del proveedor es obligatorio.');
+      hasValidationErrors = true;
+    } else if (trimmedNombre.length > 150) {
+      setNombreError('El nombre no puede exceder los 150 caracteres.');
+      hasValidationErrors = true;
+    } else if (CARACTERES_PROHIBIDOS_REGEX.test(trimmedNombre)) {
+      setNombreError('No se permiten caracteres especiales como *, /, @, <, >, =, etc.');
+      hasValidationErrors = true;
+    } else if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,\-]+$/.test(trimmedNombre)) {
+      setNombreError('Solo se permiten letras, números, espacios, puntos y guiones comerciales.');
+      hasValidationErrors = true;
+    } else {
+      setNombreError(null);
     }
 
-    if (nombreEntidad.trim().length > 150) {
-      setError('El nombre no puede exceder los 150 caracteres.');
-      return;
+    // Validación estricta del NIT
+    const trimmedNit = nit.trim();
+    if (!trimmedNit) {
+      setNitError('El NIT del proveedor es estrictamente obligatorio.');
+      hasValidationErrors = true;
+    } else if (!NIT_NUMERICO_REGEX.test(trimmedNit)) {
+      setNitError('El NIT debe contener exclusivamente dígitos numéricos (0-9).');
+      hasValidationErrors = true;
+    } else if (trimmedNit.length > 20) {
+      setNitError('El NIT no puede exceder los 20 dígitos numéricos.');
+      hasValidationErrors = true;
+    } else {
+      setNitError(null);
     }
 
-    if (!nit.trim()) {
-      setError('El NIT del proveedor es estrictamente obligatorio.');
-      return;
-    }
-
-    const nitNormalized = nit.trim().toUpperCase();
-
-    if (nitNormalized === 'CF') {
-      setError('No se permite registrar proveedores con "CF". Debe ingresar un número de NIT válido.');
-      return;
-    }
-
-    if (nitNormalized.length > 50) {
-      setError('El NIT no puede exceder los 50 caracteres.');
-      return;
-    }
-
-    const nitRegex = /^[0-9]+(-[0-9K])?$/;
-    if (!nitRegex.test(nitNormalized)) {
-      setError('El formato del NIT es inválido. Debe contener únicamente números y opcionalmente un guion con dígito verificador (ej. 1234567-8, 1234567-K). No se admite "CF".');
+    if (hasValidationErrors) {
       return;
     }
 
@@ -86,16 +130,16 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       if (isEditing && proveedor) {
         await onSave(
           {
-            proNombreEntidad: nombreEntidad.trim(),
-            proNit: nit.trim() || null,
+            proNombreEntidad: trimmedNombre,
+            proNit: trimmedNit || null,
             proActivo: activo ? 1 : 0,
           },
           proveedor.proIdProveedor
         );
       } else {
         await onSave({
-          proNombreEntidad: nombreEntidad.trim(),
-          proNit: nit.trim() || null,
+          proNombreEntidad: trimmedNombre,
+          proNit: trimmedNit || null,
           proActivo: activo ? 1 : 0,
         });
       }
@@ -147,17 +191,21 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
             required
             placeholder="Ej. Distribuidora Central, S.A."
             value={nombreEntidad}
-            onChange={(e) => setNombreEntidad(e.target.value)}
+            onChange={(e) => handleNombreChange(e.target.value)}
+            error={nombreError || undefined}
+            helperText="Solo se permiten letras, espacios, puntos y guiones. Caracteres como *, /, @, <, >, = están prohibidos."
             autoFocus
           />
 
           <TextInput
             label="NIT / IDENTIFICACIÓN TRIBUTARIA"
             required
-            placeholder="Ej. 1234567-8, 1234567-K"
+            placeholder="Ej. 12345678"
             value={nit}
             onChange={(e) => handleNitChange(e.target.value)}
-            helperText="Obligatorio. Solo números y opcionalmente guion con dígito verificador (0-9, K). No se permite CF."
+            error={nitError || undefined}
+            helperText="Exclusivamente números (0-9). No se admiten letras ni símbolos."
+            maxLength={20}
           />
 
           <div className="pt-1">
@@ -171,7 +219,7 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button variant="secondary" onClick={onClose} disabled={isSubmitting} type="button">
+            <Button variant="secondary" icon={X} onClick={onClose} disabled={isSubmitting} type="button">
               Cancelar
             </Button>
             <Button variant="primary" icon={Save} disabled={isSubmitting} type="submit">
