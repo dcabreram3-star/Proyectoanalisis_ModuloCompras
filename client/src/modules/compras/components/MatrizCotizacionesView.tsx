@@ -204,15 +204,21 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
     <div className="space-y-6 w-full pb-12 min-w-0">
       {/* Top Breadcrumb & Document ID */}
       <div className="flex items-center justify-between text-xs text-slate-500">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 hover:text-blue-600 font-semibold transition-colors group"
-        >
-          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-          <span>Solicitudes</span>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-bold">Matriz de Cotizaciones</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 hover:text-blue-600 font-semibold transition-colors group"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Solicitudes</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-900 font-bold">Matriz de Cotizaciones</span>
+          </button>
+          <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+          <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full flex items-center gap-1">
+            Etapa 2 de 6
+          </span>
+        </div>
         <span className="font-semibold text-slate-400">{solicitud.noDocumento}</span>
       </div>
 

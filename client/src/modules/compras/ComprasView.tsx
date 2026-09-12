@@ -23,7 +23,9 @@ import {
   PipelineProgress,
   PipelineStageId,
   getStageForSolicitud,
+  PIPELINE_STAGE_OPTIONS,
 } from './components/PipelineProgress';
+import { PipelineOverview } from './components/PipelineOverview';
 import { AprobacionView } from './components/AprobacionView';
 import { SeleccionCotizacionView } from './components/SeleccionCotizacionView';
 import { PresupuestoView } from './components/PresupuestoView';
@@ -57,6 +59,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterEstado, setFilterEstado] = useState<string>('TODOS');
+  const [filterEtapa, setFilterEtapa] = useState<string>('TODAS');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -101,9 +104,12 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT')) ||
         (filterUpper.startsWith('RECHAZAD') && estadoName.startsWith('RECHAZAD'));
 
-      return matchSearch && matchEstado;
+      const itemStage = getStageForSolicitud(item);
+      const matchEtapa = filterEtapa === 'TODAS' || itemStage === filterEtapa;
+
+      return matchSearch && matchEstado && matchEtapa;
     });
-  }, [solicitudes, searchQuery, filterEstado]);
+  }, [solicitudes, searchQuery, filterEstado, filterEtapa]);
 
   // Paginated dataset
   const totalPages = Math.ceil(filteredSolicitudes.length / itemsPerPage) || 1;
@@ -140,12 +146,13 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     {
       header: 'NO. DOCUMENTO',
       accessorKey: 'solNoDocumento',
+      align: 'left' as const,
       className: 'whitespace-nowrap',
       cell: ({ value }: { value: string }) => {
         const shortDoc = value ? value.replace(/^([A-Za-z]+)-\d{4}-/, '$1-') : value;
         return (
           <span
-            className="font-bold text-blue-600 hover:underline whitespace-nowrap"
+            className="font-bold text-blue-600 hover:underline whitespace-nowrap text-xs"
             title={value}
           >
             {shortDoc}
@@ -156,18 +163,20 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     {
       header: 'FECHA',
       accessorKey: 'solFecha',
+      align: 'left' as const,
       className: 'whitespace-nowrap',
       cell: ({ value }: { value: string | Date }) => (
-        <span className="text-slate-600 font-medium whitespace-nowrap">{formatDate(value, '2026-03-01')}</span>
+        <span className="text-slate-600 font-medium whitespace-nowrap text-xs">{formatDate(value, '2026-03-01')}</span>
       ),
     },
     {
       header: 'DEPARTAMENTO',
       accessorKey: 'solNombreDepartamento',
+      align: 'left' as const,
       cell: ({ value, row }: { value: string; row: ISolicitudCompra }) => {
         const depto = value || `Departamento #${row.solIdDepartamento}`;
         return (
-          <span className="text-slate-700 font-medium max-w-[140px] truncate block" title={depto}>
+          <span className="text-slate-700 font-medium max-w-[120px] truncate block text-xs" title={depto}>
             {depto}
           </span>
         );
@@ -176,10 +185,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     {
       header: 'RESPONSABLE',
       accessorKey: 'solNombreResponsable',
+      align: 'left' as const,
       cell: ({ value, row }: { value: string; row: ISolicitudCompra }) => {
         const resp = value || `Empleado #${row.solIdUsuarioResponsable}`;
         return (
-          <span className="text-slate-700 font-medium max-w-[130px] truncate block" title={resp}>
+          <span className="text-slate-700 font-medium max-w-[110px] truncate block text-xs" title={resp}>
             {resp}
           </span>
         );
@@ -188,9 +198,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     {
       header: 'DESCRIPCIÓN / NOTAS',
       accessorKey: 'solNotas',
+      align: 'left' as const,
+      className: 'max-w-[150px]',
       cell: ({ value }: { value: string | null }) => (
         <span
-          className="text-slate-700 max-w-[160px] md:max-w-[200px] lg:max-w-[260px] truncate block"
+          className="text-slate-700 max-w-[150px] truncate block text-xs"
           title={value || 'Sin notas adicionales'}
         >
           {value || 'Sin notas adicionales'}
@@ -203,7 +215,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       align: 'right' as const,
       className: 'whitespace-nowrap',
       cell: ({ value }: { value: number }) => (
-        <span className="font-bold text-slate-900 whitespace-nowrap">{formatCurrency(value)}</span>
+        <span className="font-bold text-slate-900 whitespace-nowrap text-xs">{formatCurrency(value)}</span>
       ),
     },
     {
@@ -359,29 +371,16 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         </div>
       )}
 
-      {/* Dashboard View Banner if activeTab === 'dashboard' */}
-      {activeTab === 'dashboard' && (
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-semibold uppercase tracking-wider inline-block">
-              Módulo de Compras ERP
-            </span>
-            <h2 className="text-xl font-bold">Panel de Solicitudes Aprobadas para Cotización</h2>
-            <p className="text-sm text-slate-300">
-              Seleccione cualquier solicitud de compra para ingresar las 3 cotizaciones de proveedores requeridas o registrar una excepción de proveedor único.
-            </p>
-          </div>
-          {solicitudes.length > 0 && (
-            <Button
-              variant="primary"
-              icon={ArrowRight}
-              onClick={() => setActiveStageView({ stage: 'matriz', solicitud: solicitudes[0] })}
-              className="bg-blue-600 hover:bg-blue-500 text-white whitespace-nowrap shadow-lg"
-            >
-              Ingresar Matriz Reciente
-            </Button>
-          )}
-        </div>
+      {/* Pipeline de las 6 etapas interactivo (Dashboard y Registros) */}
+      {(activeTab === 'dashboard' || activeTab === 'registros') && (
+        <PipelineOverview
+          registros={solicitudes}
+          activeStage={filterEtapa}
+          onStageClick={(stg) => {
+            setFilterEtapa(stg);
+            setCurrentPage(1);
+          }}
+        />
       )}
 
       {/* Toolbar Search & Filters */}
@@ -401,7 +400,29 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+          {/* Filtrar por Etapa (6 Fases del Ciclo de Compras) */}
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+            <Layers size={15} className="text-slate-400" />
+            <span>Filtrar por Etapa:</span>
+          </div>
+
+          <select
+            value={filterEtapa}
+            onChange={(e) => {
+              setFilterEtapa(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
+          >
+            {PIPELINE_STAGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Filtrar por Estado */}
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
             <Filter size={15} className="text-slate-400" />
             <span>Filtrar por Estado:</span>
           </div>
@@ -412,13 +433,30 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               setFilterEstado(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-600"
+            className="h-9 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
           >
             <option value="TODOS">Todos los Estados</option>
             <option value="PENDIENTE">PENDIENTE</option>
             <option value="APROBADA">APROBADA</option>
             <option value="RECHAZADA">RECHAZADA</option>
           </select>
+
+          {/* Botón de limpiar filtros cuando alguno está activo */}
+          {(filterEtapa !== 'TODAS' || filterEstado !== 'TODOS' || searchQuery) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilterEtapa('TODAS');
+                setFilterEstado('TODOS');
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              Limpiar
+            </Button>
+          )}
         </div>
       </div>
 

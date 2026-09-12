@@ -6,9 +6,14 @@ import {
   IProveedorFilterParams,
 } from '@erp/contracts';
 
-// Expresión regular que valida formato estándar de NIT: solo números y opcionalmente un guion con dígito verificador (0-9 o K)
-// Se rechaza explícitamente "CF" y cualquier otra letra que no corresponda
-const NIT_REGEX = /^[0-9]+(-[0-9K])?$/;
+// Expresión regular que valida formato de NIT: ÚNICAMENTE dígitos numéricos (0-9)
+const NIT_NUMERICO_REGEX = /^[0-9]+$/;
+
+// Expresión regular que valida Nombre o Razón Social: permite letras (con tildes y eñes), números, espacios, puntos y guiones
+const NOMBRE_PROVEEDOR_REGEX = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.,\-]+$/;
+
+// Caracteres peligrosos explícitamente bloqueados (*, /, @, <, >, =, ;, etc.)
+const CARACTERES_PROHIBIDOS_REGEX = /[*\/@<>=;\\!$%#^?{}[\]~+&|`]/;
 
 /**
  * Servicio de Negocio para el catálogo de Proveedores
@@ -30,26 +35,33 @@ export class ProveedorService {
       throw new Error('El nombre o razón social del proveedor es obligatorio.');
     }
 
-    if (data.proNombreEntidad.trim().length > 150) {
+    const nombreTrimmed = data.proNombreEntidad.trim();
+    if (nombreTrimmed.length > 150) {
       throw new Error('El nombre del proveedor no puede exceder 150 caracteres.');
     }
+
+    if (CARACTERES_PROHIBIDOS_REGEX.test(nombreTrimmed)) {
+      throw new Error('El nombre del proveedor no puede contener caracteres especiales no permitidos (*, /, @, <, >, =, etc.).');
+    }
+
+    if (!NOMBRE_PROVEEDOR_REGEX.test(nombreTrimmed)) {
+      throw new Error('El nombre del proveedor contiene caracteres inválidos. Solo se permiten letras, números, espacios, puntos y guiones.');
+    }
+
+    data.proNombreEntidad = nombreTrimmed;
 
     if (!data.proNit || data.proNit.trim() === '') {
       throw new Error('El NIT del proveedor es estrictamente obligatorio.');
     }
 
-    const nitTrimmed = data.proNit.trim().toUpperCase();
+    const nitTrimmed = data.proNit.trim();
 
-    if (nitTrimmed === 'CF') {
-      throw new Error('No se permite registrar proveedores con "CF". Debe ingresar un número de NIT válido.');
+    if (!NIT_NUMERICO_REGEX.test(nitTrimmed)) {
+      throw new Error('El NIT debe contener exclusivamente dígitos numéricos (0-9). No se permiten letras, guiones ni caracteres especiales.');
     }
 
-    if (nitTrimmed.length > 50) {
-      throw new Error('El NIT no puede exceder 50 caracteres.');
-    }
-
-    if (!NIT_REGEX.test(nitTrimmed)) {
-      throw new Error('El formato del NIT es inválido. Debe contener únicamente números y opcionalmente un guion con dígito verificador (ej. 1234567-8, 1234567-K). No se admite "CF".');
+    if (nitTrimmed.length > 20) {
+      throw new Error('El NIT no puede exceder 20 dígitos numéricos.');
     }
 
     data.proNit = nitTrimmed;
@@ -70,9 +82,17 @@ export class ProveedorService {
       if (data.proNombreEntidad.trim() === '') {
         throw new Error('El nombre del proveedor no puede estar vacío.');
       }
-      if (data.proNombreEntidad.trim().length > 150) {
+      const nombreTrimmed = data.proNombreEntidad.trim();
+      if (nombreTrimmed.length > 150) {
         throw new Error('El nombre del proveedor no puede exceder 150 caracteres.');
       }
+      if (CARACTERES_PROHIBIDOS_REGEX.test(nombreTrimmed)) {
+        throw new Error('El nombre del proveedor no puede contener caracteres especiales no permitidos (*, /, @, <, >, =, etc.).');
+      }
+      if (!NOMBRE_PROVEEDOR_REGEX.test(nombreTrimmed)) {
+        throw new Error('El nombre del proveedor contiene caracteres inválidos. Solo se permiten letras, números, espacios, puntos y guiones.');
+      }
+      data.proNombreEntidad = nombreTrimmed;
     }
 
     if (data.proNit !== undefined) {
@@ -80,18 +100,14 @@ export class ProveedorService {
         throw new Error('El NIT del proveedor es estrictamente obligatorio y no puede estar vacío.');
       }
 
-      const nitTrimmed = data.proNit.trim().toUpperCase();
+      const nitTrimmed = data.proNit.trim();
 
-      if (nitTrimmed === 'CF') {
-        throw new Error('No se permite registrar proveedores con "CF". Debe ingresar un número de NIT válido.');
+      if (!NIT_NUMERICO_REGEX.test(nitTrimmed)) {
+        throw new Error('El NIT debe contener exclusivamente dígitos numéricos (0-9). No se permiten letras, guiones ni caracteres especiales.');
       }
 
-      if (nitTrimmed.length > 50) {
-        throw new Error('El NIT no puede exceder 50 caracteres.');
-      }
-
-      if (!NIT_REGEX.test(nitTrimmed)) {
-        throw new Error('El formato del NIT es inválido. Debe contener únicamente números y opcionalmente un guion con dígito verificador (ej. 1234567-8, 1234567-K). No se admite "CF".');
+      if (nitTrimmed.length > 20) {
+        throw new Error('El NIT no puede exceder 20 dígitos numéricos.');
       }
 
       data.proNit = nitTrimmed;

@@ -5,6 +5,11 @@ import {
   IUpdateEstadoDTO,
   IEstadoFilterParams,
 } from '@erp/contracts';
+import {
+  validateNominalText,
+  validateNumericId,
+  validateBooleanFlag,
+} from '../../../utils/sanitizers.js';
 
 /**
  * Servicio de Negocio para el catálogo de Estados (CMP_ESTADO)
@@ -15,22 +20,12 @@ export class EstadoService {
   }
 
   static async obtenerPorId(id: number): Promise<IEstado | null> {
-    if (!id || id <= 0) {
-      throw new Error('El ID del estado debe ser un número positivo.');
-    }
-    return await EstadoRepository.findById(id);
+    const validId = validateNumericId(id, 'ID del estado');
+    return await EstadoRepository.findById(validId);
   }
 
   static async crearEstado(data: ICreateEstadoDTO): Promise<IEstado> {
-    if (!data.estNombreEstado || data.estNombreEstado.trim() === '') {
-      throw new Error('El nombre del estado es obligatorio.');
-    }
-
-    const trimmed = data.estNombreEstado.trim();
-
-    if (trimmed.length > 50) {
-      throw new Error('El nombre del estado no puede exceder 50 caracteres.');
-    }
+    const trimmed = validateNominalText(data.estNombreEstado, 'nombre del estado', 50);
 
     // Validación de unicidad
     const duplicado = await EstadoRepository.findByNombre(trimmed);
@@ -38,37 +33,37 @@ export class EstadoService {
       throw new Error(`Ya existe un estado registrado con el nombre "${trimmed}".`);
     }
 
+    const activo = validateBooleanFlag(data.estActivo, 'activo', 1);
+
     return await EstadoRepository.create({
       estNombreEstado: trimmed,
+      estActivo: activo,
     });
   }
 
   static async actualizarEstado(id: number, data: IUpdateEstadoDTO): Promise<IEstado> {
-    if (!id || id <= 0) {
-      throw new Error('El ID del estado debe ser un número positivo.');
-    }
+    const validId = validateNumericId(id, 'ID del estado');
+    const updatePayload: IUpdateEstadoDTO = {};
 
     if (data.estNombreEstado !== undefined) {
-      const trimmed = data.estNombreEstado.trim();
-      if (trimmed === '') {
-        throw new Error('El nombre del estado no puede estar vacío.');
-      }
-      if (trimmed.length > 50) {
-        throw new Error('El nombre del estado no puede exceder 50 caracteres.');
-      }
+      const trimmed = validateNominalText(data.estNombreEstado, 'nombre del estado', 50);
 
       // Validar unicidad excluyendo el registro actual
       const duplicado = await EstadoRepository.findByNombre(trimmed);
-      if (duplicado && duplicado.estIdEstado !== id) {
+      if (duplicado && duplicado.estIdEstado !== validId) {
         throw new Error(`Ya existe otro estado registrado con el nombre "${trimmed}".`);
       }
 
-      data.estNombreEstado = trimmed;
+      updatePayload.estNombreEstado = trimmed;
     }
 
-    const updated = await EstadoRepository.update(id, data);
+    if (data.estActivo !== undefined) {
+      updatePayload.estActivo = validateBooleanFlag(data.estActivo, 'activo', 1);
+    }
+
+    const updated = await EstadoRepository.update(validId, updatePayload);
     if (!updated) {
-      throw new Error(`No se encontró el estado con ID ${id}.`);
+      throw new Error(`No se encontró el estado con ID ${validId}.`);
     }
 
     return updated;
