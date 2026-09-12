@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Bookmark, Save, AlertCircle } from 'lucide-react';
-import { Button, TextInput, Checkbox } from '../../../components/ui';
+import { Button, TextInput } from '../../../components/ui';
 import { IEstado, ICreateEstadoDTO, IUpdateEstadoDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
 
@@ -19,7 +19,6 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
 }) => {
   const isEditing = Boolean(estado);
   const [nombre, setNombre] = useState<string>('');
-  const [activo, setActivo] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [nombreError, setNombreError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -27,10 +26,8 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
   useEffect(() => {
     if (estado) {
       setNombre(estado.estNombreEstado);
-      setActivo(estado.estActivo !== 0);
     } else {
       setNombre('');
-      setActivo(true);
     }
     setError(null);
     setNombreError(null);
@@ -72,14 +69,12 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
         await onSave(
           {
             estNombreEstado: trimmed,
-            estActivo: activo ? 1 : 0,
           },
           estado.estIdEstado
         );
       } else {
         await onSave({
           estNombreEstado: trimmed,
-          estActivo: activo ? 1 : 0,
         });
       }
       onClose();
@@ -139,15 +134,6 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
           <p className="text-[11px] text-slate-400">
             Define la etiqueta descriptiva del estado utilizado en solicitudes, órdenes de compra y facturas (máx. 50 caracteres).
           </p>
-
-          <div className="pt-1">
-            <Checkbox
-              label="Estado Activo"
-              helperText="Los estados inactivos no estarán disponibles para asignar a nuevas solicitudes u órdenes."
-              checked={activo}
-              onChange={(e) => setActivo(e.target.checked)}
-            />
-          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

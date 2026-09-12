@@ -58,19 +58,27 @@ export class ArticuloRepository {
     return (resultado.rowsAffected ?? 0) > 0;
   }
 
-  // 3. Eliminación Lógica (Desactivar en lugar de borrar para no romper historial)
+  // 3. Eliminación Física Permanente (Hard Delete)
   static async eliminar(codigo: string): Promise<boolean> {
     const sql = `
-      UPDATE CMP_ARTICULO 
-      SET ART_ACTIVO = 0 
+      DELETE FROM CMP_ARTICULO 
       WHERE ART_CODIGO_ARTICULO = :codigo
     `;
     
     const binds = { codigo };
     const options = { autoCommit: true };
 
-    const resultado = await db.execute(sql, binds, options);
-    return (resultado.rowsAffected ?? 0) > 0;
+    try {
+      const resultado = await db.execute(sql, binds, options);
+      return (resultado.rowsAffected ?? 0) > 0;
+    } catch (error: any) {
+      if (error?.errorNum === 2292 || (error?.message && error.message.includes('ORA-02292'))) {
+        throw new Error(
+          `No se puede eliminar permanentemente el artículo "${codigo}" porque posee registros vinculados (compras, recepciones, lotes, inventario o movimientos asociados).`
+        );
+      }
+      throw error;
+    }
   }
 
   // 3.1 Cambiar Estado Activo (Activar o Desactivar)

@@ -9,30 +9,28 @@ import {
 interface IEstadoDbRow {
   EST_ID_ESTADO: number | string;
   EST_NOMBRE_ESTADO: string;
-  EST_ACTIVO?: number | string;
 }
 
 function mapRowToEstado(row: IEstadoDbRow): IEstado {
   return {
     estIdEstado: Number(row.EST_ID_ESTADO),
     estNombreEstado: String(row.EST_NOMBRE_ESTADO),
-    estActivo: row.EST_ACTIVO !== undefined ? Number(row.EST_ACTIVO) : 1,
   };
 }
 
 /**
  * Repositorio de Acceso a Datos para la tabla CMP_ESTADO en Oracle DB
+ * Esquema físico: EST_ID_ESTADO (NUMBER), EST_NOMBRE_ESTADO (VARCHAR2)
  */
 export class EstadoRepository {
   /**
-   * Consulta todos los estados con filtros opcionales por nombre y activo.
+   * Consulta todos los estados con filtro opcional por nombre.
    */
   static async findAll(filters: IEstadoFilterParams = {}): Promise<IEstado[]> {
     let sql = `
       SELECT 
         EST_ID_ESTADO,
-        EST_NOMBRE_ESTADO,
-        EST_ACTIVO
+        EST_NOMBRE_ESTADO
       FROM CMP_ESTADO
       WHERE 1=1
     `;
@@ -41,11 +39,6 @@ export class EstadoRepository {
     if (filters.nombre) {
       sql += ` AND UPPER(EST_NOMBRE_ESTADO) LIKE UPPER(:nombre)`;
       binds.nombre = `%${filters.nombre}%`;
-    }
-
-    if (filters.activo !== undefined) {
-      sql += ` AND EST_ACTIVO = :activo`;
-      binds.activo = Number(filters.activo);
     }
 
     sql += ` ORDER BY EST_ID_ESTADO ASC`;
@@ -61,8 +54,7 @@ export class EstadoRepository {
     const sql = `
       SELECT 
         EST_ID_ESTADO,
-        EST_NOMBRE_ESTADO,
-        EST_ACTIVO
+        EST_NOMBRE_ESTADO
       FROM CMP_ESTADO
       WHERE EST_ID_ESTADO = :id
     `;
@@ -81,8 +73,7 @@ export class EstadoRepository {
     const sql = `
       SELECT 
         EST_ID_ESTADO,
-        EST_NOMBRE_ESTADO,
-        EST_ACTIVO
+        EST_NOMBRE_ESTADO
       FROM CMP_ESTADO
       WHERE UPPER(TRIM(EST_NOMBRE_ESTADO)) = UPPER(TRIM(:nombre))
     `;
@@ -104,36 +95,31 @@ export class EstadoRepository {
       );
       const rows = nextIdRes.rows || [];
       const newId = rows.length > 0 ? Number(rows[0].NEXT_ID) : 1;
-      const activo = data.estActivo !== undefined ? Number(data.estActivo) : 1;
 
       const sql = `
         INSERT INTO CMP_ESTADO (
           EST_ID_ESTADO,
-          EST_NOMBRE_ESTADO,
-          EST_ACTIVO
+          EST_NOMBRE_ESTADO
         ) VALUES (
           :newId,
-          :nombre,
-          :activo
+          :nombre
         )
       `;
 
       await conn.execute(sql, {
         newId,
         nombre: data.estNombreEstado.trim(),
-        activo,
       });
 
       return {
         estIdEstado: newId,
         estNombreEstado: data.estNombreEstado.trim(),
-        estActivo: activo,
       };
     });
   }
 
   /**
-   * Actualiza el nombre o estado activo de un estado existente.
+   * Actualiza el nombre de un estado existente.
    */
   static async update(id: number, data: IUpdateEstadoDTO): Promise<IEstado | null> {
     const existing = await this.findById(id);
@@ -141,31 +127,21 @@ export class EstadoRepository {
       return null;
     }
 
-    const setClauses: string[] = [];
-    const binds: Record<string, any> = { id };
-
-    if (data.estNombreEstado && data.estNombreEstado.trim() !== '') {
-      setClauses.push('EST_NOMBRE_ESTADO = :nombre');
-      binds.nombre = data.estNombreEstado.trim();
-    }
-
-    if (data.estActivo !== undefined) {
-      setClauses.push('EST_ACTIVO = :activo');
-      binds.activo = Number(data.estActivo);
-    }
-
-    if (setClauses.length === 0) {
+    if (!data.estNombreEstado || data.estNombreEstado.trim() === '') {
       return existing;
     }
 
     const sql = `
       UPDATE CMP_ESTADO
-      SET ${setClauses.join(', ')}
+      SET EST_NOMBRE_ESTADO = :nombre
       WHERE EST_ID_ESTADO = :id
     `;
 
     await withTransaction(async (conn) => {
-      await conn.execute(sql, binds);
+      await conn.execute(sql, {
+        id,
+        nombre: data.estNombreEstado!.trim(),
+      });
     });
 
     return await this.findById(id);
@@ -194,11 +170,22 @@ export class EstadoRepository {
         };
       }
 
-      await conn.execute(
-        `DELETE FROM CMP_ESTADO WHERE EST_ID_ESTADO = :id`,
-        { id }
-      );
-      return { deleted: true, inUse: false };
+      try {
+        await conn.execute(
+          `DELETE FROM CMP_ESTADO WHERE EST_ID_ESTADO = :id`,
+          { id }
+        );
+        return { deleted: true, inUse: false };
+      } catch (error: any) {
+        if (error?.errorNum === 2292 || (error?.message && error.message.includes('ORA-02292'))) {
+          return {
+            deleted: false,
+            inUse: true,
+            message: `No se puede eliminar el estado porque está siendo utilizado en solicitudes, órdenes de compra o facturas asociadas (restricción de integridad referencial).`,
+          };
+        }
+        throw error;
+      }
     });
   }
 }

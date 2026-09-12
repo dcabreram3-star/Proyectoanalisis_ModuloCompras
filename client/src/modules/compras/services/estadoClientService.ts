@@ -11,7 +11,6 @@ export class EstadoClientService {
   static async getEstados(filters: IEstadoFilterParams = {}): Promise<IEstado[]> {
     const queryParams = new URLSearchParams();
     if (filters.nombre) queryParams.append('nombre', filters.nombre);
-    if (filters.activo !== undefined) queryParams.append('activo', String(filters.activo));
 
     const url = queryParams.toString() ? `${API_BASE}?${queryParams.toString()}` : API_BASE;
     const response = await fetch(url);

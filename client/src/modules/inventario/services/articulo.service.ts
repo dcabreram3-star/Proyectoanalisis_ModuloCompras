@@ -40,7 +40,10 @@ export const articuloService = {
     const response = await fetch(`${API_URL}/${codigo}`, {
       method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Error al eliminar el artículo');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Error al eliminar el artículo');
+    }
   },
 
   cambiarEstado: async (codigo: string, activo: number): Promise<void> => {

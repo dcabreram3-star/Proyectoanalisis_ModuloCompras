@@ -54,7 +54,7 @@ export class ArticuloController {
     }
   }
 
-  // DELETE: Eliminar (Lógico)
+  // DELETE: Eliminar Físico / Permanente (Hard Delete)
   static async eliminar(req: Request, res: Response) {
     try {
       const { codigo } = req.params;
@@ -62,12 +62,15 @@ export class ArticuloController {
       const exito = await ArticuloRepository.eliminar(codigoValidado);
       
       if (exito) {
-        res.json({ message: 'Artículo desactivado correctamente.' });
+        res.json({ message: 'Artículo eliminado permanentemente de la base de datos.' });
       } else {
         res.status(404).json({ message: 'Artículo no encontrado.' });
       }
     } catch (error: any) {
       console.error('[ArticuloController] Error en eliminar:', error);
+      if (error?.errorNum === 2292 || (error?.message && (error.message.includes('ORA-02292') || error.message.includes('registros vinculados')))) {
+        return res.status(409).json({ message: error.message || 'No se puede eliminar el artículo porque posee registros vinculados.' });
+      }
       res.status(400).json({ message: error.message || 'Error al eliminar el artículo.' });
     }
   }
