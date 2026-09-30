@@ -114,12 +114,12 @@ export const ArticulosCatalogView: React.FC = () => {
     setIsDeleting(true);
     try {
       await articuloService.eliminar(articuloToDelete.ART_CODIGO_ARTICULO);
-      setSuccessMsg(`Artículo "${articuloToDelete.ART_CODIGO_ARTICULO}" desactivado correctamente.`);
+      setSuccessMsg(`Artículo "${articuloToDelete.ART_CODIGO_ARTICULO}" eliminado permanentemente de la base de datos.`);
       await loadData();
       setTimeout(() => setSuccessMsg(null), 4000);
       setArticuloToDelete(null);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al desactivar el artículo.');
+      setErrorMsg(err.message || 'Error al eliminar permanentemente el artículo.');
     } finally {
       setIsDeleting(false);
     }
@@ -273,7 +273,7 @@ export const ArticulosCatalogView: React.FC = () => {
               type="button"
               onClick={() => handleDeleteArticulo(row)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              title="Eliminar lógicamente"
+              title="Eliminar permanentemente (Hard Delete)"
             >
               <Trash2 size={15} />
             </button>
@@ -450,10 +450,11 @@ export const ArticulosCatalogView: React.FC = () => {
         isOpen={Boolean(articuloToDelete)}
         onClose={() => setArticuloToDelete(null)}
         onConfirm={handleConfirmDelete}
-        title="¿Estás seguro de desactivar este artículo?"
+        title="¿Eliminar permanentemente este artículo?"
         itemName={articuloToDelete ? `${articuloToDelete.ART_CODIGO_ARTICULO} - ${articuloToDelete.ART_DESCRIPCION}` : ''}
-        description="El artículo será desactivado permanentemente del catálogo activo y no podrá asociarse a nuevas transacciones o compras."
-        confirmText="Desactivar Artículo"
+        description="Esta acción ejecutará un borrado físico y permanente (Hard Delete) del artículo en la base de datos Oracle. Esta operación no se puede deshacer. Si el artículo posee compras, órdenes, existencias, movimientos o lotes asociados, la eliminación será rechazada por integridad referencial."
+        confirmText="Eliminar Permanentemente"
+        variant="danger"
         isLoading={isDeleting}
       />
 

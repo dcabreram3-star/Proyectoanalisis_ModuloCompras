@@ -64,7 +64,7 @@ function mapRowToSolicitud(row: ISolicitudCompraDbRow): ISolicitudCompra {
       : `Departamento #${deptoId}`,
     solNombreEntidad: 'Módulo Compras ERP',
     solFecha: row.SOL_FECHA ? new Date(row.SOL_FECHA).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    solNotas: row.SOL_NOTAS ? String(row.SOL_NOTAS) : null,
+    solNotas: rawNotas,
     solMontoTotalEstimado: Number(row.SOL_MONTO_TOTAL_ESTIMADO || 0),
     solIdEstado: Number(row.SOL_ID_ESTADO),
     solNombreEstado: nombreEstado,
@@ -363,21 +363,27 @@ export class SolicitudCompraRepository {
   }
 
   /**
-   * Rechaza o niega la solicitud, estableciendo el estado RECHAZADA (ID 6 o CERRADA 5),
-   * fijando cantidades aprobadas en 0 y cerrando el ciclo de compras.
+   * Rechaza o niega la solicitud, estableciendo el estado RECHAZADA,
+   * fijando cantidades aprobadas en 0 y cerrando el ciclo de compras de forma detenida.
    */
   static async rechazar(noDocumento: string, dto: IRechazarSolicitudDTO): Promise<ISolicitudCompraCompleta> {
     await withTransaction(async (conn) => {
-      // 1. Obtener ID del estado RECHAZADA (o CERRADA si no existiera)
+      // 1. Obtener o registrar ID del estado RECHAZADA en CMP_ESTADO
       const estRes = await conn.execute<any>(
-        `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(EST_NOMBRE_ESTADO) = 'RECHAZADA' AND ROWNUM = 1`
+        `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(TRIM(EST_NOMBRE_ESTADO)) LIKE '%RECHAZAD%' AND ROWNUM = 1`
       );
       let estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : null;
       if (!estId) {
-        const cerrRes = await conn.execute<any>(
-          `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(EST_NOMBRE_ESTADO) = 'CERRADA' AND ROWNUM = 1`
+        // Si no existe el estado RECHAZADA en el catálogo, insertarlo dinámicamente con el siguiente ID disponible
+        const maxRes = await conn.execute<any>(
+          `SELECT NVL(MAX(EST_ID_ESTADO), 0) + 1 AS NEXT_ID FROM CMP_ESTADO`
         );
-        estId = cerrRes.rows?.[0]?.EST_ID_ESTADO ? Number(cerrRes.rows[0].EST_ID_ESTADO) : 5;
+        const nextId = Number(maxRes.rows?.[0]?.NEXT_ID || 6);
+        await conn.execute(
+          `INSERT INTO CMP_ESTADO (EST_ID_ESTADO, EST_NOMBRE_ESTADO) VALUES (:nextId, 'RECHAZADA')`,
+          { nextId }
+        );
+        estId = nextId;
       }
 
       // 2. Establecer cantidades aprobadas en 0
@@ -410,11 +416,55 @@ export class SolicitudCompraRepository {
   }
 
   /**
+   * Obtiene y valida el estado inicial para una nueva solicitud de compra.
+   * Busca prioritariamente el estado 'PENDIENTE' o con ID 1.
+   * Si el catálogo CMP_ESTADO está vacío o no tiene estados válidos, lanza una excepción controlada.
+   */
+  static async obtenerEstadoInicial(conn?: any): Promise<number> {
+    const executor = conn || { execute };
+    const sql = `
+      SELECT EST_ID_ESTADO, EST_NOMBRE_ESTADO 
+      FROM CMP_ESTADO 
+      WHERE UPPER(TRIM(EST_NOMBRE_ESTADO)) = 'PENDIENTE' OR EST_ID_ESTADO = 1 
+      ORDER BY CASE WHEN UPPER(TRIM(EST_NOMBRE_ESTADO)) = 'PENDIENTE' THEN 1 ELSE 2 END, EST_ID_ESTADO ASC
+    `;
+    const res = await executor.execute(sql);
+    const rows = res.rows || [];
+
+    if (rows.length > 0) {
+      const estId = Number(rows[0].EST_ID_ESTADO ?? rows[0][0]);
+      if (estId && !isNaN(estId)) {
+        return estId;
+      }
+    }
+
+    // Fallback: Si no se encuentra 'PENDIENTE' ni ID 1, buscar cualquier estado activo disponible
+    const anyStateRes = await executor.execute(
+      `SELECT EST_ID_ESTADO FROM CMP_ESTADO ORDER BY EST_ID_ESTADO ASC`
+    );
+    const anyRows = anyStateRes.rows || [];
+    if (anyRows.length > 0) {
+      const fallbackId = Number(anyRows[0].EST_ID_ESTADO ?? anyRows[0][0]);
+      if (fallbackId && !isNaN(fallbackId)) {
+        return fallbackId;
+      }
+    }
+
+    // Catálogo vacío o sin estados
+    throw new Error(
+      'Debe registrar al menos un estado inicial (ej. "PENDIENTE" o ID 1) en el catálogo de estados (CMP_ESTADO) antes de crear solicitudes de compra.'
+    );
+  }
+
+  /**
    * Crea una nueva solicitud de compra con sus detalles usando una transacción
    */
   static async create(solicitudData: import('@erp/contracts').ISolicitudCompraCreateDTO, noDocumento: string): Promise<string> {
     return withTransaction(async (connection) => {
-      // 1. Insertar cabecera (Estado 1 = PENDIENTE)
+      // 1. Obtener y validar el estado inicial dinámicamente en CMP_ESTADO
+      const idEstadoInicial = await this.obtenerEstadoInicial(connection);
+
+      // 2. Insertar cabecera
       const sqlCabecera = `
         INSERT INTO CMP_SOLICITUD_COMPRA (
           SOL_NO_DOCUMENTO,
@@ -430,7 +480,7 @@ export class SolicitudCompraRepository {
           :idDepartamento,
           :notas,
           0,
-          1,
+          :idEstado,
           SYSDATE
         )
       `;
@@ -439,10 +489,20 @@ export class SolicitudCompraRepository {
         noDocumento,
         idUsuario: solicitudData.idUsuarioResponsable,
         idDepartamento: solicitudData.idDepartamento,
-        notas: solicitudData.notas || null
+        notas: solicitudData.notas || null,
+        idEstado: idEstadoInicial,
       };
 
-      await connection.execute(sqlCabecera, bindsCabecera);
+      try {
+        await connection.execute(sqlCabecera, bindsCabecera);
+      } catch (err: any) {
+        if (err?.errorNum === 2291 || (err?.message && err.message.includes('ORA-02291'))) {
+          throw new Error(
+            'Error de integridad referencial al crear la solicitud: el estado, departamento o usuario especificado no existe en la base de datos.'
+          );
+        }
+        throw err;
+      }
 
       // 2. Insertar detalles
       const sqlDetalle = `

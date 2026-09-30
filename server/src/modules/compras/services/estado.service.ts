@@ -8,11 +8,11 @@ import {
 import {
   validateNominalText,
   validateNumericId,
-  validateBooleanFlag,
 } from '../../../utils/sanitizers.js';
 
 /**
  * Servicio de Negocio para el catálogo de Estados (CMP_ESTADO)
+ * Esquema físico: EST_ID_ESTADO, EST_NOMBRE_ESTADO
  */
 export class EstadoService {
   static async obtenerEstados(filters: IEstadoFilterParams = {}): Promise<IEstado[]> {
@@ -33,11 +33,8 @@ export class EstadoService {
       throw new Error(`Ya existe un estado registrado con el nombre "${trimmed}".`);
     }
 
-    const activo = validateBooleanFlag(data.estActivo, 'activo', 1);
-
     return await EstadoRepository.create({
       estNombreEstado: trimmed,
-      estActivo: activo,
     });
   }
 
@@ -57,10 +54,6 @@ export class EstadoService {
       updatePayload.estNombreEstado = trimmed;
     }
 
-    if (data.estActivo !== undefined) {
-      updatePayload.estActivo = validateBooleanFlag(data.estActivo, 'activo', 1);
-    }
-
     const updated = await EstadoRepository.update(validId, updatePayload);
     if (!updated) {
       throw new Error(`No se encontró el estado con ID ${validId}.`);
@@ -74,14 +67,23 @@ export class EstadoService {
       throw new Error('El ID del estado debe ser un número positivo.');
     }
 
-    const result = await EstadoRepository.delete(id);
-    if (result.inUse) {
-      throw new Error(result.message || 'No se puede eliminar el estado porque está en uso.');
-    }
+    try {
+      const result = await EstadoRepository.delete(id);
+      if (result.inUse) {
+        throw new Error(result.message || 'No se puede eliminar el estado porque está en uso.');
+      }
 
-    return {
-      deleted: true,
-      message: 'Estado eliminado exitosamente.',
-    };
+      return {
+        deleted: true,
+        message: 'Estado eliminado exitosamente.',
+      };
+    } catch (error: any) {
+      if (error?.errorNum === 2292 || (error?.message && error.message.includes('ORA-02292'))) {
+        throw new Error(
+          'No se puede eliminar el estado porque está siendo utilizado en solicitudes, órdenes de compra o facturas asociadas (restricción de integridad referencial).'
+        );
+      }
+      throw error;
+    }
   }
 }

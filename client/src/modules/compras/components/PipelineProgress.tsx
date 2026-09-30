@@ -25,7 +25,8 @@ export type PipelineStageId =
   | 'seleccion'
   | 'presupuesto'
   | 'bodega'
-  | '3way';
+  | '3way'
+  | 'rechazada';
 
 export interface PipelineStage {
   key: PipelineStageId;
@@ -94,13 +95,14 @@ export interface PipelineStageOption {
 }
 
 export const PIPELINE_STAGE_OPTIONS: PipelineStageOption[] = [
-  { value: 'TODAS', label: 'Todas las Etapas (6)' },
+  { value: 'TODAS', label: 'Todas las Etapas Operativas (6)' },
   { value: 'aprobacion', label: '1. Aprobación Inicial', stageKey: 'aprobacion' },
   { value: 'matriz', label: '2. Matriz de Cotizaciones', stageKey: 'matriz' },
   { value: 'seleccion', label: '3. Selección Financiera', stageKey: 'seleccion' },
   { value: 'presupuesto', label: '4. Validación Presupuestaria', stageKey: 'presupuesto' },
   { value: 'bodega', label: '5. Recepción en Bodega', stageKey: 'bodega' },
   { value: '3way', label: '6. 3-Way Match / Liquidación', stageKey: '3way' },
+  { value: 'rechazada', label: '🚫 Solicitudes Rechazadas', stageKey: 'rechazada' },
 ];
 
 // ─── Normalization & Status Helpers ─────────────────────────────────────────
@@ -114,17 +116,32 @@ export function normalizeStatus(status?: string | null): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-export function isStatusRejected(status?: string | null): boolean {
+export function isStatusRejected(status?: string | null, notas?: string | null): boolean {
   const norm = normalizeStatus(status);
-  return norm.includes('RECHAZAD') || norm.includes('DENEGAD') || norm.includes('CANCELAD');
+  const normNotas = normalizeStatus(notas);
+  return (
+    norm.includes('RECHAZAD') ||
+    norm.includes('DENEGAD') ||
+    norm.includes('CANCELAD') ||
+    norm.includes('ANULAD') ||
+    normNotas.includes('[RECHAZADA]') ||
+    normNotas.includes('RECHAZAD')
+  );
 }
 
-export function isStatusFullyComplete(status?: string | null): boolean {
+export function isStatusFullyComplete(status?: string | null, notas?: string | null): boolean {
+  if (isStatusRejected(status, notas)) return false;
   const norm = normalizeStatus(status);
-  return norm.includes('FINALIZ') || norm.includes('COMPLETAD') || norm.includes('CERRAD') || norm.includes('LIQUID');
+  return (
+    norm.includes('FINALIZ') ||
+    norm.includes('3WAY') ||
+    norm.includes('LIQUID') ||
+    (norm.includes('CERRAD') && !isStatusRejected(status, notas))
+  );
 }
 
-export function getStageIndexForStatus(status?: string | null): number {
+export function getStageIndexForStatus(status?: string | null, notas?: string | null): number {
+  if (isStatusRejected(status, notas)) return 0;
   const norm = normalizeStatus(status);
   if (!norm) return 0;
 
@@ -215,11 +232,11 @@ export interface PipelineSummary {
   statusLabel: string;
 }
 
-export function getPipelineSummary(status?: string | null): PipelineSummary {
+export function getPipelineSummary(status?: string | null, notas?: string | null): PipelineSummary {
   const raw = (status || '').trim();
-  const isRejected = isStatusRejected(raw);
-  const isComplete = isStatusFullyComplete(raw);
-  const activeIndex = getStageIndexForStatus(raw);
+  const isRejected = isStatusRejected(raw, notas);
+  const isComplete = isStatusFullyComplete(raw, notas);
+  const activeIndex = getStageIndexForStatus(raw, notas);
   const isPending = !isRejected && activeIndex === 0;
   const totalSteps = PIPELINE_STAGES.length;
 
@@ -240,7 +257,7 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
     stateBadgeText = 'Pendiente';
     stageSubtitle = 'Aprobación';
   } else {
-    const basePercentByStage = [16, 33, 50, 66, 83, 90];
+    const basePercentByStage = [16, 33, 50, 66, 83, 100];
     globalPercent = basePercentByStage[activeIndex] || 33;
     const stageNames = ['Pendiente', 'Aprobada', 'Selección', 'Presupuesto', 'Recepción', '3-Way Match'];
     stateBadgeText = stageNames[activeIndex] || 'Aprobada';
@@ -249,7 +266,7 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
 
   return {
     activeIndex,
-    stepNumber: activeIndex + 1,
+    stepNumber: isRejected ? 0 : activeIndex + 1,
     totalSteps,
     stage: PIPELINE_STAGES[activeIndex] || PIPELINE_STAGES[0],
     globalPercent,
@@ -258,11 +275,22 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
     isPending,
     stateBadgeText,
     stageSubtitle,
-    statusLabel: raw || stateBadgeText.toUpperCase(),
+    statusLabel: isRejected ? 'RECHAZADA' : (raw || stateBadgeText.toUpperCase()),
   };
 }
 
-export function getStageForSolicitud(solicitud: ISolicitudCompra): PipelineStageId {
+export function getStageForSolicitud(
+  solicitud?: Partial<ISolicitudCompra> | { solNombreEstado?: string | null; estado?: string | null; solNotas?: string | null;[key: string]: any } | null
+): PipelineStageId {
+  if (!solicitud) return 'aprobacion';
+  const estado = solicitud.solNombreEstado || (solicitud as any).estado || '';
+  const rawNotas = solicitud.solNotas || (solicitud as any).notas || '';
+  const estadoNombre = (estado || '').toUpperCase();
+  const notasUpper = (rawNotas || '').toUpperCase();
+
+  if (isStatusRejected(estadoNombre, notasUpper)) {
+    return 'aprobacion';
+  }
   if ((solicitud as any).stage && PIPELINE_STAGES.some((s) => s.key === (solicitud as any).stage)) {
     return (solicitud as any).stage as PipelineStageId;
   }
@@ -271,11 +299,9 @@ export function getStageForSolicitud(solicitud: ISolicitudCompra): PipelineStage
   }
 
   const estadoId = Number(solicitud.solIdEstado || 0);
-  const estadoNombre = (solicitud.solNombreEstado || '').toUpperCase();
-  const notas = (solicitud.solNotas || '').toUpperCase();
 
   // 1. Si está rechazada -> Aprobación (Etapa 1 detenida)
-  if (estadoId === 6 || isStatusRejected(estadoNombre)) {
+  if (estadoId === 6 || isStatusRejected(estadoNombre, notasUpper)) {
     return 'aprobacion';
   }
 
@@ -308,7 +334,7 @@ export function getStageForSolicitud(solicitud: ISolicitudCompra): PipelineStage
     estadoNombre.includes('PRESUP') ||
     estadoNombre.includes('ADJUDICAD') ||
     estadoNombre.includes('EXCEPCION') ||
-    (estadoId === 3 && (solicitud.tieneCotizacionGanadora || notas.includes('[ADJUDICADA') || notas.includes('EXCEPCION') || notas.includes('[PRESUPUESTO]')))
+    (estadoId === 3 && (solicitud.tieneCotizacionGanadora || notasUpper.includes('[ADJUDICADA') || notasUpper.includes('EXCEPCION') || notasUpper.includes('[PRESUPUESTO]')))
   ) {
     return 'presupuesto';
   }
@@ -355,16 +381,20 @@ export function getStageState(
 
 export interface PipelineProgressCardProps {
   status?: string;
+  notas?: string | null;
+  solicitud?: ISolicitudCompra;
   onStageClick: (stageKey: PipelineStageId) => void;
   className?: string;
 }
 
 export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
   status = 'Aprobada',
+  notas = '',
+  solicitud,
   onStageClick,
   className = '',
 }) => {
-  const summary = getPipelineSummary(status);
+  const summary = getPipelineSummary(solicitud?.solNombreEstado || status, solicitud?.solNotas || notas);
   const { activeIndex, globalPercent, isRejected, isComplete } = summary;
 
   return (
@@ -411,30 +441,28 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-slate-500 font-medium">Progreso total</span>
           <span
-            className={`text-xs font-bold tabular-nums ${
-              isRejected
-                ? 'text-rose-600'
-                : summary.isPending
+            className={`text-xs font-bold tabular-nums ${isRejected
+              ? 'text-rose-600'
+              : summary.isPending
                 ? 'text-amber-700'
                 : isComplete
-                ? 'text-emerald-600'
-                : 'text-blue-600'
-            }`}
+                  ? 'text-emerald-600'
+                  : 'text-blue-600'
+              }`}
           >
             {Math.round(globalPercent)}%
           </span>
         </div>
         <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              isRejected
-                ? 'bg-rose-400'
-                : summary.isPending
+            className={`h-full rounded-full transition-all duration-500 ${isRejected
+              ? 'bg-rose-400'
+              : summary.isPending
                 ? 'bg-amber-500'
                 : isComplete
-                ? 'bg-emerald-500'
-                : 'bg-blue-600'
-            }`}
+                  ? 'bg-emerald-500'
+                  : 'bg-blue-600'
+              }`}
             style={{ width: `${globalPercent}%` }}
           />
         </div>
@@ -455,31 +483,29 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
               type="button"
               onClick={() => !isBlocked && onStageClick(stage.key)}
               disabled={isBlocked}
-              className={`group flex w-full items-center gap-3 px-2.5 py-2 rounded-lg text-left border transition-all ${
-                isBlocked
-                  ? 'opacity-40 cursor-not-allowed border-transparent bg-slate-50/50'
-                  : isRej
+              className={`group flex w-full items-center gap-3 px-2.5 py-2 rounded-lg text-left border transition-all ${isBlocked
+                ? 'opacity-40 cursor-not-allowed border-transparent bg-slate-50/50'
+                : isRej
                   ? 'bg-rose-50/70 border-rose-200 hover:bg-rose-100/80 hover:shadow-xs cursor-pointer'
                   : isDone
-                  ? 'bg-emerald-50/60 border-transparent hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-xs cursor-pointer'
-                  : isActive
-                  ? 'bg-blue-50/80 border-blue-200 hover:bg-blue-100/80 hover:border-blue-300 hover:shadow-xs cursor-pointer'
-                  : 'border-transparent hover:bg-slate-50 hover:border-slate-200 hover:shadow-xs cursor-pointer'
-              }`}
+                    ? 'bg-emerald-50/60 border-transparent hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-xs cursor-pointer'
+                    : isActive
+                      ? 'bg-blue-50/80 border-blue-200 hover:bg-blue-100/80 hover:border-blue-300 hover:shadow-xs cursor-pointer'
+                      : 'border-transparent hover:bg-slate-50 hover:border-slate-200 hover:shadow-xs cursor-pointer'
+                }`}
             >
               {/* Icon */}
               <span
-                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md ${
-                  isBlocked
-                    ? 'bg-slate-100 text-slate-400'
-                    : isRej
+                className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md ${isBlocked
+                  ? 'bg-slate-100 text-slate-400'
+                  : isRej
                     ? 'bg-rose-100 text-rose-600'
                     : isDone
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : isActive
-                    ? `${stage.iconWrap} ${stage.iconActive}`
-                    : `${stage.iconWrap} text-slate-400`
-                }`}
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : isActive
+                        ? `${stage.iconWrap} ${stage.iconActive}`
+                        : `${stage.iconWrap} text-slate-400`
+                  }`}
               >
                 {isBlocked ? (
                   <Lock className="w-3.5 h-3.5" />
@@ -496,17 +522,16 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs font-semibold leading-none ${
-                      isBlocked
-                        ? 'text-slate-400'
-                        : isRej
+                    className={`text-xs font-semibold leading-none ${isBlocked
+                      ? 'text-slate-400'
+                      : isRej
                         ? 'text-rose-800'
                         : isDone
-                        ? 'text-emerald-800'
-                        : isActive
-                        ? 'text-blue-800'
-                        : 'text-slate-700'
-                    }`}
+                          ? 'text-emerald-800'
+                          : isActive
+                            ? 'text-blue-800'
+                            : 'text-slate-700'
+                      }`}
                   >
                     {stage.label}
                   </span>
@@ -531,15 +556,14 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
               {/* Affordance */}
               {!isBlocked && (
                 <ChevronRight
-                  className={`w-4 h-4 flex-shrink-0 transition-all opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 ${
-                    isRej
-                      ? 'text-rose-500'
-                      : isDone
+                  className={`w-4 h-4 flex-shrink-0 transition-all opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 ${isRej
+                    ? 'text-rose-500'
+                    : isDone
                       ? 'text-emerald-500'
                       : isActive
-                      ? 'text-blue-500'
-                      : 'text-slate-400'
-                  }`}
+                        ? 'text-blue-500'
+                        : 'text-slate-400'
+                    }`}
                 />
               )}
             </button>
@@ -575,7 +599,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const rawStatus = statusProp || solicitud?.solNombreEstado || 'Aprobada';
-  const summary = getPipelineSummary(rawStatus);
+  const rawNotas = solicitud?.solNotas || '';
+  const summary = getPipelineSummary(rawStatus, rawNotas);
 
   const activeStage = currentStage
     ? PIPELINE_STAGES.find((s) => s.key === currentStage) || summary.stage
@@ -651,6 +676,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
     return (
       <PipelineProgressCard
         status={rawStatus}
+        notas={rawNotas}
+        solicitud={solicitud}
         onStageClick={handleStageSelection}
       />
     );
@@ -666,17 +693,16 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-left transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
-          isOpen
-            ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-100 shadow-sm'
-            : summary.isRejected
+        className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-left transition-all cursor-pointer shadow-2xs whitespace-nowrap ${isOpen
+          ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-100 shadow-sm'
+          : summary.isRejected
             ? 'border-rose-200 bg-rose-50/40 hover:border-rose-300 hover:bg-rose-50/80'
             : summary.isPending
-            ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-amber-50/80'
-            : summary.isComplete
-            ? 'border-emerald-300 bg-emerald-50/80 hover:border-emerald-400 hover:bg-emerald-100/80 text-emerald-900'
-            : 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/70'
-        }`}
+              ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-amber-50/80'
+              : summary.isComplete
+                ? 'border-emerald-300 bg-emerald-50/80 hover:border-emerald-400 hover:bg-emerald-100/80 text-emerald-900'
+                : 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/70'
+          }`}
         title="Clic para ver ciclo de vida completo de la compra"
       >
         {summary.isRejected ? (
@@ -730,9 +756,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
         )}
 
         <ChevronDown
-          className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-blue-600' : 'group-hover:text-slate-600'
-          }`}
+          className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : 'group-hover:text-slate-600'
+            }`}
         />
       </button>
 
@@ -746,6 +771,8 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
         >
           <PipelineProgressCard
             status={rawStatus}
+            notas={rawNotas}
+            solicitud={solicitud}
             onStageClick={handleStageSelection}
           />
         </div>,

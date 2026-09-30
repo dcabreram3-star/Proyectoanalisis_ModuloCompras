@@ -35,6 +35,7 @@ import {
   PipelineProgress,
   PipelineStageId,
   getStageForSolicitud,
+  isStatusRejected,
   PIPELINE_STAGE_OPTIONS,
 } from './components/PipelineProgress';
 import { PipelineOverview } from './components/PipelineOverview';
@@ -142,14 +143,17 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         item.solNoDocumento.toLowerCase().includes(queryLower) ||
         (item.solNotas && item.solNotas.toLowerCase().includes(queryLower));
 
+      const isItemRej = isStatusRejected(item.solNombreEstado, item.solNotas);
       const estadoName = (item.solNombreEstado || '').toUpperCase();
       const filterUpper = filterEstado.toUpperCase();
       const matchEstado =
         filterEstado === 'TODOS' ||
-        estadoName === filterUpper ||
-        (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
-        (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT')) ||
-        (filterUpper.startsWith('RECHAZAD') && estadoName.startsWith('RECHAZAD'));
+        (filterUpper.startsWith('RECHAZAD') && isItemRej) ||
+        (!isItemRej && (
+          estadoName === filterUpper ||
+          (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
+          (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT'))
+        ));
 
       const itemStage = getStageForSolicitud(item);
       const matchEtapa = filterEtapa === 'TODAS' || itemStage === filterEtapa;
@@ -168,10 +172,10 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   // Stat metrics
   const totalCount = solicitudes.length;
   const aprobadasCount = solicitudes.filter(
-    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
+    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
   ).length;
   const pendientesCount = solicitudes.filter(
-    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
+    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
   ).length;
   const totalMontoEstimado = solicitudes.reduce((acc, curr) => acc + (curr.solMontoTotalEstimado || 0), 0);
 
@@ -269,8 +273,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         return (
           <PipelineProgress
             solicitud={row}
-            currentStage={stage}
-            onSelectStage={(stgId, sol) => setActiveStageView({ stage: stgId, solicitud: sol })}
+            status={row.solNombreEstado || undefined}
+            onSelectStage={(stageId, solicitud) => {
+              const targetStage = stageId === 'rechazada' ? 'aprobacion' : stageId;
+              setActiveStageView({ stage: targetStage, solicitud });
+            }}
           />
         );
       },
@@ -801,11 +808,10 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => handleNavigate(item.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${isActive
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
               >
                 {item.label}
               </button>
@@ -1015,9 +1021,8 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               showingText={`Mostrando ${Math.min(
                 (currentPage - 1) * itemsPerPage + 1,
                 filteredSolicitudes.length
-              )}-${Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de ${
-                filteredSolicitudes.length
-              } solicitudes`}
+              )}-${Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de ${filteredSolicitudes.length
+                } solicitudes`}
             />
           )}
 
