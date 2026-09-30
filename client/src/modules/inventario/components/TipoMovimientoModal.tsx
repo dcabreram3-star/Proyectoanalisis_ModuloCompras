@@ -8,12 +8,15 @@ import {
   NaturalezaMovimientoType,
 } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface TipoMovimientoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateTipoMovimientoDTO | IUpdateTipoMovimientoDTO, id?: number) => Promise<void>;
   tipoMovimiento?: ITipoMovimiento | null;
+  existentes: ITipoMovimiento[];
 }
 
 export const TipoMovimientoModal: React.FC<TipoMovimientoModalProps> = ({
@@ -21,6 +24,7 @@ export const TipoMovimientoModal: React.FC<TipoMovimientoModalProps> = ({
   onClose,
   onSave,
   tipoMovimiento,
+  existentes,
 }) => {
   const isEditing = Boolean(tipoMovimiento);
   const [codigo, setCodigo] = useState<string>('');
@@ -60,6 +64,10 @@ export const TipoMovimientoModal: React.FC<TipoMovimientoModalProps> = ({
     const sanitized = upper.replace(/[^A-Z0-9_]/g, '');
     setCodigo(sanitized);
     setCodigoError(hasInvalid ? 'Solo se permiten mayúsculas, números y guiones bajos (sin espacios).' : null);
+
+    if (!hasInvalid && sanitized && existentes.some((x) => x.tmiCodigo.trim().toUpperCase() === sanitized.toUpperCase() && x.tmiIdTipoMovimiento !== tipoMovimiento?.tmiIdTipoMovimiento)) {
+      setCodigoError('Ya existe un tipo de movimiento con este código.');
+    }
   };
 
   const handleDescripcionChange = (val: string) => {
@@ -96,6 +104,12 @@ export const TipoMovimientoModal: React.FC<TipoMovimientoModalProps> = ({
 
     if (codigoError || descripcionError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.tmiCodigo.trim().toUpperCase() === codTrimmed.toUpperCase() && x.tmiIdTipoMovimiento !== tipoMovimiento?.tmiIdTipoMovimiento)) {
+      setCodigoError('Ya existe un tipo de movimiento con este código.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -155,40 +169,46 @@ export const TipoMovimientoModal: React.FC<TipoMovimientoModalProps> = ({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <TextInput
-              label="CÓDIGO ÚNICO"
-              required
-              placeholder="Ej. REC_COMPRA"
-              value={codigo}
-              onChange={(e) => handleCodigoChange(e.target.value)}
-              maxLength={20}
-              autoFocus
-              error={codigoError || undefined}
-            />
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                NATURALEZA
-              </label>
-              <select
-                value={naturaleza}
-                onChange={(e) => setNaturaleza(e.target.value as NaturalezaMovimientoType)}
-                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-purple-600 font-bold"
-              >
-                <option value="+">+ Entrada a Inventario</option>
-                <option value="-">- Salida de Inventario</option>
-              </select>
-            </div>
+            <FieldHint text={HINTS.tipoMovimiento.codigo} chars={18} max={20}>
+              <TextInput
+                label="CÓDIGO ÚNICO"
+                required
+                placeholder="Ej. REC_COMPRA"
+                value={codigo}
+                onChange={(e) => handleCodigoChange(e.target.value)}
+                maxLength={20}
+                autoFocus
+                error={codigoError || undefined}
+              />
+            </FieldHint>
+            <FieldHint text={HINTS.tipoMovimiento.naturaleza}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  NATURALEZA
+                </label>
+                <select
+                  value={naturaleza}
+                  onChange={(e) => setNaturaleza(e.target.value as NaturalezaMovimientoType)}
+                  className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-purple-600 font-bold"
+                >
+                  <option value="+">+ Entrada a Inventario</option>
+                  <option value="-">- Salida de Inventario</option>
+                </select>
+              </div>
+            </FieldHint>
           </div>
 
-          <TextInput
-            label="DESCRIPCIÓN OPERATIVA"
-            required
-            placeholder="Ej. Recepción por orden de compra a proveedor..."
-            value={descripcion}
-            onChange={(e) => handleDescripcionChange(e.target.value)}
-            maxLength={100}
-            error={descripcionError || undefined}
-          />
+          <FieldHint text={HINTS.tipoMovimiento.descripcion}>
+            <TextInput
+              label="DESCRIPCIÓN OPERATIVA"
+              required
+              placeholder="Ej. Recepción por orden de compra a proveedor..."
+              value={descripcion}
+              onChange={(e) => handleDescripcionChange(e.target.value)}
+              maxLength={100}
+              error={descripcionError || undefined}
+            />
+          </FieldHint>
 
           <div className="pt-2 space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
             <Checkbox

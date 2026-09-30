@@ -8,6 +8,8 @@ import {
   CotizacionClientService,
   ICotizacionMatrizProveedorInput,
 } from '../services/cotizacionClientService';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface MatrizCotizacionesViewProps {
   solicitud?: SolicitudOriginalInfo;
@@ -211,7 +213,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
           >
             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
             <span>Solicitudes</span>
-            <span className="text-slate-300">/</span>
+            <span className="text-slate-500">/</span>
             <span className="text-slate-900 font-bold">Matriz de Cotizaciones</span>
           </button>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
@@ -219,7 +221,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             Etapa 2 de 6
           </span>
         </div>
-        <span className="font-semibold text-slate-400">{solicitud.noDocumento}</span>
+        <span className="font-semibold text-slate-500">{solicitud.noDocumento}</span>
       </div>
 
       {/* Solicitud Original Header Card */}
@@ -241,7 +243,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
           <h3 className="text-sm font-bold text-slate-900 tracking-wider uppercase">
             Cotizaciones
           </h3>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500">
             — Complete de 1 a 3 proveedores o marque la excepción de proveedor único
           </span>
         </div>
@@ -289,32 +291,34 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             onChange={(e) => setEsExcepcionUnico(e.target.checked)}
             helperText="Aplica cuando existe un solo proveedor calificado para este bien o servicio."
           />
-          <span title="Habilitar justificación para contratar un único proveedor" className="text-slate-400 mb-4">
+          <span title="Habilitar justificación para contratar un único proveedor" className="text-slate-500 mb-4">
             <HelpCircle size={14} />
           </span>
         </div>
 
         {/* Justificación TextArea */}
         {esExcepcionUnico && (
-          <div className="pt-2 animate-fadeIn space-y-1.5">
-            <label className="text-xs font-bold text-amber-900 uppercase tracking-wider block">
-              JUSTIFICACIÓN <span className="text-red-500 ml-0.5">*</span>
-            </label>
-            <TextArea
-              placeholder="Describa por qué solo existe un proveedor disponible para este requerimiento..."
-              rows={3}
-              value={justificacionExcepcion}
-              onChange={(e) => setJustificacionExcepcion(e.target.value)}
-              className="bg-white border-amber-300 focus:border-amber-500 focus:ring-amber-200 text-amber-950 placeholder-amber-700/50"
-            />
-          </div>
+          <FieldHint text={HINTS.matriz.justificacion}>
+            <div className="pt-2 animate-fadeIn space-y-1.5">
+              <label className="text-xs font-bold text-amber-900 uppercase tracking-wider block">
+                JUSTIFICACIÓN <span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <TextArea
+                placeholder="Describa por qué solo existe un proveedor disponible para este requerimiento..."
+                rows={3}
+                value={justificacionExcepcion}
+                onChange={(e) => setJustificacionExcepcion(e.target.value)}
+                className="bg-white border-amber-300 focus:border-amber-500 focus:ring-amber-200 text-amber-950 placeholder-amber-700/50"
+              />
+            </div>
+          </FieldHint>
         )}
       </div>
 
       {/* Footer Info & Action Button */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <HelpCircle size={15} className="text-slate-400" />
+          <HelpCircle size={15} className="text-slate-500" />
           <span>Complete al menos 1 proveedor o la excepción para enviar a Selección Financiera.</span>
         </div>
 

@@ -504,7 +504,7 @@ export const MovimientoCreacionView: React.FC<MovimientoCreacionViewProps> = ({ 
       {/* Search & Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por documento, bodega o ítem..."

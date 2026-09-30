@@ -4,6 +4,8 @@ import { config } from './config/index.js';
 import { initializePool, closePool, checkDatabaseHealth } from './config/database.js';
 import comprasRouter from './modules/compras/routes/index.js';
 import inventarioRouter from './modules/inventario/routes/index.js';
+import { friendlyErrorResponses } from './middlewares/friendlyErrors.js';
+import { errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
 const PORT = config.port;
@@ -11,6 +13,7 @@ const PORT = config.port;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(friendlyErrorResponses);
 
 // Ruta de salud básica y estado de la base de datos (Health Check)
 app.get('/health', async (_req, res) => {
@@ -26,8 +29,7 @@ app.get('/health', async (_req, res) => {
 // Registro de módulos del sistema
 app.use('/api/compras', comprasRouter);
 app.use('/api/inventario', inventarioRouter);
-
-app.use('/api/inventario', inventarioRouter);
+app.use(errorHandler);
 
 
 const server = app.listen(PORT, async () => {

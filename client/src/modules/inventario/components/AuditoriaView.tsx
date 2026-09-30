@@ -273,7 +273,7 @@ export const AuditoriaView: React.FC = () => {
       {/* Selector de Bodega y Barra de Búsqueda */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <Warehouse size={16} className="text-slate-400 shrink-0" />
+          <Warehouse size={16} className="text-slate-500 shrink-0" />
           <span className="text-xs font-semibold text-slate-700 shrink-0">Bodega:</span>
           <select
             value={bodegaActiva}
@@ -289,7 +289,7 @@ export const AuditoriaView: React.FC = () => {
         {tomaActiva && (
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 placeholder="Buscar artículo..."
@@ -439,7 +439,7 @@ export const AuditoriaView: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 sm:px-4.5 sm:py-3.5 text-center">
                             {!hasCount ? (
-                              <span className="text-slate-300 font-bold">-</span>
+                              <span className="text-slate-500 font-bold">-</span>
                             ) : diff < 0 ? (
                               <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
                                 <AlertTriangle size={13} /> {diff} (Faltante)
@@ -450,7 +450,7 @@ export const AuditoriaView: React.FC = () => {
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                                <CheckCircle2 size={13} className="text-slate-400" /> 0 (Cuadrado)
+                                <CheckCircle2 size={13} className="text-slate-500" /> 0 (Cuadrado)
                               </span>
                             )}
                           </td>

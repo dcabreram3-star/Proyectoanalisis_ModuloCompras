@@ -15,6 +15,7 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import { IUnidadMedida, ICreateUnidadMedidaDTO, IUpdateUnidadMedidaDTO } from '@erp/contracts';
 import { UnidadMedidaClientService } from '../services/unidadMedidaClientService';
 import { UnidadMedidaModal } from './UnidadMedidaModal';
+import { ActionButton } from '../../../shared/components';
 
 export const UnidadesMedidaCatalogView: React.FC = () => {
   const [unidades, setUnidades] = useState<IUnidadMedida[]>([]);
@@ -152,7 +153,7 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
           </div>
           <div>
             <span className="font-bold text-slate-800 text-sm block">{value}</span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-slate-600">
               Código interno: UME-{String(row.umeIdUnidad).padStart(4, '0')}
             </span>
           </div>
@@ -188,34 +189,27 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
       align: 'right' as const,
       cell: ({ row }: { row: IUnidadMedida }) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          <ActionButton
+            icon={Edit2}
+            variant="edit"
+            label="Editar"
             title="Editar unidad"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleActivo(row)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              row.umeActivo === 1
-                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
+            onClick={() => handleOpenEdit(row)}
+          />
+          <ActionButton
+            icon={Power}
+            variant={row.umeActivo === 1 ? 'deactivate' : 'activate'}
+            label={row.umeActivo === 1 ? 'Desactivar unidad' : 'Activar unidad'}
             title={row.umeActivo === 1 ? 'Desactivar unidad' : 'Activar unidad'}
-          >
-            <Power size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDeleteUnidad(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            onClick={() => handleToggleActivo(row)}
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="delete"
+            label="Eliminar"
             title="Eliminar unidad"
-          >
-            <Trash2 size={15} />
-          </button>
+            onClick={() => handleDeleteUnidad(row)}
+          />
         </div>
       ),
     },
@@ -293,7 +287,7 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
       {/* Search & Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por nombre, abreviatura o ID..."
@@ -350,6 +344,7 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
 
       {/* Creation / Edition Modal */}
       <UnidadMedidaModal
+        existentes={unidades}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveUnidad}

@@ -25,7 +25,7 @@ export class SolicitudCompraClientService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Error al consultar las solicitudes en la base de datos`);
+        throw new Error('Error al consultar las solicitudes en la base de datos. Intente de nuevo; si el problema continúa, contacte a soporte.');
       }
 
       const resData = await response.json();

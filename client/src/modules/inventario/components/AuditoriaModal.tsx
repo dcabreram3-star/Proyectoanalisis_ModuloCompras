@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, ClipboardList, Play, AlertCircle } from 'lucide-react';
 import { Button, Select, TextInput } from '../../../components/ui';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface AuditoriaModalProps {
   isOpen: boolean;
@@ -98,28 +100,34 @@ export const AuditoriaModal: React.FC<AuditoriaModalProps> = ({
             Al iniciar, el sistema capturará automáticamente el stock teórico actual de los artículos de la bodega seleccionada. Luego podrás ingresar el conteo físico real para calcular discrepancias.
           </div>
 
-          <Select
-            label="BODEGA A AUDITAR"
-            required
-            value={idBodega}
-            onChange={(e) => setIdBodega(Number(e.target.value))}
-            options={bodegaOptions}
-          />
+          <FieldHint text={HINTS.auditoria.bodega}>
+            <Select
+              label="BODEGA A AUDITAR"
+              required
+              value={idBodega}
+              onChange={(e) => setIdBodega(Number(e.target.value))}
+              options={bodegaOptions}
+            />
+          </FieldHint>
 
-          <Select
-            label="AUDITOR RESPONSABLE"
-            required
-            value={idUsuario}
-            onChange={(e) => setIdUsuario(Number(e.target.value))}
-            options={AUDITORES}
-          />
+          <FieldHint text={HINTS.auditoria.auditor}>
+            <Select
+              label="AUDITOR RESPONSABLE"
+              required
+              value={idUsuario}
+              onChange={(e) => setIdUsuario(Number(e.target.value))}
+              options={AUDITORES}
+            />
+          </FieldHint>
 
-          <TextInput
-            label="MOTIVO / ALCANCE DE LA AUDITORÍA"
-            placeholder="Ej. Auditoría mensual de cierre de mes, conteo cíclico..."
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-          />
+          <FieldHint text={HINTS.auditoria.motivo}>
+            <TextInput
+              label="MOTIVO / ALCANCE DE LA AUDITORÍA"
+              placeholder="Ej. Auditoría mensual de cierre de mes, conteo cíclico..."
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+            />
+          </FieldHint>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

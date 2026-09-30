@@ -12,12 +12,15 @@ import {
   Calendar,
 } from 'lucide-react';
 import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/ui';
-import { ILote, ICreateLoteDTO, IUpdateLoteDTO, EstadoLoteType } from '@erp/contracts';
+import { ILote, ICreateLoteDTO, IUpdateLoteDTO, EstadoLoteType, IArticulo } from '@erp/contracts';
 import { LoteClientService } from '../services/loteClientService';
+import { articuloService } from '../services/articulo.service';
 import { LoteModal } from './LoteModal';
+import { ActionButton } from '../../../shared/components';
 
 export const LotesCatalogView: React.FC = () => {
   const [lotes, setLotes] = useState<ILote[]>([]);
+  const [articulos, setArticulos] = useState<IArticulo[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterEstado, setFilterEstado] = useState<string>('TODOS');
@@ -49,8 +52,11 @@ export const LotesCatalogView: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+    useEffect(() => {
     loadData();
+    articuloService.obtenerTodos().then(setArticulos).catch(() => {
+      // Si falla, el desplegable de artículos del modal queda vacío; no bloquea el catálogo de lotes.
+    });
   }, []);
 
   const handleOpenCreate = () => {
@@ -196,7 +202,7 @@ export const LotesCatalogView: React.FC = () => {
       accessorKey: 'lotFechaVencimiento',
       cell: ({ value }: { value: any }) => (
         <span className="text-xs font-medium text-slate-600 flex items-center gap-1">
-          <Calendar size={12} className="text-slate-400" />
+          <Calendar size={12} className="text-slate-500" />
           {value ? String(value).slice(0, 10) : 'Sin vencimiento'}
         </span>
       ),
@@ -215,34 +221,27 @@ export const LotesCatalogView: React.FC = () => {
       align: 'right' as const,
       cell: ({ row }: { row: ILote }) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          <ActionButton
+            icon={Edit2}
+            variant="edit"
+            label="Editar"
             title="Editar lote"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleEstado(row)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              row.lotEstado === 'ACTIVO'
-                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
+            onClick={() => handleOpenEdit(row)}
+          />
+          <ActionButton
+            icon={Power}
+            variant={row.lotEstado === 'ACTIVO' ? 'deactivate' : 'activate'}
+            label={row.lotEstado === 'ACTIVO' ? 'Bloquear/Desactivar lote' : 'Activar lote'}
             title={row.lotEstado === 'ACTIVO' ? 'Bloquear/Desactivar lote' : 'Activar lote'}
-          >
-            <Power size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDeleteLote(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            onClick={() => handleToggleEstado(row)}
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="delete"
+            label="Eliminar"
             title="Eliminar lote"
-          >
-            <Trash2 size={15} />
-          </button>
+            onClick={() => handleDeleteLote(row)}
+          />
         </div>
       ),
     },
@@ -293,7 +292,7 @@ export const LotesCatalogView: React.FC = () => {
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por lote o artículo..."
@@ -320,7 +319,7 @@ export const LotesCatalogView: React.FC = () => {
 
       <DataTable columns={columns} data={filteredLotes} isLoading={isLoading} emptyText="No se encontraron lotes registrados." />
 
-      <LoteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveLote} lote={editingLote} />
+     <LoteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveLote} lote={editingLote} existentes={lotes} articulos={articulos} />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

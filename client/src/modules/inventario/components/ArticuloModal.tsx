@@ -6,12 +6,15 @@ import { CategoriaClientService } from '../services/categoriaClientService';
 import { MarcaClientService } from '../services/marcaClientService';
 import { UnidadMedidaClientService } from '../services/unidadMedidaClientService';
 import { sanitizeStrictCode, sanitizeNominalText } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface ArticuloModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICrearArticuloDTO | IActualizarArticuloDTO, codigo?: string) => Promise<void>;
   articulo?: IArticulo | null;
+  existentes: IArticulo[];
 }
 
 export const ArticuloModal: React.FC<ArticuloModalProps> = ({
@@ -19,6 +22,7 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
   onClose,
   onSave,
   articulo,
+  existentes,
 }) => {
   const isEditing = Boolean(articulo);
   
@@ -106,6 +110,10 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
     const { sanitized, error: codeErr } = sanitizeStrictCode(val);
     setCodigo(sanitized);
     setCodigoError(codeErr);
+
+    if (!codeErr && sanitized && existentes.some((x) => x.ART_CODIGO_ARTICULO.trim().toUpperCase() === sanitized.toUpperCase() && x.ART_CODIGO_ARTICULO !== articulo?.ART_CODIGO_ARTICULO)) {
+      setCodigoError('Ya existe un artículo con este código.');
+    }
   };
 
   const handleDescripcionChange = (val: string) => {
@@ -127,8 +135,8 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
       return;
     }
 
-    if (codigoTrimmed.length > 30) {
-      setCodigoError('El código no puede exceder los 30 caracteres.');
+    if (codigoTrimmed.length > 200) {
+      setCodigoError('El código no puede exceder los 20 caracteres.');
       setError('Por favor revise los campos con error.');
       return;
     }
@@ -139,14 +147,20 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
       return;
     }
 
-    if (descripcionTrimmed.length > 250) {
-      setDescripcionError('La descripción no puede exceder los 250 caracteres.');
+    if (descripcionTrimmed.length > 200) {
+      setDescripcionError('La descripción no puede exceder los 200 caracteres.');
       setError('Por favor revise los campos con error.');
       return;
     }
 
     if (codigoError || descripcionError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.ART_CODIGO_ARTICULO.trim().toUpperCase() === codigoTrimmed.toUpperCase() && x.ART_CODIGO_ARTICULO !== articulo?.ART_CODIGO_ARTICULO)) {
+      setCodigoError('Ya existe un artículo con este código.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -218,74 +232,86 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1">
-              <TextInput
-                label="CÓDIGO"
-                required
-                placeholder="Ej. ART-0010"
-                value={codigo}
-                onChange={(e) => handleCodigoChange(e.target.value)}
-                isReadOnly={isEditing}
-                maxLength={30}
-                autoFocus={!isEditing}
-                error={codigoError || undefined}
-                helperText={isEditing ? 'No modificable' : undefined}
-              />
+              <FieldHint text={HINTS.articulo.codigo} chars={16} max={20}>
+                <TextInput
+                  label="CÓDIGO"
+                  required
+                  placeholder="Ej. ART-0010"
+                  value={codigo}
+                  onChange={(e) => handleCodigoChange(e.target.value)}
+                  isReadOnly={isEditing}
+                  maxLength={20}
+                  autoFocus={!isEditing}
+                  error={codigoError || undefined}
+                  helperText={isEditing ? 'No modificable' : undefined}
+                />
+              </FieldHint>
             </div>
             <div className="sm:col-span-2">
-              <TextInput
-                label="DESCRIPCIÓN DEL ARTÍCULO"
-                required
-                placeholder="Ej. Laptop HP ProBook 450 G9 16GB..."
-                value={descripcion}
-                onChange={(e) => handleDescripcionChange(e.target.value)}
-                maxLength={250}
-                autoFocus={isEditing}
-                error={descripcionError || undefined}
-              />
+              <FieldHint text={HINTS.articulo.descripcion}>
+                <TextInput
+                  label="DESCRIPCIÓN DEL ARTÍCULO"
+                  required
+                  placeholder="Ej. Laptop HP ProBook 450 G9 16GB..."
+                  value={descripcion}
+                  onChange={(e) => handleDescripcionChange(e.target.value)}
+                  maxLength={200}
+                  autoFocus={isEditing}
+                  error={descripcionError || undefined}
+                />
+              </FieldHint>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Select
-                label="CATEGORÍA"
-                required
-                value={idCategoria}
-                onChange={(e) => setIdCategoria(Number(e.target.value))}
-                options={categorias}
-                disabled={isEditing}
-              />
+              <FieldHint text={HINTS.articulo.categoria}>
+                <Select
+                  label="CATEGORÍA"
+                  required
+                  value={idCategoria}
+                  onChange={(e) => setIdCategoria(Number(e.target.value))}
+                  options={categorias}
+                  disabled={isEditing}
+                />
+              </FieldHint>
             </div>
             <div>
-              <Select
-                label="MARCA"
-                required
-                value={idMarca}
-                onChange={(e) => setIdMarca(Number(e.target.value))}
-                options={marcas}
-                disabled={isEditing}
-              />
+              <FieldHint text={HINTS.articulo.marca}>
+                <Select
+                  label="MARCA"
+                  required
+                  value={idMarca}
+                  onChange={(e) => setIdMarca(Number(e.target.value))}
+                  options={marcas}
+                  disabled={isEditing}
+                />
+              </FieldHint>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Select
-                label="UNIDAD COMPRA"
-                value={idUnidadCompra}
-                onChange={(e) => setIdUnidadCompra(Number(e.target.value))}
-                options={unidades}
-                disabled={isEditing}
-              />
+              <FieldHint text={HINTS.articulo.unidadCompra}>
+                <Select
+                  label="UNIDAD COMPRA"
+                  value={idUnidadCompra}
+                  onChange={(e) => setIdUnidadCompra(Number(e.target.value))}
+                  options={unidades}
+                  disabled={isEditing}
+                />
+              </FieldHint>
             </div>
             <div>
-              <Select
-                label="UNIDAD VENTA"
-                value={idUnidadVenta}
-                onChange={(e) => setIdUnidadVenta(Number(e.target.value))}
-                options={unidades}
-                disabled={isEditing}
-              />
+              <FieldHint text={HINTS.articulo.unidadVenta}>
+                <Select
+                  label="UNIDAD VENTA"
+                  value={idUnidadVenta}
+                  onChange={(e) => setIdUnidadVenta(Number(e.target.value))}
+                  options={unidades}
+                  disabled={isEditing}
+                />
+              </FieldHint>
             </div>
           </div>
 

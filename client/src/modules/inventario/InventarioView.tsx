@@ -5,6 +5,8 @@ import { LotesCatalogView } from './components/LotesCatalogView';
 import { MovimientoCreacionView } from './components/MovimientoCreacionView';
 import { TiposMovimientoCatalogView } from './components/TiposMovimientoCatalogView';
 import { AuditoriaView } from './components/AuditoriaView';
+import { FloatingHelpButton } from '../../shared/components';
+import { FLUJO_INVENTARIO } from '../../shared/flowGuides';
 
 export interface InventarioViewProps {
   activeTab?: string;
@@ -17,6 +19,11 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
 }) => {
   return (
     <div className="h-full w-full">
+      <FloatingHelpButton
+        titulo="Cómo funciona el módulo de Inventario"
+        subtitulo="Bodegas, Ubicaciones y Artículos se preparan una vez; Lotes, Movimientos y Auditoría se usan seguido."
+        pasos={FLUJO_INVENTARIO}
+      />
       {activeTab === 'bodegas' && (
         <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fadeIn">
           <BodegasCatalogView />

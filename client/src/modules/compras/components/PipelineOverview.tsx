@@ -144,7 +144,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
                       ? `${stage.iconWrap} ${stage.iconActive} ring-4 ring-blue-500/30 border-2 border-blue-600 shadow-md scale-105`
                       : hasItems
                       ? `${stage.iconWrap} ${stage.iconActive} border border-slate-200 hover:scale-105 shadow-sm`
-                      : 'bg-slate-50 text-slate-300 border border-slate-200'
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
                   } ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-blue-300' : 'cursor-default'}`}
                   title={
                     clickable
@@ -173,14 +173,14 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
                       ? 'text-blue-700 font-bold'
                       : hasItems
                       ? 'text-slate-800'
-                      : 'text-slate-400'
+                      : 'text-slate-500'
                   }`}
                 >
                   {stage.label}
                 </span>
                 <span
                   className={`mt-0.5 text-[11px] tabular-nums font-medium whitespace-nowrap ${
-                    isSelected ? 'text-blue-600 font-semibold' : 'text-slate-400'
+                    isSelected ? 'text-blue-600 font-semibold' : 'text-slate-500'
                   }`}
                 >
                   {count} {count === 1 ? 'registro' : 'registros'}
@@ -200,7 +200,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
           <span className="tabular-nums font-bold text-slate-800">{total}</span>
           <span>registros han completado la etapa 6 (3-Way Match)</span>
           {rejectedCount > 0 && (
-            <span className="text-slate-400 pl-1">
+            <span className="text-slate-500 pl-1">
               • <strong className="text-rose-600 font-semibold">{rejectedCount}</strong> {rejectedCount === 1 ? 'solicitud rechazada' : 'solicitudes rechazadas'} (ciclo detenido)
             </span>
           )}

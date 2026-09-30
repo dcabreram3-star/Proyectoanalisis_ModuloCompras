@@ -26,7 +26,7 @@ export class ArticuloController {
   static async actualizarDescripcion(req: Request, res: Response) {
     try {
       const { codigo } = req.params;
-      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 30);
+      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 20);
       const datos = req.body as IActualizarArticuloDTO;
 
       if (!datos || typeof datos.ART_DESCRIPCION !== 'string') {
@@ -36,7 +36,7 @@ export class ArticuloController {
       const descripcionValidada = validateNominalText(
         datos.ART_DESCRIPCION,
         'descripción del artículo',
-        250
+        200
       );
       
       const exito = await ArticuloRepository.actualizarDescripcion(codigoValidado, {
@@ -58,7 +58,7 @@ export class ArticuloController {
   static async eliminar(req: Request, res: Response) {
     try {
       const { codigo } = req.params;
-      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 30);
+      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 20);
       const exito = await ArticuloRepository.eliminar(codigoValidado);
       
       if (exito) {
@@ -79,7 +79,7 @@ export class ArticuloController {
   static async cambiarEstado(req: Request, res: Response) {
     try {
       const { codigo } = req.params;
-      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 30);
+      const codigoValidado = validateStrictCode(codigo, 'código del artículo', 20);
       const { activo } = req.body;
       const nuevoEstado = validateBooleanFlag(activo, 'activo', 1);
 
@@ -106,13 +106,13 @@ export class ArticuloController {
       const codigoValidado = validateStrictCode(
         datos.ART_CODIGO_ARTICULO,
         'código del artículo',
-        30
+        20
       );
 
       const descripcionValidada = validateNominalText(
         datos.ART_DESCRIPCION,
         'descripción del artículo',
-        250
+        200
       );
 
       const categoriaId = validateNumericId(datos.ART_ID_CATEGORIA, 'categoría');

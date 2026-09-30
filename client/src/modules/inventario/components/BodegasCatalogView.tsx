@@ -16,6 +16,7 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import { IBodega, ICreateBodegaDTO, IUpdateBodegaDTO } from '@erp/contracts';
 import { BodegaClientService } from '../services/bodegaClientService';
 import { BodegaModal } from './BodegaModal';
+import { ActionButton } from '../../../shared/components';
 
 export const BodegasCatalogView: React.FC = () => {
   const [bodegas, setBodegas] = useState<IBodega[]>([]);
@@ -166,11 +167,11 @@ export const BodegasCatalogView: React.FC = () => {
             <span className="font-bold text-slate-800 text-sm block">{value}</span>
             {row.bodDireccion ? (
               <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                <MapPin size={11} className="text-slate-400 shrink-0" />
+                <MapPin size={11} className="text-slate-500 shrink-0" />
                 {row.bodDireccion}
               </span>
             ) : (
-              <span className="text-[11px] text-slate-400">Sin dirección especificada</span>
+              <span className="text-[11px] text-slate-600">Sin dirección especificada</span>
             )}
           </div>
         </div>
@@ -211,34 +212,27 @@ export const BodegasCatalogView: React.FC = () => {
       align: 'right' as const,
       cell: ({ row }: { row: IBodega }) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          <ActionButton
+            icon={Edit2}
+            variant="edit"
+            label="Editar"
             title="Editar bodega"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleActivo(row)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              row.bodActivo === 1
-                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
+            onClick={() => handleOpenEdit(row)}
+          />
+          <ActionButton
+            icon={Power}
+            variant={row.bodActivo === 1 ? 'deactivate' : 'activate'}
+            label={row.bodActivo === 1 ? 'Desactivar bodega' : 'Activar bodega'}
             title={row.bodActivo === 1 ? 'Desactivar bodega' : 'Activar bodega'}
-          >
-            <Power size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDeleteBodega(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            onClick={() => handleToggleActivo(row)}
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="delete"
+            label="Eliminar"
             title="Eliminar bodega"
-          >
-            <Trash2 size={15} />
-          </button>
+            onClick={() => handleDeleteBodega(row)}
+          />
         </div>
       ),
     },
@@ -316,7 +310,7 @@ export const BodegasCatalogView: React.FC = () => {
       {/* Search & Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por código, nombre o dirección..."
@@ -373,6 +367,7 @@ export const BodegasCatalogView: React.FC = () => {
 
       {/* Creation / Edition Modal */}
       <BodegaModal
+        existentes={bodegas}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveBodega}

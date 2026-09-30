@@ -43,3 +43,25 @@
 .animate-scaleUp {
   animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* === fit-field: cajas que se ajustan al dato (FieldHint chars/max) === */
+.fit-field {
+  width: fit-content;
+  max-width: 100%;
+}
+.fit-field input:not([type="checkbox"]):not([type="radio"]),
+.fit-field textarea {
+  width: calc(var(--fit-n, 20) * 1ch + 2.75rem);
+  max-width: 100%;
+}
+/* Los mensajes de ayuda/error se ajustan al ancho de la caja en vez de ensancharla */
+.fit-field > div > span {
+  width: 0;
+  min-width: 100%;
+}
+
+/* Sube el contraste del gris que usa StatCard/DataTable (components/ui/DataDisplay.tsx).
+   No se modifica ese archivo (está prohibido); esto solo redefine cómo se ve esa clase. */
+.text-slate-400 {
+  color: #64748b; /* antes muy claro, ahora legible para todo público */
+}

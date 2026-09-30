@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, Plus, Save, Trash2, AlertCircle, ChevronDown, Search } from 'lucide-react';
+import { ShoppingCart, Plus, Save, AlertCircle, ChevronDown, Search } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { ISolicitudCompraCreateDTO, ISolicitudCompraDetalleCreateDTO } from '@erp/contracts';
 import { SolicitudCompraClientService } from '../services/solicitudCompraClientService';
+import { FieldHint, RemoveRowButton } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 interface SolicitudCreacionViewProps {
   onSuccess?: () => void;
@@ -71,15 +73,15 @@ const AutocompleteSelect = ({
           setSearchTerm('');
         }}
       >
-        <span className={`text-sm truncate ${selectedOption ? 'text-slate-800' : 'text-slate-400'}`}>
+        <span className={`text-sm truncate ${selectedOption ? 'text-slate-800' : 'text-slate-500'}`}>
           {selectedOption ? `${selectedOption[valueKey]} - ${selectedOption[displayKey]}` : placeholder}
         </span>
-        <ChevronDown size={16} className="text-slate-400" />
+        <ChevronDown size={16} className="text-slate-500" />
       </div>
 
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-hidden flex flex-col">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2 text-slate-400">
+          <div className="p-2 border-b border-slate-100 flex items-center gap-2 text-slate-500">
             <Search size={16} />
             <input
               type="text"
@@ -250,27 +252,33 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         {/* Cabecera */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700 block">Responsable</label>
-            <AutocompleteSelect 
-              options={MOCK_USUARIOS}
-              value={idUsuarioResponsable}
-              onChange={(val) => setIdUsuarioResponsable(val)}
-              placeholder="Buscar responsable..."
-              displayKey="nombre"
-              valueKey="id"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700 block">Notas Adicionales</label>
-            <input 
-              type="text" 
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej. Reabastecimiento urgente de papelería..."
-              className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm"
-            />
-          </div>
+          <FieldHint text={HINTS.solicitud.responsable}>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 block">Responsable</label>
+              <div className="max-w-xs">
+                <AutocompleteSelect 
+                  options={MOCK_USUARIOS}
+                  value={idUsuarioResponsable}
+                  onChange={(val) => setIdUsuarioResponsable(val)}
+                  placeholder="Buscar responsable..."
+                  displayKey="nombre"
+                  valueKey="id"
+                />
+              </div>
+            </div>
+          </FieldHint>
+          <FieldHint text={HINTS.solicitud.notas} chars={40} max={250}>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 block">Notas Adicionales</label>
+              <input 
+                type="text" 
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder="Ej. Reabastecimiento urgente de papelería..."
+                className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm"
+              />
+            </div>
+          </FieldHint>
         </div>
 
         <hr className="border-slate-100" />
@@ -285,12 +293,12 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
           </div>
 
           <div className="overflow-x-visible">
-            <table className="w-full text-left border-collapse">
+            <table className="table-fixed text-left border-collapse w-[628px] mx-auto">
               <thead>
                 <tr className="border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
                   <th className="pb-3 font-semibold w-20 text-center">Ítem Nuevo</th>
-                  <th className="pb-3 font-semibold">Artículo (Buscar o Nombre Nuevo)</th>
-                  <th className="pb-3 font-semibold w-32 text-center">Cantidad</th>
+                  <th className="pb-3 font-semibold w-[420px]">Artículo (Buscar o Nombre Nuevo)</th>
+                  <th className="pb-3 font-semibold w-16 text-center">Cantidad</th>
                   <th className="pb-3 font-semibold w-16 text-center"></th>
                 </tr>
               </thead>
@@ -308,7 +316,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                     </td>
                     <td className="py-3 pr-4 align-top pt-4">
                       {detalle.isNuevo ? (
-                        <div className="flex items-center w-full h-9 bg-white border border-slate-200 rounded-lg overflow-hidden focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+                          <div className="flex items-center w-full h-9 bg-white border border-slate-200 rounded-lg overflow-hidden focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 max-w-sm">
                           <span className="px-3 py-2 bg-slate-100 text-slate-500 font-medium text-xs border-r border-slate-200 select-none whitespace-nowrap">
                             {getNextArticleCode(index)}
                           </span>
@@ -321,15 +329,17 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                             required
                           />
                         </div>
-                      ) : (
-                        <AutocompleteSelect 
-                          options={MOCK_ARTICULOS}
-                          value={detalle.codigoArticulo}
-                          onChange={(val) => handleChangeDetalle(index, 'codigoArticulo', val)}
-                          placeholder="Buscar artículo en base de datos..."
-                          displayKey="nombre"
-                          valueKey="codigo"
-                        />
+                        ) : (
+                        <div className="max-w-sm">
+                          <AutocompleteSelect 
+                            options={MOCK_ARTICULOS}
+                            value={detalle.codigoArticulo}
+                            onChange={(val) => handleChangeDetalle(index, 'codigoArticulo', val)}
+                            placeholder="Buscar artículo en base de datos..."
+                            displayKey="nombre"
+                            valueKey="codigo"
+                          />
+                        </div>
                       )}
                     </td>
                     <td className="py-3 px-2 align-top pt-4">
@@ -343,15 +353,11 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                       />
                     </td>
                     <td className="py-3 text-center align-top pt-4">
-                      <button
-                        type="button"
+                      <RemoveRowButton
                         onClick={() => handleRemoveDetalle(index)}
                         disabled={detalles.length === 1}
-                        className="text-slate-400 hover:text-red-600 disabled:opacity-50 transition-colors p-2 rounded-lg hover:bg-red-50 mt-[-4px]"
                         title="Eliminar fila"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}

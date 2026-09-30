@@ -3,12 +3,15 @@ import { X, Bookmark, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput } from '../../../components/ui';
 import { IEstado, ICreateEstadoDTO, IUpdateEstadoDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface EstadoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateEstadoDTO | IUpdateEstadoDTO, id?: number) => Promise<void>;
   estado?: IEstado | null;
+  existentes: IEstado[];
 }
 
 export const EstadoModal: React.FC<EstadoModalProps> = ({
@@ -16,6 +19,7 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
   onClose,
   onSave,
   estado,
+  existentes,
 }) => {
   const isEditing = Boolean(estado);
   const [nombre, setNombre] = useState<string>('');
@@ -39,6 +43,10 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
     const { sanitized, error: nomErr } = sanitizeNominalText(val);
     setNombre(sanitized);
     setNombreError(nomErr);
+
+    if (!nomErr && sanitized && existentes.some((x) => x.estNombreEstado.trim().toLowerCase() === sanitized.trim().toLowerCase() && x.estIdEstado !== estado?.estIdEstado)) {
+      setNombreError('Ya existe un estado con este nombre.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,6 +66,12 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
 
     if (nombreError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.estNombreEstado.trim().toLowerCase() === trimmed.toLowerCase() && x.estIdEstado !== estado?.estIdEstado)) {
+      setNombreError('Ya existe un estado con este nombre.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -120,18 +134,20 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DEL ESTADO"
-            required
-            placeholder="Ej. PENDIENTE, APROBADO, RECHAZADO, EN PROCESO..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            maxLength={50}
-            autoFocus
-            error={nombreError || undefined}
-          />
+          <FieldHint text={HINTS.estado.nombre} chars={22} max={50}>
+            <TextInput
+              label="NOMBRE DEL ESTADO"
+              required
+              placeholder="Ej. PENDIENTE, APROBADO, RECHAZADO, EN PROCESO..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              maxLength={50}
+              autoFocus
+              error={nombreError || undefined}
+            />
+          </FieldHint>
 
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-600">
             Define la etiqueta descriptiva del estado utilizado en solicitudes, órdenes de compra y facturas (máx. 50 caracteres).
           </p>
 
