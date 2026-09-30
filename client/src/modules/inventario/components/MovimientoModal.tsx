@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, ArrowRightLeft, Plus, Trash2, Printer, AlertCircle, ChevronDown, Search } from 'lucide-react';
+import { X, ArrowRightLeft, Plus, Printer, AlertCircle, ChevronDown, Search } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import type { IMovimientoInventarioCreateDTO, IMovimientoInventarioDetalleCreateDTO } from '@erp/contracts';
 import { MovimientoInventarioClientService } from '../services/movimientoInventarioClientService';
+import { FieldHint, RemoveRowButton } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface MovimientoModalProps {
   isOpen: boolean;
@@ -59,15 +61,15 @@ const AutocompleteSelect = ({
           setSearchTerm('');
         }}
       >
-        <span className={`truncate ${selectedOption ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>
+        <span className={`truncate ${selectedOption ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
           {selectedOption ? `${selectedOption[valueKey]} - ${selectedOption[displayKey]}` : placeholder}
         </span>
-        <ChevronDown size={16} className="text-slate-400 shrink-0 ml-1" />
+        <ChevronDown size={16} className="text-slate-500 shrink-0 ml-1" />
       </div>
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-hidden flex flex-col animate-scaleUp">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2 text-slate-400 bg-slate-50">
+          <div className="p-2 border-b border-slate-100 flex items-center gap-2 text-slate-500 bg-slate-50">
             <Search size={15} />
             <input
               type="text"
@@ -94,7 +96,7 @@ const AutocompleteSelect = ({
                 </li>
               ))
             ) : (
-              <li className="px-3 py-4 text-center text-slate-400 italic">No se encontraron opciones</li>
+              <li className="px-3 py-4 text-center text-slate-500 italic">No se encontraron opciones</li>
             )}
           </ul>
         </div>
@@ -251,60 +253,74 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
 
           {/* Rutas y Responsable */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 block">
-                BODEGA DE SALIDA (ORIGEN) <span className="text-red-500">*</span>
-              </label>
-              <AutocompleteSelect 
-                options={bodegas}
-                value={idBodegaOrigen}
-                onChange={(val) => setIdBodegaOrigen(val)}
-                placeholder="Seleccione bodega origen..."
-                displayKey="nombre"
-                valueKey="id"
-              />
-            </div>
+            <FieldHint text={HINTS.movimiento.origen}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  BODEGA DE SALIDA (ORIGEN) <span className="text-red-500">*</span>
+                </label>
+                <div className="max-w-xs">
+                  <AutocompleteSelect 
+                    options={bodegas}
+                    value={idBodegaOrigen}
+                    onChange={(val) => setIdBodegaOrigen(val)}
+                    placeholder="Seleccione bodega origen..."
+                    displayKey="nombre"
+                    valueKey="id"
+                  />
+                </div>
+              </div>
+            </FieldHint>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-emerald-700 block">
-                BODEGA DE ENTRADA (DESTINO) <span className="text-red-500">*</span>
-              </label>
-              <AutocompleteSelect 
-                options={bodegas.filter(b => b.id !== idBodegaOrigen)}
-                value={idBodegaDestino}
-                onChange={(val) => setIdBodegaDestino(val)}
-                placeholder="Seleccione bodega destino..."
-                displayKey="nombre"
-                valueKey="id"
-              />
-            </div>
+            <FieldHint text={HINTS.movimiento.destino}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-emerald-700 block">
+                  BODEGA DE ENTRADA (DESTINO) <span className="text-red-500">*</span>
+                </label>
+                <div className="max-w-xs">
+                  <AutocompleteSelect 
+                    options={bodegas.filter(b => b.id !== idBodegaOrigen)}
+                    value={idBodegaDestino}
+                    onChange={(val) => setIdBodegaDestino(val)}
+                    placeholder="Seleccione bodega destino..."
+                    displayKey="nombre"
+                    valueKey="id"
+                  />
+                </div>
+              </div>
+            </FieldHint>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 block">
-                USUARIO RESPONSABLE <span className="text-red-500">*</span>
-              </label>
-              <AutocompleteSelect 
-                options={usuarios}
-                value={idUsuario}
-                onChange={(val) => setIdUsuario(val)}
-                placeholder="Buscar responsable..."
-                displayKey="nombre"
-                valueKey="id"
-              />
-            </div>
+            <FieldHint text={HINTS.movimiento.responsable}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  USUARIO RESPONSABLE <span className="text-red-500">*</span>
+                </label>
+                <div className="max-w-xs">
+                  <AutocompleteSelect 
+                    options={usuarios}
+                    value={idUsuario}
+                    onChange={(val) => setIdUsuario(val)}
+                    placeholder="Buscar responsable..."
+                    displayKey="nombre"
+                    valueKey="id"
+                  />
+                </div>
+              </div>
+            </FieldHint>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 block">
-                OBSERVACIONES / MOTIVO
-              </label>
-              <input 
-                type="text" 
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                placeholder="Ej. Reabastecimiento de sucursal..."
-                className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all"
-              />
-            </div>
+            <FieldHint text={HINTS.movimiento.observaciones}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  OBSERVACIONES / MOTIVO
+                </label>
+                <input 
+                  type="text" 
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  placeholder="Ej. Reabastecimiento de sucursal..."
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 transition-all"
+                />
+              </div>
+            </FieldHint>
           </div>
 
           <hr className="border-slate-100" />
@@ -321,18 +337,18 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
             </div>
 
             <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse">
+              <table className="table-fixed text-left border-collapse w-[524px] mx-auto">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-3 py-2.5">Artículo / Producto</th>
-                    <th className="px-3 py-2.5 w-28 text-center">Cantidad</th>
+                    <th className="px-3 py-2.5 w-[420px]">Artículo / Producto</th>
+                    <th className="px-3 py-2.5 w-16 text-center">Cantidad</th>
                     <th className="px-2 py-2.5 w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {detalles.map((detalle, index) => (
                     <tr key={index} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-2.5">
+                      <td className="p-2.5 max-w-sm">
                         <AutocompleteSelect 
                           options={articulos}
                           value={detalle.codigoArticulo}
@@ -353,15 +369,11 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
                         />
                       </td>
                       <td className="p-2.5 text-center">
-                        <button
-                          type="button"
+                        <RemoveRowButton
                           onClick={() => handleRemoveDetalle(index)}
                           disabled={detalles.length === 1}
-                          className="text-slate-400 hover:text-rose-600 disabled:opacity-30 transition-colors p-1.5 rounded-md hover:bg-rose-50"
                           title="Eliminar renglón"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        />
                       </td>
                     </tr>
                   ))}

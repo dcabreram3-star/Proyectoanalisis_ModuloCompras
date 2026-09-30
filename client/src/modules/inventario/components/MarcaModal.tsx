@@ -3,12 +3,15 @@ import { X, Tag, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IMarca, ICreateMarcaDTO, IUpdateMarcaDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface MarcaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateMarcaDTO | IUpdateMarcaDTO, id?: number) => Promise<void>;
   marca?: IMarca | null;
+  existentes: IMarca[];
 }
 
 export const MarcaModal: React.FC<MarcaModalProps> = ({
@@ -16,6 +19,7 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
   onClose,
   onSave,
   marca,
+  existentes,
 }) => {
   const isEditing = Boolean(marca);
   const [nombre, setNombre] = useState<string>('');
@@ -42,6 +46,10 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
     const { sanitized, error: nomErr } = sanitizeNominalText(val);
     setNombre(sanitized);
     setNombreError(nomErr);
+
+    if (!nomErr && sanitized && existentes.some((x) => x.marNombreMarca.trim().toLowerCase() === sanitized.trim().toLowerCase() && x.marIdMarca !== marca?.marIdMarca)) {
+      setNombreError('Ya existe una marca con este nombre.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +69,12 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
 
     if (nombreError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.marNombreMarca.trim().toLowerCase() === trimmed.toLowerCase() && x.marIdMarca !== marca?.marIdMarca)) {
+      setNombreError('Ya existe una marca con este nombre.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -125,16 +139,18 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA MARCA"
-            required
-            placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            autoFocus
-            maxLength={100}
-            error={nombreError || undefined}
-          />
+          <FieldHint text={HINTS.marca.nombre} chars={28} max={100}>
+            <TextInput
+              label="NOMBRE DE LA MARCA"
+              required
+              placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              autoFocus
+              maxLength={100}
+              error={nombreError || undefined}
+            />
+          </FieldHint>
 
           <div className="pt-1">
             <Checkbox

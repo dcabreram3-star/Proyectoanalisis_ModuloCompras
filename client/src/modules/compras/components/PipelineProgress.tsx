@@ -313,7 +313,7 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
     <div className={`px-3 pb-3 pt-1 select-none ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between pb-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
           Ciclo de vida de la compra
         </p>
         {isRejected ? (
@@ -413,14 +413,14 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
               <span
                 className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md ${
                   isBlocked
-                    ? 'bg-slate-100 text-slate-400'
+                    ? 'bg-slate-100 text-slate-500'
                     : isRej
                     ? 'bg-rose-100 text-rose-600'
                     : isDone
                     ? 'bg-emerald-100 text-emerald-700'
                     : isActive
                     ? `${stage.iconWrap} ${stage.iconActive}`
-                    : `${stage.iconWrap} text-slate-400`
+                    : `${stage.iconWrap} text-slate-500`
                 }`}
               >
                 {isBlocked ? (
@@ -440,7 +440,7 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
                   <span
                     className={`text-xs font-semibold leading-none ${
                       isBlocked
-                        ? 'text-slate-400'
+                        ? 'text-slate-500'
                         : isRej
                         ? 'text-rose-800'
                         : isDone
@@ -480,7 +480,7 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
                       ? 'text-emerald-500'
                       : isActive
                       ? 'text-blue-500'
-                      : 'text-slate-400'
+                      : 'text-slate-500'
                   }`}
                 />
               )}
@@ -675,7 +675,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
         )}
 
         <ChevronDown
-          className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+          className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${
             isOpen ? 'rotate-180 text-blue-600' : 'group-hover:text-slate-600'
           }`}
         />

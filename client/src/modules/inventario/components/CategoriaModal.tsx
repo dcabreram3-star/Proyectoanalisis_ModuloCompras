@@ -3,12 +3,15 @@ import { X, FolderPlus, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { ICategoria, ICreateCategoriaDTO, IUpdateCategoriaDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface CategoriaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateCategoriaDTO | IUpdateCategoriaDTO, id?: number) => Promise<void>;
   categoria?: ICategoria | null;
+  existentes: ICategoria[];
 }
 
 export const CategoriaModal: React.FC<CategoriaModalProps> = ({
@@ -16,6 +19,7 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
   onClose,
   onSave,
   categoria,
+  existentes,
 }) => {
   const isEditing = Boolean(categoria);
   const [nombre, setNombre] = useState<string>('');
@@ -42,6 +46,10 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
     const { sanitized, error: nomErr } = sanitizeNominalText(val);
     setNombre(sanitized);
     setNombreError(nomErr);
+
+    if (!nomErr && sanitized && existentes.some((x) => x.catNombreCategoria.trim().toLowerCase() === sanitized.trim().toLowerCase() && x.catIdCategoria !== categoria?.catIdCategoria)) {
+      setNombreError('Ya existe una categoría con este nombre.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +69,12 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
 
     if (nombreError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.catNombreCategoria.trim().toLowerCase() === trimmed.toLowerCase() && x.catIdCategoria !== categoria?.catIdCategoria)) {
+      setNombreError('Ya existe una categoría con este nombre.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -125,16 +139,18 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA CATEGORÍA"
-            required
-            placeholder="Ej. Suministros de Oficina, Laptops..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            autoFocus
-            maxLength={100}
-            error={nombreError || undefined}
-          />
+          <FieldHint text={HINTS.categoria.nombre} chars={28} max={100}>
+            <TextInput
+              label="NOMBRE DE LA CATEGORÍA"
+              required
+              placeholder="Ej. Suministros de Oficina, Laptops..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              autoFocus
+              maxLength={100}
+              error={nombreError || undefined}
+            />
+          </FieldHint>
 
           <div className="pt-1">
             <Checkbox

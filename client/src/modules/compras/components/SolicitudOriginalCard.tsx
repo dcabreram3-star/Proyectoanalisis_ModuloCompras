@@ -35,21 +35,21 @@ export const SolicitudOriginalCard: React.FC<SolicitudOriginalCardProps> = ({ so
       {/* Details Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-center text-xs">
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             No. Documento
           </span>
           <span className="font-bold text-slate-900 mt-0.5 block">{solicitud.noDocumento}</span>
         </div>
 
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             Fecha
           </span>
           <span className="font-medium text-slate-700 mt-0.5 block">{solicitud.fecha}</span>
         </div>
 
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             Entidad
           </span>
           <span className="font-medium text-slate-700 mt-0.5 block truncate" title={solicitud.entidad}>
@@ -58,21 +58,21 @@ export const SolicitudOriginalCard: React.FC<SolicitudOriginalCardProps> = ({ so
         </div>
 
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             Departamento
           </span>
           <span className="font-medium text-slate-700 mt-0.5 block">{solicitud.departamento}</span>
         </div>
 
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             Responsable
           </span>
           <span className="font-medium text-slate-700 mt-0.5 block">{solicitud.responsable}</span>
         </div>
 
         <div className="text-left lg:text-right">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block">
+          <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide block">
             Monto Total
           </span>
           <span className="text-base font-extrabold text-blue-600 mt-0.5 block">

@@ -1,8 +1,10 @@
 import React from 'react';
-import { Building, HelpCircle, Paperclip, CheckCircle, Trash2 } from 'lucide-react';
+import { Building, Paperclip, CheckCircle, Trash2 } from 'lucide-react';
 import { TextInput, Select } from '../../../components/ui';
 import { IProveedor } from '@erp/contracts';
 import { ICotizacionMatrizProveedorInput } from '../services/cotizacionClientService';
+import { FieldHint, HintIcon } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface ProveedorCotizacionCardProps {
   index: number; // 1, 2, or 3
@@ -97,7 +99,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-medium border border-slate-200 shadow-2xs"
             title="Descartar esta cotización"
           >
-            <Trash2 size={13} className="text-slate-400" />
+            <Trash2 size={13} className="text-slate-500" />
             <span>Descartar</span>
           </button>
         )}
@@ -106,26 +108,26 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
       {/* Inputs Form */}
       <div className="space-y-3.5">
         {/* Selector Dinámico de Proveedor (desde tabla PROVEEDOR) */}
-        <Select
-          label="PROVEEDOR"
-          required
-          icon={Building}
-          placeholder="Seleccionar proveedor de la BD..."
-          value={data.idProveedor || ''}
-          onChange={handleProveedorSelect}
-          options={proveedorOptions}
-          isReadOnly={isDisabled}
-        />
+        <FieldHint text={HINTS.cotizacion.proveedor}>
+          <Select
+            label="PROVEEDOR"
+            required
+            icon={Building}
+            placeholder="Seleccionar proveedor de la BD..."
+            value={data.idProveedor || ''}
+            onChange={handleProveedorSelect}
+            options={proveedorOptions}
+            isReadOnly={isDisabled}
+          />
+        </FieldHint>
 
         {/* Precio Total */}
-        <div>
+        <div className="max-w-[150px]">
           <div className="flex items-center gap-1 mb-1">
             <label className="text-xs font-semibold text-slate-700 flex items-center">
               PRECIO TOTAL (Q) <span className="text-red-500 ml-0.5">*</span>
             </label>
-            <span title="Monto total cotizado por este proveedor" className="text-slate-400">
-              <HelpCircle size={13} />
-            </span>
+            <HintIcon text="Monto total cotizado por este proveedor" />
           </div>
           <TextInput
             placeholder="Q 0.00"
@@ -138,16 +140,14 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
         </div>
 
         {/* Tiempo de Entrega */}
-        <div>
+        <div className="max-w-[130px]">
           <div className="flex items-center gap-1 mb-1">
             <label className="text-xs font-semibold text-slate-700 flex items-center">
               TIEMPO DE ENTREGA (DÍAS)
             </label>
-            <span title="Días calendario estimados para la entrega" className="text-slate-400">
-              <HelpCircle size={13} />
-            </span>
+            <HintIcon text="Días calendario estimados para la entrega" />
           </div>
-          <TextInput
+            <TextInput
             placeholder="Ej. 7"
             type="number"
             value={data.tiempoEntregaDias}
@@ -157,14 +157,12 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
         </div>
 
         {/* Plazo de Pago */}
-        <div>
+        <div className="max-w-[160px]">
           <div className="flex items-center gap-1 mb-1">
             <label className="text-xs font-semibold text-slate-700 flex items-center">
               PLAZO DE PAGO
             </label>
-            <span title="Condición de crédito o pago" className="text-slate-400">
-              <HelpCircle size={13} />
-            </span>
+            <HintIcon text="Condición de crédito o pago" />
           </div>
           <Select
             placeholder="Seleccionar..."
@@ -186,9 +184,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             <label className="text-xs font-semibold text-slate-700 flex items-center">
               COTIZACIÓN PDF
             </label>
-            <span title="Documento escaneado o digital de la cotización" className="text-slate-400">
-              <HelpCircle size={13} />
-            </span>
+            <HintIcon text="Documento escaneado o digital de la cotización" />
           </div>
 
           <div className="relative">
@@ -215,7 +211,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                 </>
               ) : (
                 <>
-                  <Paperclip size={15} className="text-slate-400 shrink-0" />
+                  <Paperclip size={15} className="text-slate-500 shrink-0" />
                   <span>Adjuntar Cotización PDF</span>
                 </>
               )}

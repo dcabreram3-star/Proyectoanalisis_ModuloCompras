@@ -18,7 +18,7 @@ export class UnidadMedidaClientService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Error al obtener la lista de unidades de medida`);
+      throw new Error('Error al obtener la lista de unidades de medida. Intente de nuevo; si el problema continúa, contacte a soporte.');
     }
 
     const resData = await response.json();

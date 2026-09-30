@@ -16,7 +16,7 @@ export class UbicacionClientService {
 
     const url = queryParams.toString() ? `${API_BASE}?${queryParams.toString()}` : API_BASE;
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: Error al obtener ubicaciones`);
+    if (!response.ok) throw new Error('Error al obtener ubicaciones. Intente de nuevo; si el problema continúa, contacte a soporte.');
     const resData = await response.json();
     return resData.data || [];
   }

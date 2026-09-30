@@ -34,6 +34,8 @@ import { BodegaView } from './components/BodegaView';
 import { ThreeWayMatchView } from './components/ThreeWayMatchView';
 import { ISolicitudCompra } from '@erp/contracts';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { FloatingHelpButton } from '../../shared/components';
+import { FLUJO_COMPRAS } from '../../shared/flowGuides';
 
 export interface ComprasViewProps {
   activeTab?: string;
@@ -314,6 +316,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
   return (
     <div className="space-y-6 w-full pb-12 min-w-0">
+        <FloatingHelpButton
+        titulo="Cómo funciona el módulo de Compras"
+        subtitulo="Toda solicitud pasa por estas 7 etapas, en este orden."
+        pasos={FLUJO_COMPRAS}
+      />
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
@@ -391,7 +398,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       {/* Toolbar Search & Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative flex items-center w-full md:w-80">
-          <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+          <Search size={16} className="absolute left-3 text-slate-500 pointer-events-none" />
           <input
             type="text"
             placeholder="Buscar por No. Documento o Notas..."
@@ -407,7 +414,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
           {/* Filtrar por Etapa (6 Fases del Ciclo de Compras) */}
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-            <Layers size={15} className="text-slate-400" />
+            <Layers size={15} className="text-slate-500" />
             <span>Filtrar por Etapa:</span>
           </div>
 
@@ -428,7 +435,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
           {/* Filtrar por Estado */}
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-            <Filter size={15} className="text-slate-400" />
+            <Filter size={15} className="text-slate-500" />
             <span>Filtrar por Estado:</span>
           </div>
 

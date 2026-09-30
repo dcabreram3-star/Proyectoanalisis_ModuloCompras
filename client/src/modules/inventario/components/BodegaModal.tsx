@@ -3,12 +3,15 @@ import { X, Warehouse, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IBodega, ICreateBodegaDTO, IUpdateBodegaDTO } from '@erp/contracts';
 import { sanitizeStrictCode, sanitizeNominalText, sanitizeAddress } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface BodegaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateBodegaDTO | IUpdateBodegaDTO, id?: number) => Promise<void>;
   bodega?: IBodega | null;
+  existentes: IBodega[];
 }
 
 export const BodegaModal: React.FC<BodegaModalProps> = ({
@@ -16,6 +19,7 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
   onClose,
   onSave,
   bodega,
+  existentes,
 }) => {
   const isEditing = Boolean(bodega);
   const [codigo, setCodigo] = useState<string>('');
@@ -55,6 +59,10 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
     const { sanitized, error: codErr } = sanitizeStrictCode(val);
     setCodigo(sanitized);
     setCodigoError(codErr);
+
+    if (!codErr && sanitized && existentes.some((x) => x.bodCodigo.trim().toUpperCase() === sanitized.toUpperCase() && x.bodIdBodega !== bodega?.bodIdBodega)) {
+      setCodigoError('Ya existe una bodega con este código.');
+    }
   };
 
   const handleNombreChange = (val: string) => {
@@ -107,6 +115,12 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
 
     if (codigoError || nombreError || direccionError) {
       setError('Corrija los errores antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.bodCodigo.trim().toUpperCase() === codigoTrimmed.toUpperCase() && x.bodIdBodega !== bodega?.bodIdBodega)) {
+      setCodigoError('Ya existe una bodega con este código.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -179,38 +193,44 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1">
-              <TextInput
-                label="CÓDIGO"
-                required
-                placeholder="Ej. BOD-01"
-                value={codigo}
-                onChange={(e) => handleCodigoChange(e.target.value)}
-                maxLength={20}
-                autoFocus
-                error={codigoError || undefined}
-              />
+              <FieldHint text={HINTS.bodega.codigo} chars={14} max={20}>
+                <TextInput
+                  label="CÓDIGO"
+                  required
+                  placeholder="Ej. BOD-01"
+                  value={codigo}
+                  onChange={(e) => handleCodigoChange(e.target.value)}
+                  maxLength={20}
+                  autoFocus
+                  error={codigoError || undefined}
+                />
+              </FieldHint>
             </div>
             <div className="sm:col-span-2">
-              <TextInput
-                label="NOMBRE DE LA BODEGA"
-                required
-                placeholder="Ej. Bodega Central, Bodega Materia Prima..."
-                value={nombre}
-                onChange={(e) => handleNombreChange(e.target.value)}
-                maxLength={100}
-                error={nombreError || undefined}
-              />
+              <FieldHint text={HINTS.bodega.nombre}>
+                <TextInput
+                  label="NOMBRE DE LA BODEGA"
+                  required
+                  placeholder="Ej. Bodega Central, Bodega Materia Prima..."
+                  value={nombre}
+                  onChange={(e) => handleNombreChange(e.target.value)}
+                  maxLength={100}
+                  error={nombreError || undefined}
+                />
+              </FieldHint>
             </div>
           </div>
 
-          <TextInput
-            label="DIRECCIÓN / UBICACIÓN FÍSICA"
-            placeholder="Ej. Km 14.5 Carretera al Atlántico, Nave 3B..."
-            value={direccion}
-            onChange={(e) => handleDireccionChange(e.target.value)}
-            maxLength={250}
-            error={direccionError || undefined}
-          />
+          <FieldHint text={HINTS.bodega.direccion}>
+            <TextInput
+              label="DIRECCIÓN / UBICACIÓN FÍSICA"
+              placeholder="Ej. Km 14.5 Carretera al Atlántico, Nave 3B..."
+              value={direccion}
+              onChange={(e) => handleDireccionChange(e.target.value)}
+              maxLength={250}
+              error={direccionError || undefined}
+            />
+          </FieldHint>
 
           <div className="pt-2 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
             <Checkbox

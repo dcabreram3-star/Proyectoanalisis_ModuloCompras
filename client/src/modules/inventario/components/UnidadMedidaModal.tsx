@@ -3,12 +3,15 @@ import { X, Scale, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IUnidadMedida, ICreateUnidadMedidaDTO, IUpdateUnidadMedidaDTO } from '@erp/contracts';
 import { sanitizeNominalText, sanitizeAbreviatura } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface UnidadMedidaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateUnidadMedidaDTO | IUpdateUnidadMedidaDTO, id?: number) => Promise<void>;
   unidadMedida?: IUnidadMedida | null;
+  existentes: IUnidadMedida[];
 }
 
 export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
@@ -16,6 +19,7 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
   onClose,
   onSave,
   unidadMedida,
+  existentes,
 }) => {
   const isEditing = Boolean(unidadMedida);
   const [nombre, setNombre] = useState<string>('');
@@ -47,12 +51,20 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
     const { sanitized, error: nomErr } = sanitizeNominalText(val);
     setNombre(sanitized);
     setNombreError(nomErr);
+
+    if (!nomErr && sanitized && existentes.some((x) => x.umeNombreUnidad.trim().toLowerCase() === sanitized.trim().toLowerCase() && x.umeIdUnidadMedida !== unidadMedida?.umeIdUnidadMedida)) {
+      setNombreError('Ya existe una unidad con este nombre.');
+    }
   };
 
   const handleAbreviaturaChange = (val: string) => {
     const { sanitized, error: abrErr } = sanitizeAbreviatura(val);
     setAbreviatura(sanitized);
     setAbreviaturaError(abrErr);
+
+    if (!abrErr && sanitized && existentes.some((x) => x.umeAbreviatura.trim().toUpperCase() === sanitized.toUpperCase() && x.umeIdUnidadMedida !== unidadMedida?.umeIdUnidadMedida)) {
+      setAbreviaturaError('Ya existe una unidad con esta abreviatura.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,6 +98,18 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
 
     if (nombreError || abreviaturaError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.umeNombreUnidad.trim().toLowerCase() === nombreTrimmed.toLowerCase() && x.umeIdUnidadMedida !== unidadMedida?.umeIdUnidadMedida)) {
+      setNombreError('Ya existe una unidad con este nombre.');
+      setError('Por favor revise los campos con error.');
+      return;
+    }
+
+    if (existentes.some((x) => x.umeAbreviatura.trim().toUpperCase() === abreviaturaTrimmed.toUpperCase() && x.umeIdUnidadMedida !== unidadMedida?.umeIdUnidadMedida)) {
+      setAbreviaturaError('Ya existe una unidad con esta abreviatura.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -152,26 +176,30 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA UNIDAD"
-            required
-            placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA, UNIDAD..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            maxLength={50}
-            autoFocus
-            error={nombreError || undefined}
-          />
+          <FieldHint text={HINTS.unidad.nombre} chars={22} max={50}>
+            <TextInput
+              label="NOMBRE DE LA UNIDAD"
+              required
+              placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA, UNIDAD..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              maxLength={50}
+              autoFocus
+              error={nombreError || undefined}
+            />
+          </FieldHint>
 
-          <TextInput
-            label="ABREVIATURA / SÍMBOLO"
-            required
-            placeholder="Ej. KG, M, L, CJ, UND, M/S..."
-            value={abreviatura}
-            onChange={(e) => handleAbreviaturaChange(e.target.value)}
-            maxLength={10}
-            error={abreviaturaError || undefined}
-          />
+          <FieldHint text={HINTS.unidad.abreviatura} chars={10} max={10}>
+            <TextInput
+              label="ABREVIATURA / SÍMBOLO"
+              required
+              placeholder="Ej. KG, M, L, CJ, UND, M/S..."
+              value={abreviatura}
+              onChange={(e) => handleAbreviaturaChange(e.target.value)}
+              maxLength={10}
+              error={abreviaturaError || undefined}
+            />
+          </FieldHint>
 
           <div className="pt-1">
             <Checkbox

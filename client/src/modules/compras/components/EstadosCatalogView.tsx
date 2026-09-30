@@ -14,6 +14,7 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import type { IEstado, ICreateEstadoDTO, IUpdateEstadoDTO } from '@erp/contracts';
 import { EstadoClientService } from '../services/estadoClientService';
 import { EstadoModal } from './EstadoModal';
+import { ActionButton } from '../../../shared/components';
 
 export const EstadosCatalogView: React.FC = () => {
   const [estados, setEstados] = useState<IEstado[]>([]);
@@ -129,7 +130,7 @@ export const EstadosCatalogView: React.FC = () => {
             <span className="font-bold text-slate-800 text-sm block tracking-wide">
               {value}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-slate-600">
               Código interno: ID #{row.estIdEstado} • Catálogo Compras
             </span>
           </div>
@@ -151,22 +152,20 @@ export const EstadosCatalogView: React.FC = () => {
       cell: ({ row }: { row: IEstado }) => {
         return (
           <div className="flex items-center justify-end gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleOpenEdit(row)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            <ActionButton
+              icon={Edit2}
+              variant="edit"
+              label="Editar"
               title="Editar estado"
-            >
-              <Edit2 size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteEstado(row)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              onClick={() => handleOpenEdit(row)}
+            />
+            <ActionButton
+              icon={Trash2}
+              variant="delete"
+              label="Eliminar"
               title="Eliminar estado"
-            >
-              <Trash2 size={15} />
-            </button>
+              onClick={() => handleDeleteEstado(row)}
+            />
           </div>
         );
       },
@@ -245,7 +244,7 @@ export const EstadosCatalogView: React.FC = () => {
       {/* Search & Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por nombre o ID de estado..."
@@ -266,6 +265,7 @@ export const EstadosCatalogView: React.FC = () => {
 
       {/* Creation / Edition Modal */}
       <EstadoModal
+        existentes={estados}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveEstado}

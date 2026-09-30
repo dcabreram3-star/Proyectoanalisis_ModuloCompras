@@ -16,7 +16,7 @@ export class EstadoClientService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Error al obtener la lista de estados`);
+      throw new Error('Error al obtener la lista de estados. Intente de nuevo; si el problema continúa, contacte a soporte.');
     }
 
     const resData = await response.json();

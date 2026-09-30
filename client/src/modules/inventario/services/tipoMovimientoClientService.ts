@@ -17,7 +17,7 @@ export class TipoMovimientoClientService {
 
     const url = queryParams.toString() ? `${API_BASE}?${queryParams.toString()}` : API_BASE;
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: Error al obtener tipos de movimiento`);
+    if (!response.ok) throw new Error('Error al obtener tipos de movimiento. Intente de nuevo; si el problema continúa, contacte a soporte.');
     const resData = await response.json();
     return resData.data || [];
   }

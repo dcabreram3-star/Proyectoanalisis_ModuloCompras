@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Save, AlertCircle, Layers } from 'lucide-react';
 import { Button, TextInput } from '../../../components/ui';
-import { ILote, ICreateLoteDTO, IUpdateLoteDTO, EstadoLoteType } from '@erp/contracts';
+import { ILote, ICreateLoteDTO, IUpdateLoteDTO, EstadoLoteType, IArticulo } from '@erp/contracts';
 import { sanitizeStrictCode } from '../../../utils/sanitizers';
+import { AutocompleteSelect, FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface LoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateLoteDTO | IUpdateLoteDTO, id?: number) => Promise<void>;
   lote?: ILote | null;
+  existentes: ILote[];
+  articulos: IArticulo[];
 }
+
 
 export const LoteModal: React.FC<LoteModalProps> = ({
   isOpen,
   onClose,
   onSave,
   lote,
+  existentes,
+  articulos,
 }) => {
   const isEditing = Boolean(lote);
   const [numeroLote, setNumeroLote] = useState<string>('');
@@ -55,12 +62,19 @@ export const LoteModal: React.FC<LoteModalProps> = ({
     const { sanitized, error: numErr } = sanitizeStrictCode(val);
     setNumeroLote(sanitized);
     setNumeroLoteError(numErr);
+
+    if (!numErr && sanitized && existentes.some((x) => x.lotNumeroLote.trim().toUpperCase() === sanitized.toUpperCase() && x.lotCodigoArticulo === codigoArticulo.trim().toUpperCase() && x.lotIdLote !== lote?.lotIdLote)) {
+      setNumeroLoteError('Ya existe un lote con este número para este artículo.');
+    }
   };
 
-  const handleCodigoArticuloChange = (val: string) => {
-    const { sanitized, error: artErr } = sanitizeStrictCode(val);
-    setCodigoArticulo(sanitized);
-    setCodigoArticuloError(artErr);
+    const handleCodigoArticuloSelect = (val: string) => {
+    setCodigoArticulo(val);
+    setCodigoArticuloError(null);
+
+    if (numeroLote && existentes.some((x) => x.lotNumeroLote.trim().toUpperCase() === numeroLote.trim().toUpperCase() && x.lotCodigoArticulo === val && x.lotIdLote !== lote?.lotIdLote)) {
+      setNumeroLoteError('Ya existe un lote con este número para este artículo.');
+    }
   };
 
   const handleFechaProduccionChange = (val: string) => {
@@ -111,6 +125,12 @@ export const LoteModal: React.FC<LoteModalProps> = ({
     if (fechaProduccion && fechaVencimiento && new Date(fechaVencimiento).getTime() < new Date(fechaProduccion).getTime()) {
       setFechasError('La fecha de vencimiento no puede ser anterior a la de producción.');
       setError('Verifique las fechas ingresadas.');
+      return;
+    }
+
+    if (existentes.some((x) => x.lotNumeroLote.trim().toUpperCase() === numTrimmed.toUpperCase() && x.lotCodigoArticulo === artTrimmed && x.lotIdLote !== lote?.lotIdLote)) {
+      setNumeroLoteError('Ya existe un lote con este número para este artículo.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -170,67 +190,87 @@ export const LoteModal: React.FC<LoteModalProps> = ({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <TextInput
-              label="NÚMERO DE LOTE"
-              required
-              placeholder="Ej. LOT-2026-A1"
-              value={numeroLote}
-              onChange={(e) => handleNumeroLoteChange(e.target.value)}
-              maxLength={50}
-              autoFocus
-              error={numeroLoteError || undefined}
-            />
-            <TextInput
-              label="CÓDIGO ARTÍCULO"
-              required
-              placeholder="Ej. ART-001"
-              value={codigoArticulo}
-              onChange={(e) => handleCodigoArticuloChange(e.target.value)}
-              maxLength={20}
-              error={codigoArticuloError || undefined}
-            />
+            <FieldHint text={HINTS.lote.numero} chars={20} max={50}>
+              <TextInput
+                label="NÚMERO DE LOTE"
+                required
+                placeholder="Ej. LOT-2026-A1"
+                value={numeroLote}
+                onChange={(e) => handleNumeroLoteChange(e.target.value)}
+                maxLength={50}
+                autoFocus
+                error={numeroLoteError || undefined}
+              />
+            </FieldHint>
+            <FieldHint text={HINTS.lote.codigoArticulo}>
+              <div className="w-full flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-700 flex items-center">
+                  CÓDIGO ARTÍCULO
+                  <span className="text-red-500 ml-0.5" title="Campo requerido">*</span>
+                </label>
+                <AutocompleteSelect
+                  options={articulos}
+                  value={codigoArticulo}
+                  onChange={handleCodigoArticuloSelect}
+                  placeholder="Buscar artículo..."
+                  displayKey="ART_DESCRIPCION"
+                  valueKey="ART_CODIGO_ARTICULO"
+                />
+                {codigoArticuloError && (
+                  <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                    {codigoArticuloError}
+                  </span>
+                )}
+              </div>
+            </FieldHint>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                FECHA PRODUCCIÓN
-              </label>
-              <input
-                type="date"
-                value={fechaProduccion}
-                onChange={(e) => handleFechaProduccionChange(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                FECHA VENCIMIENTO
-              </label>
-              <input
-                type="date"
-                value={fechaVencimiento}
-                onChange={(e) => handleFechaVencimientoChange(e.target.value)}
-                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
-              />
-            </div>
+            <FieldHint text={HINTS.lote.fechaProduccion}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  FECHA PRODUCCIÓN
+                </label>
+                <input
+                  type="date"
+                  value={fechaProduccion}
+                  onChange={(e) => handleFechaProduccionChange(e.target.value)}
+                  className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
+                />
+              </div>
+            </FieldHint>
+            <FieldHint text={HINTS.lote.fechaVencimiento}>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  FECHA VENCIMIENTO
+                </label>
+                <input
+                  type="date"
+                  value={fechaVencimiento}
+                  onChange={(e) => handleFechaVencimientoChange(e.target.value)}
+                  className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
+                />
+              </div>
+            </FieldHint>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              ESTADO DEL LOTE
-            </label>
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as EstadoLoteType)}
-              className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
-            >
-              <option value="ACTIVO">ACTIVO (Disponible para uso y despacho)</option>
-              <option value="VENCIDO">VENCIDO (Caducado)</option>
-              <option value="BLOQUEADO">BLOQUEADO (En cuarentena o inspección)</option>
-              <option value="AGOTADO">AGOTADO (Sin existencias)</option>
-            </select>
-          </div>
+          <FieldHint text={HINTS.lote.estado}>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                ESTADO DEL LOTE
+              </label>
+              <select
+                value={estado}
+                onChange={(e) => setEstado(e.target.value as EstadoLoteType)}
+                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-600 font-medium"
+              >
+                <option value="ACTIVO">ACTIVO (Disponible para uso y despacho)</option>
+                <option value="VENCIDO">VENCIDO (Caducado)</option>
+                <option value="BLOQUEADO">BLOQUEADO (En cuarentena o inspección)</option>
+                <option value="AGOTADO">AGOTADO (Sin existencias)</option>
+              </select>
+            </div>
+          </FieldHint>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <Button variant="secondary" icon={X} onClick={onClose} disabled={isSubmitting} type="button">

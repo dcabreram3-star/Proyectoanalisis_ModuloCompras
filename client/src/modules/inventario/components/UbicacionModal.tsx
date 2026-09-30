@@ -4,12 +4,15 @@ import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IUbicacion, ICreateUbicacionDTO, IUpdateUbicacionDTO, IBodega } from '@erp/contracts';
 import { BodegaClientService } from '../services/bodegaClientService';
 import { sanitizeStrictCode } from '../../../utils/sanitizers';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface UbicacionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ICreateUbicacionDTO | IUpdateUbicacionDTO, id?: number) => Promise<void>;
   ubicacion?: IUbicacion | null;
+  existentes: IUbicacion[];
 }
 
 export const UbicacionModal: React.FC<UbicacionModalProps> = ({
@@ -17,6 +20,7 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
   onClose,
   onSave,
   ubicacion,
+  existentes,
 }) => {
   const isEditing = Boolean(ubicacion);
   const [bodegas, setBodegas] = useState<IBodega[]>([]);
@@ -74,6 +78,10 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
     const { sanitized, error: codErr } = sanitizeStrictCode(val);
     setCodigo(sanitized);
     setCodigoError(codErr);
+
+    if (!codErr && sanitized && existentes.some((x) => x.ubiCodigoUbicacion.trim().toUpperCase() === sanitized.toUpperCase() && x.ubiIdBodega === idBodega && x.ubiIdUbicacion !== ubicacion?.ubiIdUbicacion)) {
+      setCodigoError('Ya existe una ubicación con este código en esta bodega.');
+    }
   };
 
   const handlePasilloChange = (val: string) => {
@@ -111,6 +119,12 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
 
     if (codigoError || pasilloError || rackError || nivelError) {
       setError('Corrija los caracteres no válidos antes de continuar.');
+      return;
+    }
+
+    if (existentes.some((x) => x.ubiCodigoUbicacion.trim().toUpperCase() === codigoTrimmed.toUpperCase() && x.ubiIdBodega === idBodega && x.ubiIdUbicacion !== ubicacion?.ubiIdUbicacion)) {
+      setCodigoError('Ya existe una ubicación con este código en esta bodega.');
+      setError('Por favor revise los campos con error.');
       return;
     }
 
@@ -187,42 +201,50 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
             </select>
           </div>
 
-          <TextInput
-            label="CÓDIGO DE UBICACIÓN"
-            required
-            placeholder="Ej. A-01-R2, PAS-1-N3..."
-            value={codigo}
-            onChange={(e) => handleCodigoChange(e.target.value)}
-            maxLength={30}
-            autoFocus
-            error={codigoError || undefined}
-          />
+          <FieldHint text={HINTS.ubicacion.codigo} chars={22} max={30}>
+            <TextInput
+              label="CÓDIGO DE UBICACIÓN"
+              required
+              placeholder="Ej. A-01-R2, PAS-1-N3..."
+              value={codigo}
+              onChange={(e) => handleCodigoChange(e.target.value)}
+              maxLength={30}
+              autoFocus
+              error={codigoError || undefined}
+            />
+          </FieldHint>
 
           <div className="grid grid-cols-3 gap-2.5">
-            <TextInput
-              label="PASILLO"
-              placeholder="Ej. P1"
-              value={pasillo}
-              onChange={(e) => handlePasilloChange(e.target.value)}
-              maxLength={20}
-              error={pasilloError || undefined}
-            />
-            <TextInput
-              label="RACK"
-              placeholder="Ej. R2"
-              value={rack}
-              onChange={(e) => handleRackChange(e.target.value)}
-              maxLength={20}
-              error={rackError || undefined}
-            />
-            <TextInput
-              label="NIVEL"
-              placeholder="Ej. N3"
-              value={nivel}
-              onChange={(e) => handleNivelChange(e.target.value)}
-              maxLength={20}
-              error={nivelError || undefined}
-            />
+            <FieldHint text={HINTS.ubicacion.pasillo} chars={8} max={20}>
+              <TextInput
+                label="PASILLO"
+                placeholder="Ej. P1"
+                value={pasillo}
+                onChange={(e) => handlePasilloChange(e.target.value)}
+                maxLength={20}
+                error={pasilloError || undefined}
+              />
+            </FieldHint>
+            <FieldHint text={HINTS.ubicacion.rack} chars={8} max={20}>
+              <TextInput
+                label="RACK"
+                placeholder="Ej. R2"
+                value={rack}
+                onChange={(e) => handleRackChange(e.target.value)}
+                maxLength={20}
+                error={rackError || undefined}
+              />
+            </FieldHint>
+            <FieldHint text={HINTS.ubicacion.nivel} chars={8} max={20}>
+              <TextInput
+                label="NIVEL"
+                placeholder="Ej. N3"
+                value={nivel}
+                onChange={(e) => handleNivelChange(e.target.value)}
+                maxLength={20}
+                error={nivelError || undefined}
+              />
+            </FieldHint>
           </div>
 
           <div className="pt-1">

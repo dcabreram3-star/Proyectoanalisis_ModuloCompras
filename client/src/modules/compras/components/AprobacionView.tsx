@@ -17,6 +17,8 @@ import { Button, StatusBadge, TextArea } from '../../../components/ui';
 import { SolicitudOriginalCard, SolicitudOriginalInfo } from './SolicitudOriginalCard';
 import { SolicitudCompraClientService } from '../services/solicitudCompraClientService';
 import { ISolicitudCompraCompleta } from '@erp/contracts';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export interface AprobacionViewProps {
   solicitud: SolicitudOriginalInfo;
@@ -321,7 +323,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
             <Package size={20} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Artículos Solicitados</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Solicitados</p>
             <p className="text-xl font-bold text-slate-800">{totalItems} líneas</p>
           </div>
         </div>
@@ -331,7 +333,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
             <Layers size={20} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Unidades Solicitadas</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unidades Solicitadas</p>
             <p className="text-xl font-bold text-slate-800">{totalCantidadPedida} u.</p>
           </div>
         </div>
@@ -349,10 +351,10 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
             <FileCheck2 size={20} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Unidades a Aprobar</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unidades a Aprobar</p>
             <p className="text-xl font-bold text-slate-800">
               {totalCantidadAprobada} u.{' '}
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-xs font-medium text-slate-500">
                 ({totalCantidadPedida > 0 ? Math.round((totalCantidadAprobada / totalCantidadPedida) * 100) : 0}%)
               </span>
             </p>
@@ -411,14 +413,14 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-500">
                     <Loader2 size={24} className="animate-spin mx-auto mb-2 text-blue-600" />
                     Cargando artículos de la solicitud...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-500">
                     No se encontraron detalles de artículos asociados a esta solicitud.
                   </td>
                 </tr>
@@ -430,7 +432,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
                   return (
                     <tr key={item.idDetalle} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-xs">{idx + 1}</td>
+                      <td className="py-3.5 px-4 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
                       <td className="py-3.5 px-4 font-mono font-semibold text-slate-800">{item.codigoArticulo}</td>
                       <td className="py-3.5 px-4">
                         <span className="font-medium text-slate-900 block">{item.descripcion}</span>
@@ -488,7 +490,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-sm">{totalCantidadPedida}</td>
                   <td className="py-3 px-4 text-right font-mono text-sm text-blue-600">{totalCantidadAprobada}</td>
-                  <td className="py-3 px-4 text-center text-xs text-slate-400 font-normal">
+                  <td className="py-3 px-4 text-center text-xs text-slate-500 font-normal">
                     {totalItems} artículos
                   </td>
                 </tr>
@@ -609,25 +611,27 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  Motivo o Justificación del Rechazo <span className="text-red-500">*</span>
-                </label>
-                <TextArea
-                  value={motivoRechazo}
-                  onChange={(e) => {
-                    setMotivoRechazo(e.target.value);
-                    setRejectError(null);
-                  }}
-                  placeholder="Indica el motivo del rechazo (ej. presupuesto insuficiente, solicitud duplicada, especificaciones no conformes)..."
-                  rows={3}
-                />
-                {rejectError && (
-                  <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
-                    <AlertCircle size={13} /> {rejectError}
-                  </p>
-                )}
-              </div>
+              <FieldHint text={HINTS.rechazo.motivo}>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                    Motivo o Justificación del Rechazo <span className="text-red-500">*</span>
+                  </label>
+                  <TextArea
+                    value={motivoRechazo}
+                    onChange={(e) => {
+                      setMotivoRechazo(e.target.value);
+                      setRejectError(null);
+                    }}
+                    placeholder="Indica el motivo del rechazo (ej. presupuesto insuficiente, solicitud duplicada, especificaciones no conformes)..."
+                    rows={3}
+                  />
+                  {rejectError && (
+                    <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle size={13} /> {rejectError}
+                    </p>
+                  )}
+                </div>
+              </FieldHint>
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">

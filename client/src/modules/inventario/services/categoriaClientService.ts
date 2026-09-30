@@ -17,7 +17,7 @@ export class CategoriaClientService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Error al obtener categorías`);
+      throw new Error('Error al obtener categorías. Intente de nuevo; si el problema continúa, contacte a soporte.');
     }
 
     const resData = await response.json();

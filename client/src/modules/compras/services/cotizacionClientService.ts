@@ -29,7 +29,7 @@ export class CotizacionClientService {
     try {
       const response = await fetch(`${API_BASE}/proveedores`);
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Error al obtener proveedores de la BD`);
+        throw new Error('Error al obtener proveedores de la BD. Intente de nuevo; si el problema continúa, contacte a soporte.');
       }
       const resData = await response.json();
       return resData.data || [];
@@ -53,7 +53,7 @@ export class CotizacionClientService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Error al obtener cotizaciones de la BD`);
+        throw new Error('Error al obtener cotizaciones de la BD. Intente de nuevo; si el problema continúa, contacte a soporte.');
       }
 
       const resData = await response.json();
@@ -91,7 +91,7 @@ export class CotizacionClientService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status} al guardar cotización`;
+      const errorMessage = errorData.error || errorData.message || 'Error al guardar cotización. Intente de nuevo; si el problema continúa, contacte a soporte.';
       throw new Error(errorMessage);
     }
 
@@ -111,7 +111,7 @@ export class CotizacionClientService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status} al actualizar cotización`;
+      const errorMessage = errorData.error || errorData.message || 'Error al actualizar cotización. Intente de nuevo; si el problema continúa, contacte a soporte.';
       throw new Error(errorMessage);
     }
 
@@ -180,7 +180,7 @@ export class CotizacionClientService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status} al procesar matriz de cotizaciones`;
+      const errorMessage = errorData.error || errorData.message || 'Error al procesar matriz de cotizaciones. Intente de nuevo; si el problema continúa, contacte a soporte.';
       throw new Error(errorMessage);
     }
 
@@ -200,7 +200,7 @@ export class CotizacionClientService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status} al eliminar la cotización`;
+      const errorMessage = errorData.error || errorData.message || 'Error al eliminar la cotización. Intente de nuevo; si el problema continúa, contacte a soporte.';
       throw new Error(errorMessage);
     }
     return true;

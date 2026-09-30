@@ -15,6 +15,7 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import { IUbicacion, ICreateUbicacionDTO, IUpdateUbicacionDTO } from '@erp/contracts';
 import { UbicacionClientService } from '../services/ubicacionClientService';
 import { UbicacionModal } from './UbicacionModal';
+import { ActionButton } from '../../../shared/components';
 
 export const UbicacionesCatalogView: React.FC = () => {
   const [ubicaciones, setUbicaciones] = useState<IUbicacion[]>([]);
@@ -189,34 +190,27 @@ export const UbicacionesCatalogView: React.FC = () => {
       align: 'right' as const,
       cell: ({ row }: { row: IUbicacion }) => (
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          <ActionButton
+            icon={Edit2}
+            variant="edit"
+            label="Editar"
             title="Editar ubicación"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleActivo(row)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              row.ubiActivo === 1
-                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
+            onClick={() => handleOpenEdit(row)}
+          />
+          <ActionButton
+            icon={Power}
+            variant={row.ubiActivo === 1 ? 'deactivate' : 'activate'}
+            label={row.ubiActivo === 1 ? 'Desactivar ubicación' : 'Activar ubicación'}
             title={row.ubiActivo === 1 ? 'Desactivar ubicación' : 'Activar ubicación'}
-          >
-            <Power size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDeleteUbicacion(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            onClick={() => handleToggleActivo(row)}
+          />
+          <ActionButton
+            icon={Trash2}
+            variant="delete"
+            label="Eliminar"
             title="Eliminar ubicación"
-          >
-            <Trash2 size={15} />
-          </button>
+            onClick={() => handleDeleteUbicacion(row)}
+          />
         </div>
       ),
     },
@@ -267,7 +261,7 @@ export const UbicacionesCatalogView: React.FC = () => {
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar por código, bodega o coordenadas..."
@@ -303,7 +297,7 @@ export const UbicacionesCatalogView: React.FC = () => {
 
       <DataTable columns={columns} data={filteredUbicaciones} isLoading={isLoading} emptyText="No se encontraron ubicaciones registradas." />
 
-      <UbicacionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveUbicacion} ubicacion={editingUbicacion} />
+      <UbicacionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveUbicacion} ubicacion={editingUbicacion} existentes={ubicaciones} />
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

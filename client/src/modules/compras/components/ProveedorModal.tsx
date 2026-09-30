@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Building2, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import type { IProveedor, ICreateProveedorDTO, IUpdateProveedorDTO } from '@erp/contracts';
+import { FieldHint } from '../../../shared/components';
+import { HINTS } from '../../../shared/hints';
 
 export const PROVEEDOR_NIT_MIN_LENGTH = 8;
 export const PROVEEDOR_NIT_MAX_LENGTH = 13;
@@ -51,6 +53,7 @@ export interface ProveedorModalProps {
   onClose: () => void;
   onSave: (data: ICreateProveedorDTO | IUpdateProveedorDTO, id?: number) => Promise<void>;
   proveedor?: IProveedor | null;
+  existentes: IProveedor[];
 }
 
 export const ProveedorModal: React.FC<ProveedorModalProps> = ({
@@ -58,6 +61,7 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
   onClose,
   onSave,
   proveedor,
+  existentes,
 }) => {
   const isEditing = Boolean(proveedor);
   const [nombreEntidad, setNombreEntidad] = useState<string>('');
@@ -126,6 +130,8 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       setNitError(
         `La identificación (NIT / DPI) debe tener al menos ${PROVEEDOR_NIT_MIN_LENGTH} dígitos (actualmente tiene ${sanitized.length}).`
       );
+    } else if (sanitized && existentes.some((x) => x.proNit.trim() === sanitized && x.proIdProveedor !== proveedor?.proIdProveedor)) {
+      setNitError('Ya existe un proveedor registrado con este NIT.');
     } else {
       setNitError(null);
     }
@@ -161,6 +167,11 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       hasValidationErrors = true;
     } else {
       setNitError(null);
+    }
+
+    if (existentes.some((x) => x.proNit.trim() === trimmedNit.trim() && x.proIdProveedor !== proveedor?.proIdProveedor)) {
+      setNitError('Ya existe un proveedor registrado con este NIT.');
+      hasValidationErrors = true;
     }
 
     if (hasValidationErrors) {
@@ -230,27 +241,31 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE O RAZÓN SOCIAL"
-            required
-            placeholder="Ej. Distribuidora Central, S.A."
-            value={nombreEntidad}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            error={nombreError || undefined}
-            helperText="Solo se permiten letras, espacios, puntos y guiones. Caracteres como *, /, @, <, >, = están prohibidos."
-            autoFocus
-          />
+          <FieldHint text={HINTS.proveedor.nombre} chars={36} max={150}>
+            <TextInput
+              label="NOMBRE O RAZÓN SOCIAL"
+              required
+              placeholder="Ej. Distribuidora Central, S.A."
+              value={nombreEntidad}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              error={nombreError || undefined}
+              helperText="Solo se permiten letras, espacios, puntos y guiones. Caracteres como *, /, @, <, >, = están prohibidos."
+              autoFocus
+            />
+          </FieldHint>
 
-          <TextInput
-            label="NIT / DPI (IDENTIFICACIÓN TRIBUTARIA O PERSONAL)"
-            required
-            placeholder="Ej. 12345678 (8 a 13 dígitos)"
-            value={nit}
-            onChange={(e) => handleNitChange(e.target.value)}
-            error={nitError || undefined}
-            helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9). Los NITs no pueden iniciar con 0 (permitido para DPI de 13 dígitos)."
-            maxLength={PROVEEDOR_NIT_MAX_LENGTH}
-          />
+          <FieldHint text={HINTS.proveedor.nit} chars={15} max={20}>
+            <TextInput
+              label="NIT / DPI (IDENTIFICACIÓN TRIBUTARIA O PERSONAL)"
+              required
+              placeholder="Ej. 12345678 (8 a 13 dígitos)"
+              value={nit}
+              onChange={(e) => handleNitChange(e.target.value)}
+              error={nitError || undefined}
+              helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9). Los NITs no pueden iniciar con 0 (permitido para DPI de 13 dígitos)."
+              maxLength={PROVEEDOR_NIT_MAX_LENGTH}
+            />
+          </FieldHint>
 
           <div className="pt-1">
             <Checkbox

@@ -27,7 +27,7 @@ export class LoteService {
 
   static async crearLote(data: ICreateLoteDTO): Promise<ILote> {
     const numTrimmed = validateStrictCode(data.lotNumeroLote, 'número de lote', 50);
-    const artTrimmed = validateStrictCode(data.lotCodigoArticulo, 'código del artículo', 30);
+    const artTrimmed = validateStrictCode(data.lotCodigoArticulo, 'código del artículo', 20);
 
     const fechaProd = validateDateString(data.lotFechaProduccion, 'fecha de producción');
     const fechaVenc = validateDateString(data.lotFechaVencimiento, 'fecha de vencimiento');
@@ -64,7 +64,7 @@ export class LoteService {
 
     let art = actual.lotCodigoArticulo;
     if (data.lotCodigoArticulo !== undefined) {
-      art = validateStrictCode(data.lotCodigoArticulo, 'código del artículo', 30);
+      art = validateStrictCode(data.lotCodigoArticulo, 'código del artículo', 20);
       updatePayload.lotCodigoArticulo = art;
     }
 

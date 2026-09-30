@@ -58,21 +58,21 @@ export const CotizacionDetailModal: React.FC<CotizacionDetailModalProps> = ({
           {/* Key Metric Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Monto Total</span>
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Monto Total</span>
               <span className="text-lg font-extrabold text-slate-900">{formatCurrency(cotizacion.cotPrecioTotal)}</span>
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Proveedor ID</span>
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Proveedor ID</span>
               <span className="text-base font-bold text-slate-800">#{cotizacion.cotIdProveedor}</span>
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Estado Adjudicación</span>
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Estado Adjudicación</span>
               <div className="mt-1">
                 <StatusBadge status={cotizacion.cotEstadoAdjudicacion || 'PENDIENTE'} />
               </div>
             </div>
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Excepción Única</span>
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider block">Excepción Única</span>
               <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${cotizacion.cotEsExcepcionUnico ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-600'}`}>
                 {cotizacion.cotEsExcepcionUnico ? 'Sí' : 'No'}
               </span>
@@ -82,13 +82,13 @@ export const CotizacionDetailModal: React.FC<CotizacionDetailModalProps> = ({
           {/* Details list */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
-              <span className="text-slate-400 text-xs font-medium block">Tiempo de Entrega Estimado</span>
+              <span className="text-slate-500 text-xs font-medium block">Tiempo de Entrega Estimado</span>
               <span className="text-slate-800 font-semibold mt-0.5 block">
                 {cotizacion.cotTiempoEntregaDias ? `${cotizacion.cotTiempoEntregaDias} días hábiles` : 'No especificado'}
               </span>
             </div>
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
-              <span className="text-slate-400 text-xs font-medium block">Condición de Pago</span>
+              <span className="text-slate-500 text-xs font-medium block">Condición de Pago</span>
               <span className="text-slate-800 font-semibold mt-0.5 block">
                 {cotizacion.cotCondicionPagoDias ? `${cotizacion.cotCondicionPagoDias} días de crédito` : 'Contado'}
               </span>
@@ -120,8 +120,8 @@ export const CotizacionDetailModal: React.FC<CotizacionDetailModalProps> = ({
                 />
               </div>
             ) : (
-              <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center text-slate-400 bg-slate-50/50">
-                <FileText size={36} className="mx-auto text-slate-300 mb-2" />
+              <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center text-slate-500 bg-slate-50/50">
+                <FileText size={36} className="mx-auto text-slate-500 mb-2" />
                 <p className="text-xs font-medium">No se ha adjuntado un archivo PDF para esta cotización.</p>
               </div>
             )}

@@ -17,7 +17,7 @@ export class MarcaClientService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Error al obtener marcas`);
+      throw new Error('Error al obtener marcas. Intente de nuevo; si el problema continúa, contacte a soporte.');
     }
 
     const resData = await response.json();
