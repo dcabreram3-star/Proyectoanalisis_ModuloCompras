@@ -228,7 +228,7 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
                 Nuevo Traslado de Inventario
               </h3>
               <p className="text-xs text-slate-500">
-                Transferencia entre bodegas y despacho automático en Oracle DB
+                Transferencia entre bodegas y despacho automático
               </p>
             </div>
           </div>

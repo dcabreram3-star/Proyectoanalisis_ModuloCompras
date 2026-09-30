@@ -70,7 +70,7 @@ export const AuditoriaModal: React.FC<AuditoriaModalProps> = ({
                 Aperturar Auditoría de Inventario
               </h3>
               <p className="text-xs text-slate-500">
-                Toma física y congelamiento de existencias en Oracle DB
+                Toma física y congelamiento de existencias
               </p>
             </div>
           </div>

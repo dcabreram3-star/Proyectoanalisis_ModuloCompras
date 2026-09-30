@@ -185,7 +185,7 @@ export const EstadosCatalogView: React.FC = () => {
             Catálogo de Estados
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión de estados del ciclo de compras para solicitudes, órdenes de compra y facturas en Oracle DB
+            Gestión de estados del ciclo de compras para solicitudes, órdenes de compra y facturas
           </p>
         </div>
 

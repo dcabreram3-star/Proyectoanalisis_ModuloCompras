@@ -259,7 +259,7 @@ export const LotesCatalogView: React.FC = () => {
             Catálogo de Lotes
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión de lotes de producción, trazabilidad y control de caducidad en Oracle DB
+            Gestión de lotes de producción, trazabilidad y control de caducidad
           </p>
         </div>
         <div className="flex items-center gap-2.5">

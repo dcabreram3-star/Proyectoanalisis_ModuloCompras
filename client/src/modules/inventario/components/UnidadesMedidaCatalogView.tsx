@@ -233,7 +233,7 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
             Catálogo de Unidades de Medida
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión y estandarización de unidades de medida para compras e inventario en Oracle DB
+            Gestión y estandarización de unidades de medida para compras e inventario
           </p>
         </div>
 
@@ -253,7 +253,7 @@ export const UnidadesMedidaCatalogView: React.FC = () => {
           title="TOTAL UNIDADES"
           value={totalCount}
           icon={Layers}
-          changeLabel="registradas en Oracle"
+          changeLabel="en el sistema"
         />
         <StatCard
           title="UNIDADES ACTIVAS"

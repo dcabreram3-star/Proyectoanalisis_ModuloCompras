@@ -219,7 +219,7 @@ export const MarcasCatalogView: React.FC = () => {
             Catálogo de Marcas
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión y registro de marcas comerciales para artículos de inventario en Oracle DB
+            Gestión y registro de fabricantes y marcas comerciales
           </p>
         </div>
 
@@ -239,7 +239,7 @@ export const MarcasCatalogView: React.FC = () => {
           title="TOTAL MARCAS"
           value={totalCount}
           icon={Award}
-          changeLabel="registradas en Oracle"
+          changeLabel="en el sistema"
         />
         <StatCard
           title="MARCAS ACTIVAS"

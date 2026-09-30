@@ -256,7 +256,7 @@ export const BodegasCatalogView: React.FC = () => {
             Catálogo de Bodegas
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión y control de almacenes, centros de distribución y puntos de despacho en Oracle DB
+            Gestión y control de almacenes, centros de distribución y puntos de despacho
           </p>
         </div>
 
@@ -276,7 +276,7 @@ export const BodegasCatalogView: React.FC = () => {
           title="TOTAL BODEGAS"
           value={totalCount}
           icon={Warehouse}
-          changeLabel="registradas en Oracle"
+          changeLabel="en el sistema"
         />
         <StatCard
           title="BODEGAS ACTIVAS"

@@ -74,7 +74,7 @@ export const ArticulosCatalogView: React.FC = () => {
       setSuccessMsg(`Artículo "${codigo}" actualizado exitosamente.`);
     } else {
       await articuloService.crear(data as ICrearArticuloDTO);
-      setSuccessMsg('Artículo creado exitosamente en Oracle DB.');
+      setSuccessMsg('Artículo creado exitosamente.');
     }
     await loadData();
     setTimeout(() => setSuccessMsg(null), 4000);
@@ -295,7 +295,7 @@ export const ArticulosCatalogView: React.FC = () => {
             Catálogo de Artículos y Productos
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión centralizada de artículos, existencias globales y trazabilidad en Oracle DB
+            Gestión centralizada de artículos, existencias globales y trazabilidad
           </p>
         </div>
 

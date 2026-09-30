@@ -199,6 +199,9 @@ export interface ISolicitudCompra {
   solMontoTotalEstimado: number;
   solIdEstado: number;
   solNombreEstado?: string | null;
+  tieneCotizacionGanadora?: boolean;
+  tienePo?: boolean;
+  tieneRecepcion?: boolean;
 }
 
 export interface ISolicitudCompraFilterParams {
@@ -212,6 +215,9 @@ export interface ISolicitudCompraDetalleCreateDTO {
   cantidadPedida: number;
   isNuevo: boolean;
   nombreArticuloNuevo?: string;
+  idUnidadMedida?: number;
+  idCategoria?: number;
+  idMarca?: number;
 }
 
 export interface ISolicitudCompraCreateDTO {

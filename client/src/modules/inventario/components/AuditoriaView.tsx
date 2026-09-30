@@ -136,7 +136,7 @@ export const AuditoriaView: React.FC = () => {
         idUsuario: 3,
         detalles,
       });
-      setFeedbackMsg({ type: 'success', text: 'Auditoría guardada, ajustada y cerrada exitosamente en Oracle DB.' });
+      setFeedbackMsg({ type: 'success', text: 'Auditoría guardada, ajustada y cerrada exitosamente.' });
       setConfirmCierreModal({ isOpen: false, detallesConteo: [], sinContarCount: 0 });
       await cargarTomaActiva();
     } catch (error: any) {
@@ -324,7 +324,7 @@ export const AuditoriaView: React.FC = () => {
             No hay auditoría activa para {nombreBodegaActual}
           </h3>
           <p className="text-slate-500 max-w-md text-xs sm:text-sm mb-6 leading-relaxed">
-            Al aperturar una nueva auditoría física, el sistema congelará el saldo teórico de los artículos en Oracle para que el equipo de almacén proceda con el levantamiento físico de existencias.
+            Al aperturar una nueva auditoría física, el sistema congelará el saldo teórico de los artículos para que el equipo de almacén proceda con el levantamiento físico de existencias.
           </p>
           <Button
             variant="primary"

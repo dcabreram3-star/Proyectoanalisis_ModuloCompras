@@ -22,6 +22,7 @@ export interface AprobacionViewProps {
   solicitud: SolicitudOriginalInfo;
   onBack: () => void;
   onSuccess?: () => void;
+  onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
 }
 
 interface EditableDetalleItem {
