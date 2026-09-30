@@ -97,8 +97,8 @@ export const PIPELINE_STAGE_OPTIONS: PipelineStageOption[] = [
   { value: 'TODAS', label: 'Todas las Etapas (6)' },
   { value: 'aprobacion', label: '1. Aprobación Inicial', stageKey: 'aprobacion' },
   { value: 'matriz', label: '2. Matriz de Cotizaciones', stageKey: 'matriz' },
-  { value: 'seleccion', label: '3. Selección Financiera (PO)', stageKey: 'seleccion' },
-  { value: 'presupuesto', label: '4. Validación Presupuesto', stageKey: 'presupuesto' },
+  { value: 'seleccion', label: '3. Selección Financiera', stageKey: 'seleccion' },
+  { value: 'presupuesto', label: '4. Validación Presupuestaria', stageKey: 'presupuesto' },
   { value: 'bodega', label: '5. Recepción en Bodega', stageKey: 'bodega' },
   { value: '3way', label: '6. 3-Way Match / Liquidación', stageKey: '3way' },
 ];
@@ -121,34 +121,38 @@ export function isStatusRejected(status?: string | null): boolean {
 
 export function isStatusFullyComplete(status?: string | null): boolean {
   const norm = normalizeStatus(status);
-  return norm.includes('FINALIZ') || norm.includes('3WAY') || norm.includes('CERRAD') || norm.includes('LIQUID');
+  return norm.includes('FINALIZ') || norm.includes('COMPLETAD') || norm.includes('CERRAD') || norm.includes('LIQUID');
 }
 
 export function getStageIndexForStatus(status?: string | null): number {
   const norm = normalizeStatus(status);
-  if (!norm) return 1;
+  if (!norm) return 0;
 
   if (isStatusRejected(norm)) return 0;
+
+  // 1. Aprobación (Etapa 1)
   if (
     norm.includes('PENDIENTE') ||
     norm.includes('SOLICITAD') ||
-    norm.includes('REVISION') ||
-    norm.includes('APROBACION')
+    norm.includes('REVISION')
   ) {
     return 0;
   }
+
+  // 6. Finalizada / 3-Way Match & Liquidación (Etapa 6)
   if (
-    norm.includes('COTIZAD') ||
-    norm.includes('SELECCION') ||
-    norm.includes('EVALUAC') ||
-    norm.includes('EN_PROCESO') ||
-    norm.includes('PROCESO')
+    norm.includes('FINALIZ') ||
+    norm.includes('COMPLETAD') ||
+    norm.includes('3WAY') ||
+    norm.includes('MATCH') ||
+    norm.includes('FACTUR') ||
+    norm.includes('CERRAD') ||
+    norm.includes('LIQUID')
   ) {
-    return 2;
+    return 5;
   }
-  if (norm.includes('PRESUP') || norm.includes('ORDEN') || norm.includes('PO')) {
-    return 3;
-  }
+
+  // 5. Bodega / Recepción (Etapa 5)
   if (
     norm.includes('BODEGA') ||
     norm.includes('RECEPC') ||
@@ -157,21 +161,42 @@ export function getStageIndexForStatus(status?: string | null): number {
   ) {
     return 4;
   }
+
+  // 4. Presupuesto (Etapa 4)
   if (
-    norm.includes('3WAY') ||
-    norm.includes('MATCH') ||
-    norm.includes('FACTUR') ||
-    norm.includes('FINALIZ') ||
-    norm.includes('CERRAD') ||
-    norm.includes('LIQUID')
+    norm.includes('PRESUP') ||
+    norm.includes('ADJUDICAD') ||
+    norm.includes('EXCEPCION') ||
+    norm.includes('UNICO')
   ) {
-    return 5;
+    return 3;
   }
-  if (norm.includes('APROBAD') || norm.includes('COTIZ') || norm.includes('MATRIZ')) {
+
+  // 3. Selección Financiera (Etapa 3)
+  if (
+    norm.includes('SELECCION') ||
+    norm.includes('EVALUAC') ||
+    norm.includes('COTIZAD') ||
+    norm.includes('EN_PROCESO')
+  ) {
+    return 2;
+  }
+
+  // 2. Matriz de Cotizaciones (Etapa 2)
+  if (
+    norm === 'APROBADA' ||
+    norm === 'APROBADO' ||
+    norm.includes('MATRIZ') ||
+    norm.startsWith('APROBAD')
+  ) {
     return 1;
   }
 
-  return 1;
+  if (norm.includes('APROBACION')) {
+    return 0;
+  }
+
+  return 0;
 }
 
 // ─── Shared Summary Helper ──────────────────────────────────────────────────
@@ -215,9 +240,9 @@ export function getPipelineSummary(status?: string | null): PipelineSummary {
     stateBadgeText = 'Pendiente';
     stageSubtitle = 'Aprobación';
   } else {
-    const basePercentByStage = [16, 33, 50, 66, 83, 95];
+    const basePercentByStage = [16, 33, 50, 66, 83, 90];
     globalPercent = basePercentByStage[activeIndex] || 33;
-    const stageNames = ['Pendiente', 'Aprobada', 'Cotizada', 'Presupuesto', 'Recepción', 'Finalizada'];
+    const stageNames = ['Pendiente', 'Aprobada', 'Selección', 'Presupuesto', 'Recepción', '3-Way Match'];
     stateBadgeText = stageNames[activeIndex] || 'Aprobada';
     stageSubtitle = PIPELINE_STAGES[activeIndex]?.label || 'En Curso';
   }
@@ -244,9 +269,68 @@ export function getStageForSolicitud(solicitud: ISolicitudCompra): PipelineStage
   if ((solicitud as any).etapa && PIPELINE_STAGES.some((s) => s.key === (solicitud as any).etapa)) {
     return (solicitud as any).etapa as PipelineStageId;
   }
-  const estado = solicitud.solNombreEstado || 'Aprobada';
-  const idx = getStageIndexForStatus(estado);
-  return PIPELINE_STAGES[idx]?.key || 'matriz';
+
+  const estadoId = Number(solicitud.solIdEstado || 0);
+  const estadoNombre = (solicitud.solNombreEstado || '').toUpperCase();
+  const notas = (solicitud.solNotas || '').toUpperCase();
+
+  // 1. Si está rechazada -> Aprobación (Etapa 1 detenida)
+  if (estadoId === 6 || isStatusRejected(estadoNombre)) {
+    return 'aprobacion';
+  }
+
+  // 6. Etapa 6: Finalizada / 3-Way Match & Liquidación (Estado 5 o tiene recepción registrada)
+  if (
+    estadoId === 5 ||
+    solicitud.tieneRecepcion ||
+    estadoNombre.includes('FINALIZ') ||
+    estadoNombre.includes('COMPLETAD') ||
+    estadoNombre.includes('CERRAD') ||
+    estadoNombre.includes('3WAY') ||
+    estadoNombre.includes('LIQUID')
+  ) {
+    return '3way';
+  }
+
+  // 5. Etapa 5: Recepción en Bodega (Tiene PO emitida y aún no se ha recibido físicamente)
+  if (
+    estadoId === 4 ||
+    solicitud.tienePo ||
+    estadoNombre.includes('RECIBID') ||
+    estadoNombre.includes('BODEGA') ||
+    estadoNombre.includes('ALMACEN')
+  ) {
+    return 'bodega';
+  }
+
+  // 4. Etapa 4: Validación Presupuestaria y Emisión de PO (Proveedor Único / Adjudicada)
+  if (
+    estadoNombre.includes('PRESUP') ||
+    estadoNombre.includes('ADJUDICAD') ||
+    estadoNombre.includes('EXCEPCION') ||
+    (estadoId === 3 && (solicitud.tieneCotizacionGanadora || notas.includes('[ADJUDICADA') || notas.includes('EXCEPCION') || notas.includes('[PRESUPUESTO]')))
+  ) {
+    return 'presupuesto';
+  }
+
+  // 2. Etapa 2: Matriz de Cotizaciones (Estado 2 o APROBADA para cotizar)
+  if (estadoId === 2 || estadoNombre === 'APROBADA' || estadoNombre === 'APROBADO' || estadoNombre.includes('MATRIZ')) {
+    return 'matriz';
+  }
+
+  // 3. Etapa 3: Selección Financiera (Estado 3 o EN_PROCESO / COTIZADA / EVALUACION sin adjudicar aún)
+  if (
+    estadoId === 3 ||
+    estadoNombre.includes('EN_PROCESO') ||
+    estadoNombre.includes('COTIZAD') ||
+    estadoNombre.includes('SELECCION') ||
+    estadoNombre.includes('EVALUAC')
+  ) {
+    return 'seleccion';
+  }
+
+  // 1. Etapa 1: Aprobación Inicial (Estado 1 o PENDIENTE / SOLICITADA / REVISION)
+  return 'aprobacion';
 }
 
 export type StageState = 'done' | 'active' | 'pending' | 'blocked' | 'rejected';
@@ -255,11 +339,13 @@ export function getStageState(
   stageIndex: number,
   activeIndex: number,
   isRejected: boolean,
+  isComplete: boolean = false,
 ): StageState {
   if (isRejected) {
     if (stageIndex === 0) return 'rejected';
     return 'blocked';
   }
+  if (isComplete) return 'done';
   if (stageIndex < activeIndex) return 'done';
   if (stageIndex === activeIndex) return 'active';
   return 'pending';
@@ -296,9 +382,9 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full flex items-center gap-1">
             <Clock className="w-3 h-3" /> Pendiente
           </span>
-        ) : isComplete ? (
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-100 text-emerald-700 border border-green-200 rounded-full flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Finalizada
+        ) : isComplete || activeIndex === 5 ? (
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full flex items-center gap-1 shadow-2xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Finalizada
           </span>
         ) : (
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-full flex items-center gap-1">
@@ -357,7 +443,7 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
       {/* Stage list */}
       <div className="flex flex-col gap-1">
         {PIPELINE_STAGES.map((stage, idx) => {
-          const state = getStageState(idx, activeIndex, isRejected);
+          const state = getStageState(idx, activeIndex, isRejected, isComplete);
           const isDone = state === 'done';
           const isActive = state === 'active';
           const isBlocked = state === 'blocked';
@@ -580,7 +666,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`group inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-left transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
+        className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-left transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
           isOpen
             ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-100 shadow-sm'
             : summary.isRejected
@@ -588,7 +674,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
             : summary.isPending
             ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-amber-50/80'
             : summary.isComplete
-            ? 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-300 hover:bg-emerald-50/80'
+            ? 'border-emerald-300 bg-emerald-50/80 hover:border-emerald-400 hover:bg-emerald-100/80 text-emerald-900'
             : 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/70'
         }`}
         title="Clic para ver ciclo de vida completo de la compra"
@@ -619,14 +705,14 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
           </>
         ) : summary.isComplete ? (
           <>
-            <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md text-[11px] bg-emerald-100 text-emerald-700 font-bold">
-              <CheckCircle2 className="w-3 h-3" />
+            <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md text-[11px] bg-emerald-100 text-emerald-700 font-bold shadow-2xs">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             </span>
-            <span className="text-[11px] font-bold text-emerald-900 leading-none">
-              3-Way Match
+            <span className="text-[11px] font-bold text-emerald-800 leading-none">
+              Finalizada
             </span>
-            <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1 py-0.5 rounded leading-none">
-              6/6
+            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300/80 px-1.5 py-0.5 rounded-full leading-none shadow-2xs">
+              Completada
             </span>
           </>
         ) : (

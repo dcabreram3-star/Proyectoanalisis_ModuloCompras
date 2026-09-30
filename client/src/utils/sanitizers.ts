@@ -128,3 +128,61 @@ export function sanitizeNumericDigits(val: string): {
     error: hasInvalid ? 'Solo se permiten dígitos numéricos (0-9).' : null,
   };
 }
+
+/**
+ * Sanea y valida en caliente placas vehiculares (ej: P-123ABC, C-456DEF, P123ABC)
+ */
+export function sanitizePlaca(val: string): {
+  sanitized: string;
+  hasForbidden: boolean;
+  error: string | null;
+} {
+  const upper = val.toUpperCase();
+  const hasInvalid = /[^A-Z0-9\-]/.test(upper);
+  const sanitized = upper.replace(/[^A-Z0-9\-]/g, '');
+
+  return {
+    sanitized,
+    hasForbidden: hasInvalid,
+    error: hasInvalid ? 'Solo se permiten letras mayúsculas, números y guiones.' : null,
+  };
+}
+
+/**
+ * Sanea y valida en caliente DPI de Guatemala (Exactamente 13 dígitos numéricos)
+ */
+export function sanitizeDpiGuatemala(val: string): {
+  sanitized: string;
+  hasForbidden: boolean;
+  error: string | null;
+} {
+  const hasInvalid = /\D/.test(val);
+  // Limitar a máximo 13 dígitos
+  const sanitized = val.replace(/\D/g, '').slice(0, 13);
+
+  let error: string | null = null;
+  if (hasInvalid) {
+    error = 'El DPI solo permite números (sin letras ni caracteres especiales).';
+  } else if (sanitized.length > 0 && sanitized.length < 13) {
+    error = `El DPI debe tener 13 dígitos (llevas ${sanitized.length}).`;
+  }
+
+  return {
+    sanitized,
+    hasForbidden: hasInvalid,
+    error,
+  };
+}
+
+/**
+ * Valida fecha de vencimiento de licencia (no vencida)
+ */
+export function validateLicenciaVencimiento(fechaStr: string): string | null {
+  if (!fechaStr) return 'La fecha de vencimiento de licencia es obligatoria.';
+  const today = new Date().toISOString().slice(0, 10);
+  if (fechaStr < today) {
+    return `La licencia ya está vencida (${fechaStr}). Ingrese una fecha de vigencia válida.`;
+  }
+  return null;
+}
+

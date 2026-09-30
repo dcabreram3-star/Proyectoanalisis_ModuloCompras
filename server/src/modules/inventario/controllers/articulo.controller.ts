@@ -11,10 +11,17 @@ import {
 
 export class ArticuloController {
   
-  // GET: Obtener todos
+  // GET: Obtener todos (con filtro opcional de solo activos)
   static async obtenerTodos(req: Request, res: Response) {
     try {
-      const articulos = await ArticuloRepository.obtenerTodos();
+      const { soloActivos, activo } = req.query;
+      const soloActivosBool = soloActivos === 'true' || soloActivos === '1';
+      const activoNum = activo !== undefined ? Number(activo) : undefined;
+
+      const articulos = await ArticuloRepository.obtenerTodos({
+        soloActivos: soloActivosBool,
+        activo: activoNum,
+      });
       res.json(articulos);
     } catch (error) {
       console.error('[ArticuloController] Error en obtenerTodos:', error);
@@ -142,4 +149,16 @@ export class ArticuloController {
       }
     }
   }
+
+  // GET: Obtener siguiente código disponible
+  static async obtenerSiguienteCodigo(req: Request, res: Response) {
+    try {
+      const siguienteCodigo = await ArticuloRepository.obtenerSiguienteCodigo();
+      res.json({ codigo: siguienteCodigo });
+    } catch (error: any) {
+      console.error('[ArticuloController] Error en obtenerSiguienteCodigo:', error);
+      res.status(500).json({ message: error.message || 'Error al calcular el siguiente código de artículo.' });
+    }
+  }
 }
+

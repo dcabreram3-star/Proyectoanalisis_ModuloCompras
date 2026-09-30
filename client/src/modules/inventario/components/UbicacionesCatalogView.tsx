@@ -233,7 +233,7 @@ export const UbicacionesCatalogView: React.FC = () => {
             Catálogo de Ubicaciones
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Control de pasillos, racks y niveles de almacenamiento por bodega en Oracle DB
+            Control de pasillos, racks y niveles de almacenamiento por bodega
           </p>
         </div>
         <div className="flex items-center gap-2.5">

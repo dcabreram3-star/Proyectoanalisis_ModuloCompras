@@ -244,7 +244,7 @@ export const TiposMovimientoCatalogView: React.FC = () => {
             Tipos de Movimiento de Inventario
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Configuración de reglas de entrada y salida, naturaleza y afectación de costos en Oracle DB
+            Configuración de reglas de entrada y salida, naturaleza y afectación de costos
           </p>
         </div>
         <div className="flex items-center gap-2.5">

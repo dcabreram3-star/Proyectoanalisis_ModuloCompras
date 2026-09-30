@@ -219,7 +219,7 @@ export const CategoriasCatalogView: React.FC = () => {
             Catálogo de Categorías
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión y clasificación de artículos de inventario en la base de datos Oracle
+            Gestión y clasificación de artículos de inventario y compras
           </p>
         </div>
 
@@ -239,7 +239,7 @@ export const CategoriasCatalogView: React.FC = () => {
           title="TOTAL CATEGORÍAS"
           value={totalCount}
           icon={Layers}
-          changeLabel="registradas en Oracle"
+          changeLabel="en el sistema"
         />
         <StatCard
           title="CATEGORÍAS ACTIVAS"

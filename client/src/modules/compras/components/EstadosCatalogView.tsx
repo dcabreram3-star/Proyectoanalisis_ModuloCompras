@@ -256,7 +256,7 @@ export const EstadosCatalogView: React.FC = () => {
             Catálogo de Estados
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión de estados del ciclo de compras para solicitudes, órdenes de compra y facturas en Oracle DB
+            Gestión de estados del ciclo de compras para solicitudes, órdenes de compra y facturas
           </p>
         </div>
 
@@ -386,7 +386,7 @@ export const EstadosCatalogView: React.FC = () => {
         onConfirm={handleConfirmDelete}
         title="¿Estás seguro de eliminar este estado?"
         itemName={estadoToDelete ? estadoToDelete.estNombreEstado : ''}
-        description="Si posee solicitudes, cotizaciones, órdenes de compra o facturas asociadas no podrá ser eliminado para garantizar la integridad referencial en Oracle DB."
+        description="Si posee solicitudes, cotizaciones, órdenes de compra o facturas asociadas no podrá ser eliminado para garantizar la integridad referencial del sistema."
         confirmText="Eliminar Estado"
         isLoading={isDeleting}
       />
