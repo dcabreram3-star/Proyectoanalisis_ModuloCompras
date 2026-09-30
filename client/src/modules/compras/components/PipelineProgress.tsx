@@ -132,20 +132,29 @@ export function isStatusRejected(status?: string | null, notas?: string | null):
 export function isStatusFullyComplete(status?: string | null, notas?: string | null): boolean {
   if (isStatusRejected(status, notas)) return false;
   const norm = normalizeStatus(status);
-  return (
-    norm.includes('FINALIZ') ||
-    norm.includes('3WAY') ||
-    norm.includes('LIQUID') ||
-    (norm.includes('CERRAD') && !isStatusRejected(status, notas))
-  );
+  const normNotas = normalizeStatus(notas);
+
+  // Nadie aparece como Finalizada/Completada a menos que esté formalmente cerrada o liquidada
+  const isExplicitlyFinal =
+    norm === 'FINALIZADA' ||
+    norm === 'FINALIZADO' ||
+    norm === 'CERRADA' ||
+    norm === 'CERRADO' ||
+    norm === 'LIQUIDADA' ||
+    norm === 'LIQUIDADO' ||
+    normNotas.includes('[3-WAY MATCH LIQUIDADO]') ||
+    normNotas.includes('[LIQUIDADA]');
+
+  return isExplicitlyFinal && !isStatusRejected(status, notas);
 }
 
 export function getStageIndexForStatus(status?: string | null, notas?: string | null): number {
   if (isStatusRejected(status, notas)) return 0;
   const norm = normalizeStatus(status);
+  const normNotas = normalizeStatus(notas);
   if (!norm) return 0;
 
-  if (isStatusRejected(norm)) return 0;
+  if (isStatusRejected(norm, notas)) return 0;
 
   // 1. Aprobación (Etapa 1)
   if (
@@ -164,7 +173,8 @@ export function getStageIndexForStatus(status?: string | null, notas?: string | 
     norm.includes('MATCH') ||
     norm.includes('FACTUR') ||
     norm.includes('CERRAD') ||
-    norm.includes('LIQUID')
+    norm.includes('LIQUID') ||
+    normNotas.includes('[3-WAY MATCH')
   ) {
     return 5;
   }
@@ -174,7 +184,8 @@ export function getStageIndexForStatus(status?: string | null, notas?: string | 
     norm.includes('BODEGA') ||
     norm.includes('RECEPC') ||
     norm.includes('ALMACEN') ||
-    norm.includes('RECIBID')
+    norm.includes('RECIBID') ||
+    normNotas.includes('[RECEPCION BODEGA')
   ) {
     return 4;
   }
@@ -184,7 +195,9 @@ export function getStageIndexForStatus(status?: string | null, notas?: string | 
     norm.includes('PRESUP') ||
     norm.includes('ADJUDICAD') ||
     norm.includes('EXCEPCION') ||
-    norm.includes('UNICO')
+    norm.includes('UNICO') ||
+    normNotas.includes('[ADJUDICADA') ||
+    normNotas.includes('[PRESUPUESTO')
   ) {
     return 3;
   }
@@ -256,8 +269,13 @@ export function getPipelineSummary(status?: string | null, notas?: string | null
     globalPercent = 16;
     stateBadgeText = 'Pendiente';
     stageSubtitle = 'Aprobación';
+  } else if (activeIndex === 5) {
+    // En etapa 6 (3-Way Match) pero aún pendiente de liquidación formal
+    globalPercent = 88;
+    stateBadgeText = '3-Way Match';
+    stageSubtitle = 'Cotejo Documental';
   } else {
-    const basePercentByStage = [16, 33, 50, 66, 83, 100];
+    const basePercentByStage = [16, 33, 50, 66, 83, 88];
     globalPercent = basePercentByStage[activeIndex] || 33;
     const stageNames = ['Pendiente', 'Aprobada', 'Selección', 'Presupuesto', 'Recepción', '3-Way Match'];
     stateBadgeText = stageNames[activeIndex] || 'Aprobada';
@@ -266,7 +284,7 @@ export function getPipelineSummary(status?: string | null, notas?: string | null
 
   return {
     activeIndex,
-    stepNumber: isRejected ? 0 : activeIndex + 1,
+    stepNumber: isRejected ? 0 : (isComplete ? totalSteps : activeIndex + 1),
     totalSteps,
     stage: PIPELINE_STAGES[activeIndex] || PIPELINE_STAGES[0],
     globalPercent,
@@ -275,7 +293,7 @@ export function getPipelineSummary(status?: string | null, notas?: string | null
     isPending,
     stateBadgeText,
     stageSubtitle,
-    statusLabel: isRejected ? 'RECHAZADA' : (raw || stateBadgeText.toUpperCase()),
+    statusLabel: isRejected ? 'RECHAZADA' : isComplete ? 'FINALIZADA' : (raw || stateBadgeText.toUpperCase()),
   };
 }
 
@@ -412,9 +430,13 @@ export const PipelineProgressCard: React.FC<PipelineProgressCardProps> = ({
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full flex items-center gap-1">
             <Clock className="w-3 h-3" /> Pendiente
           </span>
-        ) : isComplete || activeIndex === 5 ? (
+        ) : isComplete ? (
           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full flex items-center gap-1 shadow-2xs">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Finalizada
+          </span>
+        ) : activeIndex === 5 ? (
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-full flex items-center gap-1 shadow-2xs">
+            <ScrollText className="w-3.5 h-3.5 text-indigo-600" /> 3-Way Matching
           </span>
         ) : (
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-full flex items-center gap-1">
@@ -701,7 +723,9 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
               ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-amber-50/80'
               : summary.isComplete
                 ? 'border-emerald-300 bg-emerald-50/80 hover:border-emerald-400 hover:bg-emerald-100/80 text-emerald-900'
-                : 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/70'
+                : activeIndex === 5
+                  ? 'border-indigo-300 bg-indigo-50/70 hover:border-indigo-400 hover:bg-indigo-100/80 text-indigo-900'
+                  : 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/70'
           }`}
         title="Clic para ver ciclo de vida completo de la compra"
       >
@@ -739,6 +763,18 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
             </span>
             <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300/80 px-1.5 py-0.5 rounded-full leading-none shadow-2xs">
               Completada
+            </span>
+          </>
+        ) : activeIndex === 5 ? (
+          <>
+            <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md text-[11px] bg-indigo-100 text-indigo-700 font-bold shadow-2xs">
+              <ScrollText className="w-3.5 h-3.5 text-indigo-600" />
+            </span>
+            <span className="text-[11px] font-bold text-indigo-900 leading-none">
+              3-Way Matching
+            </span>
+            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded-full leading-none shadow-2xs">
+              6/6
             </span>
           </>
         ) : (

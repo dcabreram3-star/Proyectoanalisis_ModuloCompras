@@ -38,17 +38,28 @@ function mapRowToSolicitud(row: ISolicitudCompraDbRow): ISolicitudCompra {
   const tienePo = Number(row.TIENE_PO || 0) > 0;
   const tieneRecepcion = Number(row.TIENE_RECEPCION || 0) > 0;
 
-  let nombreEstado = row.EST_NOMBRE_ESTADO ? String(row.EST_NOMBRE_ESTADO) : 'APROBADA';
+  const rawEstado = row.EST_NOMBRE_ESTADO ? String(row.EST_NOMBRE_ESTADO).trim() : '';
+  const rawNotas = row.SOL_NOTAS ? String(row.SOL_NOTAS).trim() : null;
   const estadoId = Number(row.SOL_ID_ESTADO || 0);
-  const notas = (row.SOL_NOTAS || '').toUpperCase();
+  const notasUpper = (rawNotas || '').toUpperCase();
+  const estadoUpper = rawEstado.toUpperCase();
 
-  if (estadoId === 5 || nombreEstado === 'CERRADA' || nombreEstado === 'FINALIZADA') {
+  // Detección estricta de estado Rechazada por nombre de estado o notas
+  let nombreEstado = rawEstado || 'PENDIENTE';
+  if (
+    estadoUpper.includes('RECHAZAD') ||
+    estadoUpper.includes('DENEGAD') ||
+    estadoUpper.includes('CANCELAD') ||
+    (rawNotas && (rawNotas.includes('[RECHAZADA]') || notasUpper.includes('RECHAZADA')))
+  ) {
+    nombreEstado = 'RECHAZADA';
+  } else if (estadoId === 5 || estadoUpper === 'CERRADA' || estadoUpper === 'FINALIZADA') {
     nombreEstado = 'FINALIZADA';
   } else if (tieneRecepcion) {
     nombreEstado = '3WAY_MATCH';
   } else if (estadoId === 4 || tienePo) {
     nombreEstado = 'RECIBIDA';
-  } else if (estadoId === 3 && (tieneCotGanadora || notas.includes('ADJUDICAD') || notas.includes('EXCEPCION') || notas.includes('PRESUPUESTO'))) {
+  } else if (estadoId === 3 && (tieneCotGanadora || notasUpper.includes('ADJUDICAD') || notasUpper.includes('EXCEPCION') || notasUpper.includes('PRESUPUESTO'))) {
     nombreEstado = 'PRESUPUESTO';
   }
 

@@ -36,6 +36,7 @@ import {
   PipelineStageId,
   getStageForSolicitud,
   isStatusRejected,
+  isStatusFullyComplete,
   PIPELINE_STAGE_OPTIONS,
 } from './components/PipelineProgress';
 import { PipelineOverview } from './components/PipelineOverview';
@@ -101,7 +102,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   }, [activeStageView?.stage, activeStageView?.solicitud?.solNoDocumento]);
 
   // Modal para creación de nueva solicitud dentro de Registros
+  // Modal para creación de nueva solicitud dentro de Registros
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
+  // Ámbito de visualización de registros: 'activas' (por defecto) vs 'finalizadas' (historial)
+  const [viewScope, setViewScope] = useState<'activas' | 'finalizadas'>('activas');
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -134,9 +139,33 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     loadData();
   }, [currentSection]);
 
+  // Conteos por ámbito
+  const activasCount = useMemo(() => {
+    return solicitudes.filter((s) => !isStatusFullyComplete(s.solNombreEstado, s.solNotas)).length;
+  }, [solicitudes]);
+
+  const finalizadasCount = useMemo(() => {
+    return solicitudes.filter((s) => isStatusFullyComplete(s.solNombreEstado, s.solNotas)).length;
+  }, [solicitudes]);
+
+  // Solicitudes activas para el PipelineOverview
+  const activasSolicitudes = useMemo(() => {
+    return solicitudes.filter((s) => !isStatusFullyComplete(s.solNombreEstado, s.solNotas));
+  }, [solicitudes]);
+
   // Filtered dataset
   const filteredSolicitudes = useMemo(() => {
     return solicitudes.filter((item) => {
+      const isComplete = isStatusFullyComplete(item.solNombreEstado, item.solNotas);
+
+      // Separación estricta por pestaña/ámbito
+      if (viewScope === 'activas' && isComplete) {
+        return false;
+      }
+      if (viewScope === 'finalizadas' && !isComplete) {
+        return false;
+      }
+
       const queryLower = searchQuery.toLowerCase();
       const matchSearch =
         !searchQuery ||
@@ -160,7 +189,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
       return matchSearch && matchEstado && matchEtapa;
     });
-  }, [solicitudes, searchQuery, filterEstado, filterEtapa]);
+  }, [solicitudes, viewScope, searchQuery, filterEstado, filterEtapa]);
 
   // Paginated dataset
   const totalPages = Math.ceil(filteredSolicitudes.length / itemsPerPage) || 1;
@@ -170,14 +199,14 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   }, [filteredSolicitudes, currentPage, itemsPerPage]);
 
   // Stat metrics
-  const totalCount = solicitudes.length;
+  const totalCount = viewScope === 'activas' ? activasCount : finalizadasCount;
   const aprobadasCount = solicitudes.filter(
     (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
   ).length;
   const pendientesCount = solicitudes.filter(
     (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
   ).length;
-  const totalMontoEstimado = solicitudes.reduce((acc, curr) => acc + (curr.solMontoTotalEstimado || 0), 0);
+  const totalMontoEstimado = filteredSolicitudes.reduce((acc, curr) => acc + (curr.solMontoTotalEstimado || 0), 0);
 
   // Convert ISolicitudCompra to SolicitudOriginalInfo for stage sub-views
   const getSolicitudInfoForMatriz = (sol: ISolicitudCompra): SolicitudOriginalInfo => {
@@ -246,20 +275,31 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       cell: ({ row }: { row: ISolicitudCompra }) => {
         const est = (row.solNombreEstado || 'Pendiente').toUpperCase();
         let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+        let displayLabel = row.solNombreEstado || 'Pendiente';
 
-        if (est.startsWith('APROBAD')) {
-          colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        } else if (est.startsWith('PENDIENT')) {
-          colorClasses = 'bg-amber-50 text-amber-700 border-amber-200';
-        } else if (est.startsWith('RECHAZAD')) {
-          colorClasses = 'bg-red-50 text-red-700 border-red-200';
+        if (est.startsWith('FINALIZAD') || est === 'CERRADA' || est === 'LIQUIDADA') {
+          colorClasses = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
+          displayLabel = 'FINALIZADA';
+        } else if (est.includes('3WAY') || est.includes('MATCH')) {
+          colorClasses = 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold';
+          displayLabel = '3-WAY MATCH';
+        } else if (est.startsWith('RECIBID') || est.includes('BODEGA')) {
+          colorClasses = 'bg-cyan-50 text-cyan-700 border-cyan-200 font-semibold';
+        } else if (est.includes('PRESUP') || est.includes('ADJUDICAD')) {
+          colorClasses = 'bg-purple-50 text-purple-700 border-purple-200 font-semibold';
+        } else if (est.startsWith('APROBAD')) {
+          colorClasses = 'bg-blue-50 text-blue-700 border-blue-200 font-semibold';
+        } else if (est.startsWith('PENDIENT') || est.startsWith('SOLICITAD')) {
+          colorClasses = 'bg-amber-50 text-amber-700 border-amber-200 font-semibold';
+        } else if (est.startsWith('RECHAZAD') || est.startsWith('DENEGAD') || est.startsWith('CANCELAD')) {
+          colorClasses = 'bg-rose-50 text-rose-700 border-rose-200 font-semibold';
         }
 
         return (
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${colorClasses}`}
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] border ${colorClasses}`}
           >
-            {row.solNombreEstado || 'Pendiente'}
+            {displayLabel}
           </span>
         );
       },
@@ -287,6 +327,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       align: 'center' as const,
       cell: ({ row }: { row: ISolicitudCompra }) => {
         const currentStage = getStageForSolicitud(row);
+        const isComplete = isStatusFullyComplete(row.solNombreEstado, row.solNotas);
         return (
           <Button
             variant="ghost"
@@ -295,9 +336,13 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               e.stopPropagation();
               setActiveStageView({ stage: currentStage, solicitud: row });
             }}
-            className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+            className={`text-xs font-semibold ${
+              isComplete
+                ? 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50'
+                : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+            }`}
           >
-            Gestionar <ArrowRight size={13} className="ml-1" />
+            {isComplete ? 'Ver Detalle' : 'Gestionar'} <ArrowRight size={13} className="ml-1" />
           </Button>
         );
       },
@@ -913,9 +958,76 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             </div>
           )}
 
-          {/* Pipeline de las 6 etapas interactivo */}
+          {/* Selector de Ámbito / Pestañas de Registros: Activas / En Proceso vs. Historial / Finalizadas */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
+            <div className="inline-flex p-1 bg-slate-100/90 rounded-xl gap-1 border border-slate-200/70">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewScope('activas');
+                  setFilterEtapa('TODAS');
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewScope === 'activas'
+                    ? 'bg-white text-blue-700 shadow-sm border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Activity size={15} className={viewScope === 'activas' ? 'text-blue-600' : 'text-slate-400'} />
+                <span>Activas / En Proceso</span>
+                <span
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                    viewScope === 'activas'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {activasCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setViewScope('finalizadas');
+                  setFilterEtapa('TODAS');
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewScope === 'finalizadas'
+                    ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <CheckCircle2 size={15} className={viewScope === 'finalizadas' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>Historial / Finalizadas</span>
+                <span
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                    viewScope === 'finalizadas'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {finalizadasCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Texto de estado contextual */}
+            <div className="text-xs text-slate-500 px-2 flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${viewScope === 'activas' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`} />
+              {viewScope === 'activas' ? (
+                <span>Bandeja operativa: procesos vigentes desde Aprobación hasta 3-Way Matching</span>
+              ) : (
+                <span>Repositorio histórico: solicitudes formalmente liquidadas para consulta y auditoría</span>
+              )}
+            </div>
+          </div>
+
+          {/* Pipeline de las 6 etapas interactivo (enfocado en el flujo activo) */}
           <PipelineOverview
-            registros={solicitudes}
+            registros={viewScope === 'activas' ? activasSolicitudes : solicitudes}
             activeStage={filterEtapa}
             onStageClick={(stg) => {
               setFilterEtapa(stg);
@@ -978,6 +1090,8 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
                 <option value="TODOS">Todos los Estados</option>
                 <option value="PENDIENTE">PENDIENTE</option>
                 <option value="APROBADA">APROBADA</option>
+                <option value="3WAY_MATCH">3-WAY MATCH</option>
+                <option value="FINALIZADA">FINALIZADA</option>
                 <option value="RECHAZADA">RECHAZADA</option>
               </select>
 
@@ -1009,7 +1123,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               const defaultStage = getStageForSolicitud(sol);
               setActiveStageView({ stage: defaultStage, solicitud: sol });
             }}
-            emptyText="No se encontraron solicitudes de compra en la base de datos."
+            emptyText={
+              viewScope === 'activas'
+                ? 'No se encontraron solicitudes de compra activas en curso actualmente.'
+                : 'No se encontraron solicitudes finalizadas en el historial.'
+            }
           />
 
           {/* Pagination Footer */}
