@@ -287,10 +287,11 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
 
   // Manejadores de cambios en la tabla de inspección
   const handleQuantityChange = (codigoArticulo: string, val: number) => {
+    const intVal = Number.isInteger(val) ? val : Math.trunc(val || 0);
     setItemsInspection((prev) =>
       prev.map((item) => {
         if (item.codigoArticulo === codigoArticulo) {
-          const clamped = Math.max(0, Math.min(item.cantidadOrdenada * 2, val));
+          const clamped = Math.max(0, Math.min(item.cantidadOrdenada * 2, intVal));
           return { ...item, cantidadRecibida: clamped };
         }
         return item;
@@ -1254,10 +1255,19 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                             <div className="flex items-center justify-center gap-1">
                               <input
                                 type="number"
+                                step="1"
                                 min={0}
                                 max={item.cantidadOrdenada * 2}
                                 value={item.cantidadRecibida}
-                                onChange={(e) => handleQuantityChange(item.codigoArticulo, Number(e.target.value))}
+                                onKeyDown={(e) => {
+                                  if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  const parsed = parseInt(e.target.value, 10);
+                                  handleQuantityChange(item.codigoArticulo, isNaN(parsed) ? 0 : parsed);
+                                }}
                                 className={`w-20 h-9 px-2 text-center text-sm font-bold rounded-lg border outline-none font-mono ${
                                   isComplete
                                     ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-2 focus:ring-emerald-200'

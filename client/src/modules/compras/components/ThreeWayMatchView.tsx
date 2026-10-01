@@ -153,7 +153,10 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
 
   // Actualizar una línea de ítem individual y recalcular totales reactivamente en tiempo real
   const handleLineItemChange = (index: number, field: 'cantidadFacturada' | 'precioUnitarioFactura', rawVal: number) => {
-    const val = isNaN(rawVal) ? 0 : Math.max(0, rawVal);
+    let val = isNaN(rawVal) ? 0 : Math.max(0, rawVal);
+    if (field === 'cantidadFacturada') {
+      val = Math.trunc(val);
+    }
     const updated = lineItems.map((item, i) => {
       if (i !== index) return item;
       const copy = { ...item };
@@ -938,7 +941,15 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                             min="0"
                             step="1"
                             value={item.cantidadFacturada}
-                            onChange={(e) => handleLineItemChange(idx, 'cantidadFacturada', parseFloat(e.target.value))}
+                            onKeyDown={(e) => {
+                              if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const parsed = parseInt(e.target.value, 10);
+                              handleLineItemChange(idx, 'cantidadFacturada', isNaN(parsed) ? 0 : parsed);
+                            }}
                             className="w-16 h-7 text-center rounded border border-slate-300 font-mono font-bold text-xs bg-white focus:ring-2 focus:ring-blue-100 outline-none"
                           />
                         )}

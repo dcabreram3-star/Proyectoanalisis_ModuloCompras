@@ -28,6 +28,18 @@ export class ThreeWayMatchService {
       throw new Error('El monto total de la factura debe ser mayor a Q 0.00');
     }
 
+    if (dto.items && dto.items.length > 0) {
+      for (const item of dto.items) {
+        if (item.cantidadFacturada !== undefined && item.cantidadFacturada !== null) {
+          const cant = Number(item.cantidadFacturada);
+          if (!Number.isInteger(cant) || cant < 0) {
+            throw new Error(`La cantidad facturada (${item.cantidadFacturada}) debe ser un número entero mayor o igual a 0.`);
+          }
+          item.cantidadFacturada = cant;
+        }
+      }
+    }
+
     return await ThreeWayMatchRepository.liquidar(dto);
   }
 }
