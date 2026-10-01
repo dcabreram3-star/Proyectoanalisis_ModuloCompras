@@ -7,6 +7,8 @@ import { MarcaClientService } from '../services/marcaClientService';
 import { UnidadMedidaClientService } from '../services/unidadMedidaClientService';
 import { sanitizeStrictCode, sanitizeNominalText } from '../../../utils/sanitizers';
 
+import { articuloService } from '../services/articulo.service';
+
 export interface ArticuloModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -72,10 +74,22 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
       }
     };
 
+    const loadNextCode = async () => {
+      if (!articulo) {
+        try {
+          const nextCode = await articuloService.obtenerSiguienteCodigo();
+          setCodigo(nextCode);
+        } catch (err) {
+          console.error('[ArticuloModal] Error al obtener siguiente código:', err);
+        }
+      }
+    };
+
     if (isOpen) {
       loadCatalogs();
+      loadNextCode();
     }
-  }, [isOpen]);
+  }, [isOpen, articulo]);
 
   useEffect(() => {
     if (articulo) {
@@ -88,7 +102,6 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
       setManejaLote(articulo.ART_MANEJA_LOTE === 1);
       setActivo(articulo.ART_ACTIVO === 1);
     } else {
-      setCodigo('');
       setDescripcion('');
       setIdCategoria(1);
       setIdMarca(1);
@@ -219,16 +232,15 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1">
               <TextInput
-                label="CÓDIGO"
+                label="CÓDIGO (AUTO-ASIGNADO)"
                 required
-                placeholder="Ej. ART-0010"
+                placeholder="Calculando código..."
                 value={codigo}
                 onChange={(e) => handleCodigoChange(e.target.value)}
-                isReadOnly={isEditing}
+                isReadOnly={true}
                 maxLength={30}
-                autoFocus={!isEditing}
                 error={codigoError || undefined}
-                helperText={isEditing ? 'No modificable' : undefined}
+                helperText="Asignado automáticamente"
               />
             </div>
             <div className="sm:col-span-2">
@@ -239,7 +251,7 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
                 value={descripcion}
                 onChange={(e) => handleDescripcionChange(e.target.value)}
                 maxLength={250}
-                autoFocus={isEditing}
+                autoFocus={true}
                 error={descripcionError || undefined}
               />
             </div>

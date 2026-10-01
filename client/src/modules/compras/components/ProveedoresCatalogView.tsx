@@ -230,7 +230,7 @@ export const ProveedoresCatalogView: React.FC = () => {
             Catálogo de Proveedores
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Gestión y registro de empresas proveedoras para cotizaciones y compras en Oracle DB
+            Gestión y registro de empresas proveedoras para cotizaciones y compras
           </p>
         </div>
 
@@ -250,7 +250,7 @@ export const ProveedoresCatalogView: React.FC = () => {
           title="TOTAL PROVEEDORES"
           value={totalCount}
           icon={Building2}
-          changeLabel="registrados en Oracle"
+          changeLabel="en el sistema"
         />
         <StatCard
           title="PROVEEDORES ACTIVOS"

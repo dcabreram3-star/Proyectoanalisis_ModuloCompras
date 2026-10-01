@@ -22,6 +22,7 @@ export interface AprobacionViewProps {
   solicitud: SolicitudOriginalInfo;
   onBack: () => void;
   onSuccess?: () => void;
+  onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
 }
 
 interface EditableDetalleItem {
@@ -129,7 +130,8 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
   // Manejo de cambio en la cantidad aprobada
   const handleCantidadAprobadaChange = (idDetalle: number, valStr: string) => {
-    const val = valStr === '' ? 0 : Math.max(0, Number(valStr));
+    const parsed = parseInt(valStr, 10);
+    const val = isNaN(parsed) ? 0 : Math.max(0, parsed);
     setItems((prev) =>
       prev.map((item) => (item.idDetalle === idDetalle ? { ...item, cantidadAprobada: val } : item))
     );
@@ -448,8 +450,14 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                           <div className="flex items-center justify-end gap-1.5">
                             <input
                               type="number"
+                              step="1"
                               min={0}
                               value={item.cantidadAprobada}
+                              onKeyDown={(e) => {
+                                if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
                               onChange={(e) => handleCantidadAprobadaChange(item.idDetalle, e.target.value)}
                               className="w-24 h-8 px-2.5 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all text-slate-900"
                             />
