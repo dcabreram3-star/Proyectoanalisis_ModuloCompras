@@ -38,9 +38,17 @@ export class RecepcionBodegaService {
       throw new Error('Debe incluir al menos un artículo en la recepción.');
     }
 
+    for (const d of items) {
+      const cant = Number(d.cantidadRecibida ?? 0);
+      if (!Number.isInteger(cant) || cant < 0) {
+        throw new Error(`La cantidad recibida (${d.cantidadRecibida}) para el artículo ${d.codigoArticulo || ''} debe ser un número entero mayor o igual a 0.`);
+      }
+      d.cantidadRecibida = cant;
+    }
+
     const algunRecibido = items.some((d) => Number(d.cantidadRecibida || 0) > 0);
     if (!algunRecibido) {
-      throw new Error('Debe recibir al menos 1 unidad física en algún artículo para procesar la entrada.');
+      throw new Error('Debe recibir al menos 1 unidad física entera en algún artículo para procesar la entrada.');
     }
 
     return await RecepcionBodegaRepository.registrarRecepcion(dto);

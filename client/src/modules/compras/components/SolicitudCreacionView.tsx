@@ -359,8 +359,9 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
         }
       }
 
-      if (!item.cantidadPedida || item.cantidadPedida <= 0) {
-        setErrorMsg(`Línea #${i + 1}: La cantidad requerida debe ser mayor a 0.`);
+      const cant = Number(item.cantidadPedida);
+      if (!item.cantidadPedida || !Number.isInteger(cant) || cant <= 0) {
+        setErrorMsg(`Línea #${i + 1}: La cantidad requerida debe ser un número entero positivo mayor a 0 (sin decimales ni signos).`);
         setIsLoading(false);
         return;
       }
@@ -372,7 +373,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
         idDepartamento,
         notas: notas.trim() || undefined,
         detalles: detalles.map((d) => ({
-          cantidadPedida: Number(d.cantidadPedida),
+          cantidadPedida: Math.trunc(Number(d.cantidadPedida)),
           isNuevo: Boolean(d.isNuevo),
           codigoArticulo: d.isNuevo ? undefined : d.codigoArticulo,
           nombreArticuloNuevo: d.isNuevo ? d.nombreArticuloNuevo?.trim() : undefined,
@@ -654,9 +655,18 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                     </label>
                     <input
                       type="number"
+                      step="1"
                       min="1"
                       value={detalle.cantidadPedida}
-                      onChange={(e) => handleChangeDetalle(index, 'cantidadPedida', parseInt(e.target.value) || 1)}
+                      onKeyDown={(e) => {
+                        if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        handleChangeDetalle(index, 'cantidadPedida', isNaN(parsed) ? 1 : Math.max(1, parsed));
+                      }}
                       className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-800 text-center font-bold focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
                       required
                     />
