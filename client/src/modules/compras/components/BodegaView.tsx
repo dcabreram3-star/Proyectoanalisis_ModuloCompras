@@ -578,11 +578,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         const isTotal = (value || '').toUpperCase() === 'TOTAL';
         return (
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              isTotal
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${isTotal
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}
           >
             {isTotal ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
             {isTotal ? 'TOTAL (100%)' : 'PARCIAL'}
@@ -739,11 +738,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                     <Truck size={16} className="text-cyan-600" />
                     Datos de Transporte
                   </div>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                    (recepcionExistente.rboTipoTransporte || tipoTransporte) === 'PROPIO'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  }`}>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${(recepcionExistente.rboTipoTransporte || tipoTransporte) === 'PROPIO'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-purple-50 text-purple-700 border border-purple-200'
+                    }`}>
                     {(recepcionExistente.rboTipoTransporte || tipoTransporte) === 'PROPIO' ? 'Flota Propia' : 'Transporte Ajeno'}
                   </span>
                 </div>
@@ -814,11 +812,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-slate-500">Tipo Recepción:</span>
-                    <span className={`font-bold text-xs px-2 py-0.5 rounded-full ${
-                      (recepcionExistente.rboTipoRecepcion || '').toUpperCase() === 'TOTAL'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'bg-amber-50 text-amber-700'
-                    }`}>
+                    <span className={`font-bold text-xs px-2 py-0.5 rounded-full ${(recepcionExistente.rboTipoRecepcion || '').toUpperCase() === 'TOTAL'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-amber-50 text-amber-700'
+                      }`}>
                       {recepcionExistente.rboTipoRecepcion || 'TOTAL'}
                     </span>
                   </div>
@@ -939,11 +936,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                       setModeloVehiculo('');
                       setIdProveedorTransporte(undefined);
                     }}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      tipoTransporte === 'AJENO'
-                        ? 'bg-white text-purple-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${tipoTransporte === 'AJENO'
+                      ? 'bg-white text-purple-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     <Truck size={14} />
                     Transporte Ajeno / Tercero
@@ -959,11 +955,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                         setModeloVehiculo(`${selVeh.vehMarca} ${selVeh.vehModelo || ''}`.trim());
                       }
                     }}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      tipoTransporte === 'PROPIO'
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${tipoTransporte === 'PROPIO'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     <UserCheck size={14} />
                     Transporte Propio (Empresa)
@@ -999,9 +994,9 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   options={
                     bodegas.length > 0
                       ? bodegas.map((b) => ({
-                          value: b.idBodega,
-                          label: b.codigo ? `[${b.codigo}] ${b.nombre}` : (b.nombre || `Bodega #${b.idBodega}`),
-                        }))
+                        value: b.idBodega,
+                        label: b.codigo ? `[${b.codigo}] ${b.nombre}` : (b.nombre || `Bodega #${b.idBodega}`),
+                      }))
                       : [{ value: 1, label: 'Bodega Central de Almacén' }]
                   }
                 />
@@ -1022,9 +1017,9 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                         options={
                           conductores.length > 0
                             ? conductores.map((c) => ({
-                                value: c.conIdConductor,
-                                label: `${c.conNombreEmpleado || 'Conductor #' + c.conIdConductor} (DPI: ${c.conDpi || 'S/D'})`,
-                              }))
+                              value: c.conIdConductor,
+                              label: `${c.conNombreEmpleado || 'Conductor #' + c.conIdConductor} (DPI: ${c.conDpi || 'S/D'})`,
+                            }))
                             : [{ value: '', label: 'No hay conductores registrados' }]
                         }
                       />
@@ -1033,16 +1028,14 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                         if (!cond) return null;
                         const isExpired = cond.conFechaVencimientoLic ? new Date(cond.conFechaVencimientoLic) < new Date() : false;
                         return (
-                          <div className={`mt-2 p-2.5 rounded-lg text-xs flex items-center justify-between border ${
-                            isExpired ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                          }`}>
+                          <div className={`mt-2 p-2.5 rounded-lg text-xs flex items-center justify-between border ${isExpired ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            }`}>
                             <div className="space-y-0.5">
                               <p className="font-bold">Licencia: Tipo {cond.conTipoLicencia} - No. {cond.conNoLicencia}</p>
                               <p className="text-[11px]">DPI: {cond.conDpi} | Vence: {formatDate(cond.conFechaVencimientoLic, '2026-12-31')}</p>
                             </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              isExpired ? 'bg-rose-200 text-rose-900' : 'bg-emerald-200 text-emerald-900'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isExpired ? 'bg-rose-200 text-rose-900' : 'bg-emerald-200 text-emerald-900'
+                              }`}>
                               {isExpired ? '⚠️ Licencia Vencida' : '✓ Vigente'}
                             </span>
                           </div>
@@ -1069,9 +1062,9 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                         options={
                           vehiculos.length > 0
                             ? vehiculos.map((v) => ({
-                                value: v.vehIdVehiculo,
-                                label: `[${v.vehPlaca}] ${v.vehMarca} ${v.vehModelo || ''} (${v.vehAnio || 'N/A'})`,
-                              }))
+                              value: v.vehIdVehiculo,
+                              label: `[${v.vehPlaca}] ${v.vehMarca} ${v.vehModelo || ''} (${v.vehAnio || 'N/A'})`,
+                            }))
                             : [{ value: '', label: 'No hay vehículos registrados' }]
                         }
                       />
@@ -1268,15 +1261,14 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                                   const parsed = parseInt(e.target.value, 10);
                                   handleQuantityChange(item.codigoArticulo, isNaN(parsed) ? 0 : parsed);
                                 }}
-                                className={`w-20 h-9 px-2 text-center text-sm font-bold rounded-lg border outline-none font-mono ${
-                                  isComplete
-                                    ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-2 focus:ring-emerald-200'
-                                    : isPartial
+                                className={`w-20 h-9 px-2 text-center text-sm font-bold rounded-lg border outline-none font-mono ${isComplete
+                                  ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-2 focus:ring-emerald-200'
+                                  : isPartial
                                     ? 'border-amber-400 bg-amber-50/60 text-amber-900 focus:ring-2 focus:ring-amber-200'
                                     : isZero
-                                    ? 'border-rose-300 bg-rose-50/40 text-rose-900 focus:ring-2 focus:ring-rose-200'
-                                    : 'border-blue-300 bg-blue-50/40 text-blue-900 focus:ring-2 focus:ring-blue-200'
-                                }`}
+                                      ? 'border-rose-300 bg-rose-50/40 text-rose-900 focus:ring-2 focus:ring-rose-200'
+                                      : 'border-blue-300 bg-blue-50/40 text-blue-900 focus:ring-2 focus:ring-blue-200'
+                                  }`}
                               />
                             </div>
                           </td>
@@ -1360,11 +1352,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                       3. Control de Existencias e Ingreso a Inventario
                     </span>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                    financialSummary.tipo === 'TOTAL'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${financialSummary.tipo === 'TOTAL'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
                     {financialSummary.tipo === 'TOTAL' ? 'RECEPCIÓN TOTAL' : 'RECEPCIÓN PARCIAL'}
                   </span>
                 </div>
@@ -1437,7 +1428,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                     disabled={isSubmitting || financialSummary.totalItems === 0}
                     className="w-full justify-center bg-cyan-700 hover:bg-cyan-600 text-white shadow-md font-bold text-sm py-3"
                   >
-                    Confirmar Ingreso a Bodega e Inventario
+                    Confirmar Ingreso
                   </Button>
                 </div>
               </div>
@@ -1453,7 +1444,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
           title="¿Confirmar Recepción e Ingreso a Inventario?"
           description={`Se registrará la entrada física de mercancía por valor de ${formatCurrency(financialSummary.total)} amparada en la Guía de Despacho ${guiaDespacho}. Esta acción actualizará las existencias en el inventario de la bodega y registrará formalmente la entrada de la mercancía.`}
           itemName={`PO: ${ordenCompra?.ocoNoPo} | Tipo: ${financialSummary.tipo}`}
-          confirmText="Confirmar Ingreso a Bodega"
+          confirmText="Confirmar Ingreso"
           cancelText="Revisar Conteo"
           variant="primary"
           confirmIcon={PackageCheck}
