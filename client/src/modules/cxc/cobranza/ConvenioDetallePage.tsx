@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, DollarSign, Save, X } from 'lucide-react';
 import { DataTable, StatusBadge, Button, TextInput, Select } from '../../../shared/ui-kit';
 import { Modal } from '../../../shared/components';
+import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 import { apiClient, ApiError } from '../../../shared/api';
 import { formatDateGT } from '../../../shared/date';
 import { validateRequiredSelect, validateMoney, validateIdentifier, hasErrors, type ValidationErrors } from '../../../shared/validation';
@@ -27,6 +28,7 @@ export const ConvenioDetallePage = () => {
   const [idEmpleado, setIdEmpleado] = useState('');
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isPaying, setIsPaying] = useState(false);
+  const [confirmPagoOpen, setConfirmPagoOpen] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
   const cargar = useCallback(() => {
@@ -111,6 +113,7 @@ export const ConvenioDetallePage = () => {
   const isPayFormValid = !!cuotaAPagar && !hasErrors(payValidationErrors);
 
   const handlePagar = async () => {
+    setConfirmPagoOpen(false);
     if (!cuotaAPagar) return;
     setPayError(null);
 
@@ -306,6 +309,15 @@ export const ConvenioDetallePage = () => {
 
           {payError && <p className="text-sm text-red-600 font-medium">{payError}</p>}
 
+          {!isPayFormValid && !isPaying && (
+            <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <p className="font-semibold">No se puede registrar el pago todavía porque:</p>
+              <ul className="mt-1 list-disc pl-5 space-y-0.5">
+                {Object.values(payValidationErrors).filter(Boolean).map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <Button variant="danger" icon={X} onClick={() => setCuotaAPagar(null)} disabled={isPaying}>
               Cancelar
@@ -313,7 +325,7 @@ export const ConvenioDetallePage = () => {
             <Button
               variant={isPayFormValid ? 'success' : 'primary'}
               icon={Save}
-              onClick={handlePagar}
+              onClick={() => setConfirmPagoOpen(true)}
               disabled={isPaying || !isPayFormValid}
               title={isPayFormValid ? 'Datos válidos: listo para registrar' : 'Revisa los campos y sus reglas'}
             >
@@ -322,6 +334,16 @@ export const ConvenioDetallePage = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmPagoOpen}
+        onClose={() => setConfirmPagoOpen(false)}
+        onConfirm={handlePagar}
+        title="Confirmar pago de cuota"
+        description={`¿Estás seguro de registrar el pago de Q ${Number(montoPagado || 0).toFixed(2)} a la cuota ${cuotaAPagar?.numeroCuota ?? ''}? Se aplicará al saldo de los documentos del convenio.`}
+        confirmLabel="Sí, registrar pago"
+        variant="primary"
+      />
     </div>
   );
 };
