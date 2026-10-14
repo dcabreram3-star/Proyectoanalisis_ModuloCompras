@@ -11,6 +11,8 @@ export interface ConfirmDialogProps {
   itemName?: string;
   confirmText?: string;
   cancelText?: string;
+  cancelVariant?: 'secondary' | 'danger' | 'ghost' | 'primary' | 'success';
+  cancelClassName?: string;
   variant?: 'danger' | 'warning' | 'primary';
   confirmIcon?: LucideIcon;
   isLoading?: boolean;
@@ -25,6 +27,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   itemName,
   confirmText = 'Eliminar',
   cancelText = 'Cancelar',
+  cancelVariant = 'secondary',
+  cancelClassName = '',
   variant = 'danger',
   confirmIcon,
   isLoading = false,
@@ -102,7 +106,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         {/* Actions Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
           <Button
-            variant="secondary"
+            variant={cancelVariant}
+            className={cancelClassName}
             icon={X}
             onClick={onClose}
             disabled={isLoading}

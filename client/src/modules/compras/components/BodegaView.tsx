@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowLeft,
   Warehouse,
@@ -79,6 +79,53 @@ interface ItemRecepcionFormState {
   idUbicacion: number;
 }
 
+// Utilidades para validación de fechas en recepción de almacén
+const getTodayLocalDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getInitialFechaLlegada = (): string => {
+  const now = new Date();
+  const todayStr = getTodayLocalDate();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+
+  // Si la hora actual es posterior a las 8:00 PM (20:00), limitar por defecto a las 20:00 del día actual
+  if (hours > 20 || (hours === 20 && minutes > 0)) {
+    return `${todayStr}T20:00`;
+  }
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(minutes).padStart(2, '0');
+  return `${todayStr}T${hh}:${mm}`;
+};
+
+const validateFechaLlegada = (value: string): string | null => {
+  if (!value || !value.trim()) {
+    return 'La fecha y hora de llegada es obligatoria.';
+  }
+  const [datePart, timePart] = value.split('T');
+  if (!datePart) {
+    return 'Formato de fecha inválido.';
+  }
+  const todayStr = getTodayLocalDate();
+  if (datePart < todayStr) {
+    return `La fecha de llegada no puede ser menor al día actual (${todayStr}).`;
+  }
+  if (timePart) {
+    const [hoursStr, minutesStr] = timePart.split(':');
+    const hours = Number(hoursStr);
+    const minutes = Number(minutesStr || 0);
+    if (isNaN(hours) || hours > 20 || (hours === 20 && minutes > 0)) {
+      return 'La hora de recepción no puede ser mayor a las 8:00 PM (20:00 hrs).';
+    }
+  }
+  return null;
+};
+
 export const BodegaView: React.FC<BodegaViewProps> = ({
   solicitud,
   onBack,
@@ -109,12 +156,8 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
   const [modeloVehiculo, setModeloVehiculo] = useState<string>('');
   const [archivoComprobante, setArchivoComprobante] = useState<File | null>(null);
 
-  const [fechaLlegada, setFechaLlegada] = useState<string>(() => {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
-    return localISOTime;
-  });
+  const [fechaLlegada, setFechaLlegada] = useState<string>(getInitialFechaLlegada);
+  const [fechaError, setFechaError] = useState<string | null>(() => validateFechaLlegada(getInitialFechaLlegada()));
   const [idBodega, setIdBodega] = useState<number>(1);
   const [observaciones, setObservaciones] = useState<string>('');
 
@@ -128,6 +171,32 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
   // Mensajes de Feedback
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const errorBannerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToError = () => {
+    setTimeout(() => {
+      if (errorBannerRef.current) {
+        errorBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      const scrollContainer = document.getElementById('main-scroll-container');
+      if (scrollContainer) {
+        const rect = errorBannerRef.current?.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+        if (rect && containerRect) {
+          const relativeTop = rect.top - containerRect.top + scrollContainer.scrollTop - 40;
+          scrollContainer.scrollTo({ top: Math.max(0, relativeTop), behavior: 'smooth' });
+        } else {
+          scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    }, 50);
+  };
+
+  useEffect(() => {
+    if (errorMsg) {
+      scrollToError();
+    }
+  }, [errorMsg]);
 
   // Vista Standalone / Historial General de Recepciones
   const [recepcionesGenerales, setRecepcionesGenerales] = useState<IRecepcionBodega[]>([]);
@@ -292,7 +361,11 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
       prev.map((item) => {
         if (item.codigoArticulo === codigoArticulo) {
           const clamped = Math.max(0, Math.min(item.cantidadOrdenada * 2, intVal));
-          return { ...item, cantidadRecibida: clamped };
+          return {
+            ...item,
+            cantidadRecibida: clamped,
+            verificadoFisicamente: clamped === 0 ? false : item.verificadoFisicamente,
+          };
         }
         return item;
       })
@@ -321,6 +394,95 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         verificadoFisicamente: true,
       }))
     );
+  };
+
+  const handleFechaLlegadaChange = (newVal: string) => {
+    setFechaLlegada(newVal);
+    const err = validateFechaLlegada(newVal);
+    setFechaError(err);
+    if (err) {
+      setErrorMsg(err);
+    } else if (errorMsg && (errorMsg.includes('8:00 PM') || errorMsg.includes('menor al día actual'))) {
+      setErrorMsg(null);
+    }
+  };
+
+  // Pre-validación estricta antes de abrir el diálogo de confirmación
+  const handleOpenConfirmDialog = () => {
+    setErrorMsg(null);
+
+    const fechaValErr = validateFechaLlegada(fechaLlegada);
+    if (fechaValErr) {
+      setFechaError(fechaValErr);
+      setErrorMsg(fechaValErr);
+      scrollToError();
+      return;
+    }
+
+    if (!guiaDespacho.trim()) {
+      setErrorMsg('Por favor ingresa el número de guía de remisión o despacho.');
+      scrollToError();
+      return;
+    }
+
+    if (tipoTransporte === 'AJENO') {
+      if (!transportista.trim()) {
+        setErrorMsg('Por favor ingresa la Empresa Proveedora de Transporte.');
+        scrollToError();
+        return;
+      }
+      if (!conductorAjeno.trim()) {
+        setErrorMsg('Por favor ingresa el Nombre del Conductor.');
+        scrollToError();
+        return;
+      }
+      if (!placaVehiculo.trim() || placaVehiculo.trim().length < 3) {
+        setErrorMsg('Por favor ingresa una Placa de Vehículo válida (mínimo 3 caracteres).');
+        scrollToError();
+        return;
+      }
+      if (!modeloVehiculo.trim()) {
+        setErrorMsg('Por favor ingresa la Descripción o Modelo del Camión.');
+        scrollToError();
+        return;
+      }
+    } else {
+      if (!idConductor) {
+        setErrorMsg('Por favor selecciona el conductor asignado de la empresa.');
+        scrollToError();
+        return;
+      }
+      if (!idVehiculo) {
+        setErrorMsg('Por favor selecciona el vehículo institucional para la recepción.');
+        scrollToError();
+        return;
+      }
+
+      const cond = conductores.find((c) => c.conIdConductor === idConductor);
+      if (cond && cond.conFechaVencimientoLic) {
+        const isExpired = new Date(cond.conFechaVencimientoLic) < new Date();
+        if (isExpired) {
+          setErrorMsg(`Atención: El conductor ${cond.conNombreEmpleado || 'Conductor #' + cond.conIdConductor} tiene la licencia vencida desde el ${formatDate(cond.conFechaVencimientoLic, '2026-01-01')}. Por favor regularice o asigne otro conductor.`);
+          scrollToError();
+          return;
+        }
+      }
+    }
+
+    if (!itemsInspection || itemsInspection.length === 0) {
+      setErrorMsg('Debe incluir al menos un artículo en la recepción.');
+      scrollToError();
+      return;
+    }
+
+    const algunRecibido = itemsInspection.some((it) => Number(it.cantidadRecibida || 0) > 0);
+    if (!algunRecibido) {
+      setErrorMsg('Debe recibir al menos 1 unidad física en algún artículo para procesar la entrada.');
+      scrollToError();
+      return;
+    }
+
+    setIsConfirmOpen(true);
   };
 
   // Cálculos financieros y estado de recepción
@@ -369,6 +531,14 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
   // Registrar recepción en backend & Oracle DB
   const handleConfirmRecepcion = async () => {
     if (!ordenCompra) return;
+
+    const fechaValErr = validateFechaLlegada(fechaLlegada);
+    if (fechaValErr) {
+      setFechaError(fechaValErr);
+      setErrorMsg(fechaValErr);
+      return;
+    }
+
     if (!guiaDespacho.trim()) {
       setErrorMsg('Por favor ingresa el número de guía de remisión o despacho.');
       return;
@@ -383,8 +553,8 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         setErrorMsg('Por favor ingresa el Nombre del Conductor.');
         return;
       }
-      if (!placaVehiculo.trim()) {
-        setErrorMsg('Por favor ingresa la Placa del Vehículo.');
+      if (!placaVehiculo.trim() || placaVehiculo.trim().length < 3) {
+        setErrorMsg('Por favor ingresa la Placa del Vehículo (mínimo 3 caracteres).');
         return;
       }
       if (!modeloVehiculo.trim()) {
@@ -481,6 +651,8 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
     } catch (err: any) {
       console.error('[BodegaView.handleConfirmRecepcion Error]:', err);
       setErrorMsg(err.message || 'Error al registrar el ingreso en bodega.');
+      setIsConfirmOpen(false);
+      scrollToError();
     } finally {
       setIsSubmitting(false);
     }
@@ -642,11 +814,12 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
 
           <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               icon={RefreshCw}
               onClick={() => loadSingleSolicitudData(solicitud.noDocumento)}
               disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
             >
               Actualizar
             </Button>
@@ -657,22 +830,25 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         <SolicitudOriginalCard solicitud={solicitud} />
 
         {/* Alertas de Error o Éxito */}
-        {errorMsg && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm flex items-start gap-3 shadow-xs">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-bold text-rose-900">Atención en Recepción</p>
-              <p className="text-xs text-rose-700 mt-0.5">{errorMsg}</p>
+        <div ref={errorBannerRef} className="scroll-mt-6">
+          {errorMsg && (
+            <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-xl text-rose-800 text-sm flex items-start gap-3 shadow-md transition-all duration-300 animate-fadeIn ring-2 ring-rose-200">
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5 animate-pulse" />
+              <div className="flex-1">
+                <p className="font-bold text-rose-900">Atención en Recepción</p>
+                <p className="text-xs text-rose-700 mt-0.5 font-medium">{errorMsg}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMsg(null)}
+                className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-100 transition-colors"
+                title="Cerrar alerta"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setErrorMsg(null)}
-              className="text-rose-500 hover:text-rose-700 p-1"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {successMsg && (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm flex items-start gap-3 shadow-xs">
@@ -966,23 +1142,29 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-wrap items-start gap-4">
                 <TextInput
                   label="No. Guía de Remisión / Despacho"
                   required
                   placeholder="Ej: GR-2026-9041"
                   value={guiaDespacho}
-                  onChange={(e) => setGuiaDespacho(e.target.value)}
+                  maxLength={35}
+                  onChange={(e) => setGuiaDespacho(e.target.value.toUpperCase())}
                   icon={Barcode}
+                  className="w-full sm:w-60 max-w-xs"
                 />
 
                 <TextInput
                   label="Fecha y Hora de Llegada"
                   type="datetime-local"
                   required
+                  min={`${getTodayLocalDate()}T00:00`}
                   value={fechaLlegada}
-                  onChange={(e) => setFechaLlegada(e.target.value)}
+                  error={fechaError || undefined}
+                  helperText={!fechaError ? "Horario permitido: Máximo hasta las 8:00 PM" : undefined}
+                  onChange={(e) => handleFechaLlegadaChange(e.target.value)}
                   icon={Calendar}
+                  className="w-full sm:w-64 max-w-xs"
                 />
 
                 <Select
@@ -991,6 +1173,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   value={idBodega}
                   onChange={(e) => setIdBodega(Number(e.target.value))}
                   icon={Warehouse}
+                  className="w-full sm:w-72 max-w-sm"
                   options={
                     bodegas.length > 0
                       ? bodegas.map((b) => ({
@@ -1005,9 +1188,9 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
               {/* Contenido Dinámico según Tipo de Transporte */}
               {tipoTransporte === 'PROPIO' ? (
                 <div className="space-y-4 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-wrap items-start gap-4">
                     {/* Selector de Conductor Institucional con validación */}
-                    <div>
+                    <div className="w-full sm:w-80 max-w-md">
                       <Select
                         label="Conductor Asignado (Flota Propia)"
                         required
@@ -1044,7 +1227,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                     </div>
 
                     {/* Selector de Vehículo Institucional */}
-                    <div>
+                    <div className="w-full sm:w-80 max-w-md">
                       <Select
                         label="Vehículo Institucional Asignado"
                         required
@@ -1087,15 +1270,17 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 p-4 rounded-xl bg-purple-50/50 border border-purple-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100">
+                  <div className="flex flex-wrap items-start gap-4">
                     <TextInput
                       label="Empresa Proveedora de Transporte"
                       required
                       placeholder="Ej. Trans-Logística S.A."
                       value={transportista}
+                      maxLength={60}
                       onChange={(e) => setTransportista(e.target.value)}
                       icon={Truck}
+                      className="w-full sm:w-72 max-w-sm"
                     />
 
                     <TextInput
@@ -1103,28 +1288,32 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                       required
                       placeholder="Ej. Juan Carlos Pérez"
                       value={conductorAjeno}
+                      maxLength={60}
                       onChange={(e) => setConductorAjeno(e.target.value)}
                       icon={UserCheck}
+                      className="w-full sm:w-72 max-w-sm"
                     />
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <TextInput
                       label="Placa del Vehículo"
                       required
                       placeholder="Ej. P-123ABC"
                       value={placaVehiculo}
-                      onChange={(e) => setPlacaVehiculo(e.target.value)}
+                      maxLength={12}
+                      onChange={(e) => setPlacaVehiculo(e.target.value.toUpperCase().replace(/[^A-Z0-9\-\s]/g, ''))}
                       icon={Car}
+                      className="w-full sm:w-40 max-w-[170px]"
                     />
 
                     <TextInput
                       label="Descripción / Modelo del Camión"
                       required
-                      placeholder="Ej. Camión Freightliner 10 Toneladas"
+                      placeholder="Ej. Freightliner 10 Ton"
                       value={modeloVehiculo}
+                      maxLength={60}
                       onChange={(e) => setModeloVehiculo(e.target.value)}
                       icon={Truck}
+                      className="w-full sm:w-72 max-w-sm"
                     />
                   </div>
                 </div>
@@ -1148,7 +1337,21 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                     accept=".pdf,image/png,image/jpeg,image/webp"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
-                        setArchivoComprobante(e.target.files[0]);
+                        const file = e.target.files[0];
+                        if (file.size > 10 * 1024 * 1024) {
+                          setErrorMsg('El archivo seleccionado excede el tamaño máximo permitido (10MB).');
+                          e.target.value = '';
+                          return;
+                        }
+                        const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
+                        const ext = file.name.split('.').pop()?.toLowerCase();
+                        if (!ext || !allowedExtensions.includes(ext)) {
+                          setErrorMsg('Formato no permitido. Solo se aceptan documentos PDF o imágenes (PNG, JPG, WEBP).');
+                          e.target.value = '';
+                          return;
+                        }
+                        setErrorMsg(null);
+                        setArchivoComprobante(file);
                       }
                     }}
                     className="text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 cursor-pointer"
@@ -1178,7 +1381,9 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   label="Observaciones Generales de la Entrega (Opcional)"
                   placeholder="Ej: Entrega realizada en camión refrigerado, precintos intactos..."
                   value={observaciones}
+                  maxLength={250}
                   onChange={(e) => setObservaciones(e.target.value)}
+                  className="w-full max-w-2xl"
                 />
               </div>
             </div>
@@ -1198,11 +1403,11 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
 
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="secondary"
+                    variant="success"
                     size="sm"
                     icon={Check}
                     onClick={handleMarkAllConforming}
-                    className="text-emerald-700 border-emerald-300 hover:bg-emerald-50 bg-white"
+                    className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all"
                   >
                     Marcar Todo Conforme (100%)
                   </Button>
@@ -1216,7 +1421,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                     <tr>
                       <th className="px-4 py-3">ARTÍCULO / CÓDIGO</th>
                       <th className="px-4 py-3 text-center">CANT. ORDENADA</th>
-                      <th className="px-4 py-3 text-center w-36">CANT. RECIBIDA</th>
+                      <th className="px-4 py-3 text-center w-28">CANT. RECIBIDA</th>
                       <th className="px-4 py-3 text-center">ESTADO RECEPCIÓN</th>
                       <th className="px-4 py-3 text-center">INSPECCIÓN FÍSICA</th>
                       <th className="px-4 py-3">UBICACIÓN / ESTANTERÍA</th>
@@ -1257,11 +1462,17 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                                     e.preventDefault();
                                   }
                                 }}
+                                onPaste={(e) => {
+                                  const text = e.clipboardData.getData('text');
+                                  if (!/^\d+$/.test(text)) {
+                                    e.preventDefault();
+                                  }
+                                }}
                                 onChange={(e) => {
                                   const parsed = parseInt(e.target.value, 10);
                                   handleQuantityChange(item.codigoArticulo, isNaN(parsed) ? 0 : parsed);
                                 }}
-                                className={`w-20 h-9 px-2 text-center text-sm font-bold rounded-lg border outline-none font-mono ${isComplete
+                                className={`w-16 h-8 px-2 text-center text-xs font-bold rounded-lg border outline-none font-mono ${isComplete
                                   ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-2 focus:ring-emerald-200'
                                   : isPartial
                                     ? 'border-amber-400 bg-amber-50/60 text-amber-900 focus:ring-2 focus:ring-amber-200'
@@ -1419,14 +1630,30 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-3">
+                <div className="pt-3 space-y-2">
+                  {errorMsg && (
+                    <div
+                      onClick={scrollToError}
+                      className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs flex items-center justify-between gap-2 cursor-pointer hover:bg-rose-100 transition-colors shadow-2xs"
+                      title="Haz clic para ver el detalle del error en la parte superior"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <AlertTriangle size={14} className="text-rose-600 shrink-0 animate-pulse" />
+                        <span className="truncate font-semibold text-[11px]">{errorMsg}</span>
+                      </div>
+                      <span className="text-[10px] text-rose-700 font-bold underline shrink-0 whitespace-nowrap">
+                        Ver arriba ↑
+                      </span>
+                    </div>
+                  )}
+
                   <Button
                     variant="primary"
                     size="lg"
                     icon={PackageCheck}
-                    onClick={() => setIsConfirmOpen(true)}
-                    disabled={isSubmitting || financialSummary.totalItems === 0}
-                    className="w-full justify-center bg-cyan-700 hover:bg-cyan-600 text-white shadow-md font-bold text-sm py-3"
+                    onClick={handleOpenConfirmDialog}
+                    disabled={isSubmitting}
+                    className="w-full justify-center bg-cyan-700 hover:bg-cyan-600 text-white shadow-md font-bold text-sm py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirmar Ingreso
                   </Button>
@@ -1446,6 +1673,8 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
           itemName={`PO: ${ordenCompra?.ocoNoPo} | Tipo: ${financialSummary.tipo}`}
           confirmText="Confirmar Ingreso"
           cancelText="Revisar Conteo"
+          cancelVariant="danger"
+          cancelClassName="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm font-semibold"
           variant="primary"
           confirmIcon={PackageCheck}
           isLoading={isSubmitting}
@@ -1471,11 +1700,12 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
 
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             icon={RefreshCw}
             onClick={loadGeneralData}
             disabled={isLoadingGeneral}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
           >
             Actualizar Historial
           </Button>
