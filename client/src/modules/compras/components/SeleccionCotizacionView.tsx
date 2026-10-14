@@ -134,7 +134,13 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
         criterioSeleccion === 'CALIDAD_GARANTIA' ? 'Mejor calidad técnica y garantía' :
         'Proveedor único calificado / Excepción';
 
-      const dictamenCompleto = `Criterio: ${criterioTexto}. ${justificacionAdjudicacion.trim()}`;
+      // Sanitizar texto para evitar desbordes y caracteres no permitidos hacia la BD
+      const cleanJustificacion = justificacionAdjudicacion
+        .replace(/[<>{}`\\]/g, '')
+        .trim()
+        .slice(0, 450);
+
+      const dictamenCompleto = `Criterio: ${criterioTexto}.${cleanJustificacion ? ` ${cleanJustificacion}` : ''}`;
 
       await CotizacionClientService.adjudicarCotizacion(
         adjudicarTarget.cotIdCotizacion,
@@ -176,28 +182,33 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={ArrowLeft}
             onClick={onBack}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 font-semibold transition-colors group"
+            className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Solicitudes</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-900 font-bold">Selección y Cuadro Comparativo</span>
-          </button>
+            Volver a Solicitudes
+          </Button>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-          <span className="text-xs font-semibold px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full flex items-center gap-1">
-            Etapa 3 de 6
+          <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full flex items-center gap-1.5">
+            <Scale size={14} />
+            Etapa 3 de 6: Selección
           </span>
+          <h1 className="text-xl font-bold text-slate-900">
+            Selección y Cuadro Comparativo
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="primary"
             size="sm"
             icon={RefreshCw}
             onClick={loadData}
             disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
           >
             Actualizar
           </Button>
@@ -344,6 +355,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
               size="sm"
               icon={FileSpreadsheet}
               onClick={() => onNavigateToStage('matriz')}
+              className="font-semibold shadow-sm transition-all"
             >
               Editar Matriz
             </Button>
@@ -369,13 +381,22 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                 variant="primary"
                 icon={FileSpreadsheet}
                 onClick={() => onNavigateToStage('matriz')}
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
               >
                 Ingresar a Matriz de Cotizaciones
               </Button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div
+            className={`grid gap-6 ${
+              cotizaciones.length === 1
+                ? 'grid-cols-1 max-w-xl mx-auto w-full'
+                : cotizaciones.length === 2
+                ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto'
+                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            }`}
+          >
             {cotizaciones.map((cot, index) => {
               const isGanadora =
                 (cot.cotEstadoAdjudicacion || '').toUpperCase() === 'GANADORA' ||
@@ -431,147 +452,148 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                       </div>
                     </div>
 
-                    {/* Price Block */}
-                    <div className={`p-4 rounded-xl border ${isGanadora ? 'bg-emerald-100/60 border-emerald-200' : 'bg-slate-50 border-slate-100'} space-y-1`}>
-                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
-                        Precio Total Ofertado
+                  {/* Price Block */}
+                  <div className={`p-4 rounded-xl border ${isGanadora ? 'bg-emerald-100/60 border-emerald-200' : 'bg-slate-50 border-slate-100'} space-y-1`}>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
+                      Precio Total Ofertado
+                    </span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">
+                        {formatCurrency(cot.cotPrecioTotal)}
                       </span>
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-2xl font-black text-slate-900">
-                          {formatCurrency(cot.cotPrecioTotal)}
+                      {solicitud.montoTotal && cot.cotPrecioTotal < solicitud.montoTotal ? (
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          -{Math.round(((solicitud.montoTotal - cot.cotPrecioTotal) / solicitud.montoTotal) * 100)}%
                         </span>
-                        {solicitud.montoTotal && cot.cotPrecioTotal < solicitud.montoTotal ? (
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                            -{Math.round(((solicitud.montoTotal - cot.cotPrecioTotal) / solicitud.montoTotal) * 100)}%
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* Conditions Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg space-y-0.5">
-                        <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                          <Clock size={12} />
-                          Entrega
-                        </span>
-                        <span className="font-bold text-slate-800">
-                          {cot.cotTiempoEntregaDias ? `${cot.cotTiempoEntregaDias} días hábiles` : 'Inmediata'}
-                        </span>
-                      </div>
-                      <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg space-y-0.5">
-                        <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                          <CreditCard size={12} />
-                          Condición
-                        </span>
-                        <span className="font-bold text-slate-800">
-                          {cot.cotCondicionPagoDias ? `${cot.cotCondicionPagoDias} días crédito` : 'Contado'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* PDF and Articles Inspection Indicator */}
-                    <div className="flex flex-wrap items-center justify-between text-xs px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-600 truncate min-w-0 flex-1">
-                        <FileText size={14} className="text-red-500 shrink-0" />
-                        <span className="truncate text-[11px] font-medium font-mono">
-                          {cot.cotRutaArchivoPdf || `cotizacion_${cot.cotIdCotizacion}.pdf`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCotizacionDetail(cot)}
-                          className="text-slate-700 hover:text-blue-700 font-bold text-[11px] flex items-center gap-1 bg-white hover:bg-blue-50 px-2.5 py-1 rounded border border-slate-200 transition-colors shadow-2xs"
-                          title="Inspeccionar el desglose de artículos cotizados por este proveedor"
-                        >
-                          <Package size={12} className="text-blue-600" />
-                          <span>Ver Artículos</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const url = CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion);
-                            window.open(url, '_blank');
-                          }}
-                          className="text-blue-600 hover:text-blue-700 font-semibold text-[11px] flex items-center gap-1 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                          title="Visualizar el documento PDF original"
-                        >
-                          <Eye size={12} /> PDF
-                        </button>
-                        <a
-                          href={CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download={`cotizacion_${cot.cotIdCotizacion}.pdf`}
-                          className="text-slate-600 hover:text-slate-800 font-semibold text-[11px] flex items-center gap-1 bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 transition-colors"
-                          title="Descargar documento PDF original"
-                        >
-                          <Download size={12} />
-                        </a>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
-                    {isGanadora ? (
-                      <div className="space-y-2 w-full">
-                        <div className="w-full py-2 px-3 bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs">
-                          <CheckCircle2 size={16} />
-                          Oferta Ganadora Adjudicada
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={Package}
-                            onClick={() => setSelectedCotizacionDetail(cot)}
-                            className="flex-1 justify-center text-xs bg-white text-slate-800 hover:bg-slate-50 border-slate-200 font-bold"
-                          >
-                            Ver Artículos
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={FileText}
-                            onClick={() => {
-                              const url = CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion);
-                              window.open(url, '_blank');
-                            }}
-                            className="flex-1 justify-center text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200 font-semibold"
-                          >
-                            Ver PDF
-                          </Button>
-                        </div>
+                  {/* Conditions Grid */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg space-y-0.5">
+                      <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                        <Clock size={12} />
+                        Entrega
+                      </span>
+                      <span className="font-bold text-slate-800">
+                        {cot.cotTiempoEntregaDias ? `${cot.cotTiempoEntregaDias} días hábiles` : 'Inmediata'}
+                      </span>
+                    </div>
+                    <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg space-y-0.5">
+                      <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                        <CreditCard size={12} />
+                        Condición
+                      </span>
+                      <span className="font-bold text-slate-800">
+                        {cot.cotCondicionPagoDias ? `${cot.cotCondicionPagoDias} días crédito` : 'Contado'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* PDF and Articles Inspection Indicator */}
+                  <div className="flex flex-wrap items-center justify-between text-xs px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 gap-2">
+                    <div className="flex items-center gap-1.5 text-slate-600 truncate min-w-0 flex-1">
+                      <FileText size={14} className="text-red-500 shrink-0" />
+                      <span className="truncate text-[11px] font-medium font-mono">
+                        {cot.cotRutaArchivoPdf || `cotizacion_${cot.cotIdCotizacion}.pdf`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCotizacionDetail(cot)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-lg shadow-2xs transition-all"
+                        title="Inspeccionar el desglose de artículos cotizados por este proveedor"
+                      >
+                        <Package size={12} className="text-blue-600" />
+                        <span>Ver Artículos</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion);
+                          window.open(url, '_blank');
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 rounded-lg shadow-2xs transition-all"
+                        title="Visualizar el documento PDF original"
+                      >
+                        <Eye size={12} />
+                        <span>PDF</span>
+                      </button>
+                      <a
+                        href={CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={`cotizacion_${cot.cotIdCotizacion}.pdf`}
+                        className="inline-flex items-center justify-center p-1 text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 rounded-lg transition-all shadow-2xs"
+                        title="Descargar documento PDF original"
+                      >
+                        <Download size={12} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Bar */}
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                  {isGanadora ? (
+                    <div className="space-y-2 w-full">
+                      <div className="w-full py-2 px-3 bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs">
+                        <CheckCircle2 size={16} />
+                        Oferta Ganadora Adjudicada
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2 w-full">
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="secondary"
                           size="sm"
                           icon={Package}
                           onClick={() => setSelectedCotizacionDetail(cot)}
-                          className="text-xs py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold shrink-0"
-                          title="Inspeccionar el desglose de artículos cotizados por este proveedor"
+                          className="flex-1 justify-center text-xs font-semibold shadow-sm transition-all"
                         >
                           Ver Artículos
                         </Button>
                         <Button
-                          variant="primary"
-                          icon={Award}
-                          className="flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white"
+                          variant="secondary"
                           size="sm"
+                          icon={FileText}
                           onClick={() => {
-                            setAdjudicarTarget(cot);
-                            setCriterioSeleccion(isLowestPrice ? 'MENOR_COSTO' : 'CALIDAD_GARANTIA');
+                            const url = CotizacionClientService.getDocumentoUrl(cot.cotIdCotizacion);
+                            window.open(url, '_blank');
                           }}
+                          className="flex-1 justify-center text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 active:bg-emerald-200 border-emerald-300 font-semibold shadow-sm transition-all"
                         >
-                          Elegir como Ganadora
+                          Ver PDF
                         </Button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 w-full">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Package}
+                        onClick={() => setSelectedCotizacionDetail(cot)}
+                        className="text-xs font-semibold shadow-sm transition-all shrink-0"
+                        title="Inspeccionar el desglose de artículos cotizados por este proveedor"
+                      >
+                        Ver Artículos
+                      </Button>
+                      <Button
+                        variant="primary"
+                        icon={Award}
+                        size="sm"
+                        className="flex-1 justify-center bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all text-xs"
+                        onClick={() => {
+                          setAdjudicarTarget(cot);
+                          setCriterioSeleccion(isLowestPrice ? 'MENOR_COSTO' : 'CALIDAD_GARANTIA');
+                        }}
+                      >
+                        Elegir como Ganadora
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 </div>
               );
             })}
@@ -671,34 +693,63 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
 
               {/* Criterio Selection */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">
+                <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
                   Criterio Principal de Selección *
                 </label>
-                <select
-                  value={criterioSeleccion}
-                  onChange={(e) => setCriterioSeleccion(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden"
-                >
-                  <option value="MENOR_COSTO">1. Menor Precio Ofertado (Postura Económica Más Favorable)</option>
-                  <option value="TIEMPO_ENTREGA">2. Menor Tiempo de Entrega (Urgencia Operativa)</option>
-                  <option value="CONDICIONES_PAGO">3. Mejores Condiciones de Crédito y Financiamiento</option>
-                  <option value="CALIDAD_GARANTIA">4. Mayor Respaldo Técnico, Calidad y Garantía</option>
-                  <option value="EXCEPCION_UNICO">5. Proveedor Único Autorizado / Fabricante Exclusivo</option>
-                </select>
+                <div className="max-w-md">
+                  <select
+                    value={criterioSeleccion}
+                    onChange={(e) => setCriterioSeleccion(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-xs"
+                  >
+                    <option value="MENOR_COSTO">1. Menor Precio Ofertado (Postura Económica Más Favorable)</option>
+                    <option value="TIEMPO_ENTREGA">2. Menor Tiempo de Entrega (Urgencia Operativa)</option>
+                    <option value="CONDICIONES_PAGO">3. Mejores Condiciones de Crédito y Financiamiento</option>
+                    <option value="CALIDAD_GARANTIA">4. Mayor Respaldo Técnico, Calidad y Garantía</option>
+                    <option value="EXCEPCION_UNICO">5. Proveedor Único Autorizado / Fabricante Exclusivo</option>
+                  </select>
+                </div>
               </div>
 
               {/* Justification Textarea */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">
-                  Dictamen / Justificación de Adjudicación (Opcional)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Dictamen / Justificación de Adjudicación (Opcional)
+                  </label>
+                  <span className={`text-[11px] font-medium ${justificacionAdjudicacion.length > 450 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                    {justificacionAdjudicacion.length}/500
+                  </span>
+                </div>
                 <textarea
                   value={justificacionAdjudicacion}
-                  onChange={(e) => setJustificacionAdjudicacion(e.target.value)}
+                  maxLength={500}
+                  onKeyDown={(e) => {
+                    // Prevenir inserción de caracteres peligrosos o que rompan la BD
+                    if (['<', '>', '`'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    if (/[<>{}`]/.test(text)) {
+                      e.preventDefault();
+                      const sanitized = text.replace(/[<>{}`]/g, '').slice(0, 500 - justificacionAdjudicacion.length);
+                      setJustificacionAdjudicacion((prev) => (prev + sanitized).slice(0, 500));
+                    }
+                  }}
+                  onChange={(e) => {
+                    // Sanitizar caracteres en tiempo real
+                    const sanitized = e.target.value.replace(/[<>{}`]/g, '');
+                    setJustificacionAdjudicacion(sanitized);
+                  }}
                   placeholder="Ingrese detalles técnicos o comerciales que sustenten la elección de esta propuesta..."
                   rows={3}
-                  className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden resize-none"
+                  className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none leading-relaxed shadow-xs transition-all"
                 />
+                <p className="text-[11px] text-slate-400">
+                  Máximo 500 caracteres. No se permiten caracteres especiales no imprimibles o etiquetas HTML.
+                </p>
               </div>
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
@@ -717,21 +768,24 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+            <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
               <Button
                 variant="secondary"
+                size="sm"
                 icon={X}
                 onClick={() => setAdjudicarTarget(null)}
                 disabled={isAdjudicating}
+                className="font-semibold shadow-sm transition-all"
               >
                 Cancelar
               </Button>
               <Button
                 variant="primary"
+                size="sm"
                 icon={Check}
                 onClick={handleConfirmAdjudicacion}
                 disabled={isAdjudicating}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all"
               >
                 {isAdjudicating ? 'Adjudicando...' : 'Confirmar Adjudicación'}
               </Button>

@@ -214,6 +214,7 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
               <TextInput
                 placeholder="Ej. Laptop Dell Latitude 5420 (Alternativa a ThinkPad)"
                 value={nombre}
+                maxLength={150}
                 onChange={(e) => setNombre(e.target.value)}
                 autoFocus
               />
@@ -289,6 +290,7 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
             <TextArea
               placeholder="Indica modelo exacto, especificaciones técnicas comparativas, garantía o condiciones del sustituto ofrecido..."
               rows={3}
+              maxLength={300}
               value={especificaciones}
               onChange={(e) => setEspecificaciones(e.target.value)}
               className="text-xs"
@@ -318,7 +320,16 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
                       e.preventDefault();
                     }
                   }}
-                  onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    if (!/^\d+$/.test(text)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '');
+                    setCantidad(clean === '' ? 1 : Math.max(1, parseInt(clean, 10)));
+                  }}
                   className="w-full h-[36px] px-2.5 text-xs text-center font-bold font-mono rounded-lg outline-none border border-slate-300 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
                 />
               </div>
@@ -333,7 +344,26 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
                   min={0}
                   placeholder="0.00"
                   value={precioUnitario}
-                  onChange={(e) => setPrecioUnitario(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (['e', 'E', '-', '+'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    if (!/^\d*(\.\d{0,2})?$/.test(text)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setPrecioUnitario('');
+                    } else {
+                      const parsed = parseFloat(raw);
+                      setPrecioUnitario(isNaN(parsed) ? '0.00' : Math.max(0, parsed).toString());
+                    }
+                  }}
                   className="w-full h-[36px] px-3 text-xs text-right font-bold font-mono rounded-lg outline-none border border-amber-300 bg-amber-50/40 text-amber-950 focus:bg-white focus:ring-2 focus:ring-amber-200"
                 />
               </div>
@@ -359,14 +389,19 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
 
           {/* Action Buttons */}
           <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              className="font-semibold shadow-sm transition-all"
+            >
               Cancelar
             </Button>
             <Button
               type="submit"
               variant="primary"
               icon={Check}
-              className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-xs"
+              className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-sm font-semibold transition-all"
             >
               Guardar Producto Sustituto
             </Button>

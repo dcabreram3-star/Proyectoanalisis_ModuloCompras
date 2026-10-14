@@ -359,10 +359,14 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             <TextArea
               placeholder="Describa de forma detallada por qué solo existe un proveedor disponible o calificado para este requerimiento..."
               rows={2}
+              maxLength={500}
               value={justificacionExcepcion}
               onChange={(e) => setJustificacionExcepcion(e.target.value)}
-              className="bg-white border-amber-300 focus:border-amber-500 focus:ring-amber-200 text-amber-950 placeholder-amber-700/50 text-xs"
+              className="bg-white border-amber-300 focus:border-amber-500 focus:ring-amber-200 text-amber-950 placeholder-amber-700/50 text-xs w-full"
             />
+            <div className="flex justify-end text-[11px] text-amber-800/80 font-medium">
+              <span>{justificacionExcepcion.length}/500 caracteres</span>
+            </div>
           </div>
         )}
       </div>
@@ -415,7 +419,12 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button variant="secondary" onClick={onBack} disabled={isSubmitting}>
+          <Button
+            variant="secondary"
+            onClick={onBack}
+            disabled={isSubmitting}
+            className="font-semibold shadow-sm transition-all"
+          >
             Cancelar
           </Button>
           <Button
@@ -423,7 +432,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             icon={Send}
             disabled={isSubmitting}
             onClick={handleSubmit}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
           >
             {isSubmitting ? 'Guardando en BD...' : 'Enviar a Selección Financiera'}
           </Button>
