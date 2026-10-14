@@ -98,6 +98,10 @@ const getInitialFechaLlegada = (): string => {
   if (hours > 20 || (hours === 20 && minutes > 0)) {
     return `${todayStr}T20:00`;
   }
+  // Si la hora actual es anterior a las 8:00 AM (08:00) (madrugada), colocar por defecto las 08:00 del día actual
+  if (hours < 8) {
+    return `${todayStr}T08:00`;
+  }
   const hh = String(hours).padStart(2, '0');
   const mm = String(minutes).padStart(2, '0');
   return `${todayStr}T${hh}:${mm}`;
@@ -115,14 +119,24 @@ const validateFechaLlegada = (value: string): string | null => {
   if (datePart < todayStr) {
     return `La fecha de llegada no puede ser menor al día actual (${todayStr}).`;
   }
-  if (timePart) {
-    const [hoursStr, minutesStr] = timePart.split(':');
-    const hours = Number(hoursStr);
-    const minutes = Number(minutesStr || 0);
-    if (isNaN(hours) || hours > 20 || (hours === 20 && minutes > 0)) {
-      return 'La hora de recepción no puede ser mayor a las 8:00 PM (20:00 hrs).';
-    }
+  if (!timePart) {
+    return 'Debe especificar la hora de recepción.';
   }
+  const [hoursStr, minutesStr] = timePart.split(':');
+  const hours = Number(hoursStr);
+  const minutes = Number(minutesStr || 0);
+  if (isNaN(hours) || isNaN(minutes)) {
+    return 'Formato de hora inválido.';
+  }
+
+  // Restricción estricta de horario: únicamente permitido de 8:00 AM a 8:00 PM (08:00 a 20:00 hrs)
+  if (hours < 8) {
+    return 'Horario no autorizado (Madrugada): Las recepciones en bodega únicamente están permitidas dentro del horario diurno a partir de las 8:00 AM (08:00 hrs). El registro en horario de madrugada (00:00 a 07:59 hrs) está bloqueado.';
+  }
+  if (hours > 20 || (hours === 20 && minutes > 0)) {
+    return 'Horario no autorizado (Nocturno): Las recepciones en bodega únicamente están permitidas hasta las 8:00 PM (20:00 hrs). El registro en horario nocturno posterior a las 20:00 hrs está bloqueado.';
+  }
+
   return null;
 };
 
@@ -402,7 +416,16 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
     setFechaError(err);
     if (err) {
       setErrorMsg(err);
-    } else if (errorMsg && (errorMsg.includes('8:00 PM') || errorMsg.includes('menor al día actual'))) {
+    } else if (
+      errorMsg && (
+        errorMsg.includes('8:00 PM') ||
+        errorMsg.includes('8:00 AM') ||
+        errorMsg.includes('Madrugada') ||
+        errorMsg.includes('Nocturno') ||
+        errorMsg.includes('Horario no autorizado') ||
+        errorMsg.includes('menor al día actual')
+      )
+    ) {
       setErrorMsg(null);
     }
   };
@@ -633,7 +656,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         idProveedorTransporte: tipoTransporte === 'AJENO' ? idProveedorTransporte : undefined,
         placaAjena: tipoTransporte === 'AJENO' ? placaVehiculo.trim() : undefined,
         modeloAjeno: tipoTransporte === 'AJENO' ? modeloVehiculo.trim() : undefined,
-        fechaLlegada: fechaLlegada ? new Date(fechaLlegada).toISOString() : new Date().toISOString(),
+        fechaLlegada: fechaLlegada || new Date().toISOString(),
         idUsuarioBodega: 1, // Usuario bodega en sesión
         observaciones: observaciones.trim() || undefined,
         detalles: mappedItems,
@@ -1158,10 +1181,10 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   label="Fecha y Hora de Llegada"
                   type="datetime-local"
                   required
-                  min={`${getTodayLocalDate()}T00:00`}
+                  min={`${getTodayLocalDate()}T08:00`}
                   value={fechaLlegada}
                   error={fechaError || undefined}
-                  helperText={!fechaError ? "Horario permitido: Máximo hasta las 8:00 PM" : undefined}
+                  helperText={!fechaError ? "Horario autorizado: 8:00 AM a 8:00 PM (08:00 a 20:00 hrs)." : undefined}
                   onChange={(e) => handleFechaLlegadaChange(e.target.value)}
                   icon={Calendar}
                   className="w-full sm:w-64 max-w-xs"

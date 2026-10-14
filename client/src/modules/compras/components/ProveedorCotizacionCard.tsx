@@ -526,6 +526,14 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
         const parsed = parseInt(value, 10);
         mod.cantidadCotizada = isNaN(parsed) ? 1 : Math.max(1, parsed);
       }
+      if (field === 'precioUnitario') {
+        if (value === '') {
+          mod.precioUnitario = '';
+        } else {
+          const num = typeof value === 'number' ? value : parseFloat(value);
+          mod.precioUnitario = isNaN(num) ? 0 : Math.max(0, num);
+        }
+      }
       if (mod.sinExistencias) {
         mod.subtotalLinea = 0;
       } else {
@@ -623,10 +631,10 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             <button
               type="button"
               onClick={onClear}
-              className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors flex items-center gap-1 text-xs font-semibold border border-slate-200 hover:border-rose-200 shadow-2xs group"
+              className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 active:bg-rose-100 transition-all flex items-center gap-1.5 text-xs font-semibold border border-slate-200 hover:border-rose-200 shadow-2xs group"
               title="Descartar los datos de esta cotización"
             >
-              <Trash2 size={12} className="text-slate-400 group-hover:text-rose-600" />
+              <Trash2 size={13} className="text-slate-400 group-hover:text-rose-600 transition-colors" />
               <span>Descartar</span>
             </button>
           )}
@@ -650,22 +658,46 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
         </div>
 
         {/* Tiempo de Entrega */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 flex flex-col">
           <div className="flex items-center gap-1 mb-1">
-            <label className="text-xs font-semibold text-slate-700 flex items-center">
+            <label className="text-xs font-semibold text-slate-700 flex items-center whitespace-nowrap">
               ENTREGA (DÍAS)
             </label>
             <span title="Días calendario estimados para la entrega" className="text-slate-400">
               <HelpCircle size={12} />
             </span>
           </div>
-          <TextInput
-            placeholder="Ej. 7"
-            type="number"
-            value={data.tiempoEntregaDias}
-            onChange={(e) => handleFieldChange('tiempoEntregaDias', e.target.value)}
-            isReadOnly={isDisabled}
-          />
+          <div className="w-20 sm:w-24">
+            <input
+              type="number"
+              min={0}
+              step="1"
+              placeholder="Ej. 7"
+              value={data.tiempoEntregaDias}
+              onKeyDown={(e) => {
+                if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                if (!/^\d+$/.test(text)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const clean = e.target.value.replace(/\D/g, '');
+                handleFieldChange('tiempoEntregaDias', clean === '' ? '' : Math.max(0, parseInt(clean, 10)));
+              }}
+              disabled={isDisabled}
+              readOnly={isDisabled}
+              className={`w-20 sm:w-24 h-10 px-2.5 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${
+                isDisabled
+                  ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-not-allowed font-medium'
+                  : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+              }`}
+            />
+          </div>
         </div>
 
         {/* Plazo de Pago */}
@@ -714,7 +746,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             <button
               type="button"
               disabled={isDisabled}
-              className={`w-full h-[36px] px-3 rounded-xl border border-dashed text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5 ${
+              className={`w-full h-10 px-3 rounded-lg border border-dashed text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5 shadow-2xs ${
                 data.archivoPdfNombre
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                   : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'
@@ -723,7 +755,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
               {data.archivoPdfNombre ? (
                 <>
                   <CheckCircle size={14} className="text-emerald-600 shrink-0" />
-                  <span className="truncate max-w-[140px]">{data.archivoPdfNombre}</span>
+                  <span className="truncate max-w-[140px] font-mono">{data.archivoPdfNombre}</span>
                 </>
               ) : (
                 <>
@@ -755,30 +787,30 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             {isDetailsExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
               icon={Plus}
               onClick={handleAddCatalogLine}
               disabled={isDisabled}
-              className="text-xs py-1 h-7.5 text-blue-700 hover:bg-blue-100/70 bg-white border border-blue-200 shadow-2xs font-semibold"
+              className="text-xs h-8 text-blue-700 hover:text-blue-800 hover:bg-blue-50 bg-white border border-blue-200 shadow-sm font-semibold transition-all"
               title="Añadir un artículo estándar desde el catálogo"
             >
-              + Añadir Artículo
+              Añadir Artículo
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
               icon={Repeat}
               onClick={handleOpenSubstituteModalForNew}
               disabled={isDisabled}
-              className="text-xs py-1 h-7.5 text-amber-800 hover:bg-amber-100 bg-amber-50 border border-amber-300 shadow-2xs font-semibold"
+              className="text-xs h-8 text-amber-900 hover:text-amber-950 hover:bg-amber-100 bg-amber-50 border border-amber-300 shadow-sm font-semibold transition-all"
               title="Añadir una línea para cotizar un producto sustituto o alternativo"
             >
-              + Producto Sustituto
+              Producto Sustituto
             </Button>
           </div>
         </div>
@@ -788,7 +820,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             {currentDetalles.length === 0 ? (
               <div className="p-3 bg-white rounded-lg border border-dashed border-slate-200 text-center">
                 <p className="text-xs text-slate-500">
-                  No hay artículos asignados a esta cotización. Utiliza "+ Añadir Artículo" o "+ Producto Sustituto" para comenzar.
+                  No hay artículos asignados a esta cotización. Utiliza "Añadir Artículo" o "Producto Sustituto" para comenzar.
                 </p>
               </div>
             ) : (
@@ -844,8 +876,8 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                         </div>
 
                         {/* Cantidad */}
-                        <div className="w-20 sm:w-24 shrink-0">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+                        <div className="w-20 shrink-0 flex flex-col">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5 text-center">
                             Cantidad
                           </label>
                           <input
@@ -859,9 +891,19 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                                 e.preventDefault();
                               }
                             }}
-                            onChange={(e) => handleDetailChange(lIdx, 'cantidadCotizada', e.target.value)}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData('text');
+                              if (!/^\d+$/.test(text)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const clean = e.target.value.replace(/\D/g, '');
+                              const parsed = parseInt(clean, 10);
+                              handleDetailChange(lIdx, 'cantidadCotizada', isNaN(parsed) ? 1 : Math.max(1, parsed));
+                            }}
                             disabled={isDisabled || isSinStock}
-                            className={`w-full h-[34px] px-2 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${
+                            className={`w-20 h-[34px] px-2 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${
                               isSinStock
                                 ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
                                 : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
@@ -881,13 +923,30 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                             min={0}
                             placeholder="0.00"
                             value={isSinStock ? '0.00' : (line.precioUnitario ?? '')}
-                            onChange={(e) =>
-                              handleDetailChange(
-                                lIdx,
-                                'precioUnitario',
-                                e.target.value === '' ? '' : Number(e.target.value)
-                              )
-                            }
+                            onKeyDown={(e) => {
+                              if (['e', 'E', '-', '+'].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData('text');
+                              if (!/^\d*(\.\d{0,2})?$/.test(text)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                handleDetailChange(lIdx, 'precioUnitario', '');
+                              } else {
+                                const parsed = parseFloat(raw);
+                                handleDetailChange(
+                                  lIdx,
+                                  'precioUnitario',
+                                  isNaN(parsed) ? 0 : Math.max(0, parsed)
+                                );
+                              }
+                            }}
                             disabled={isDisabled || isSinStock}
                             className={`w-full h-[34px] px-2.5 text-xs text-right font-bold font-mono rounded-lg outline-none transition-all border ${
                               isSinStock
@@ -921,15 +980,15 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               <button
                                 type="button"
                                 onClick={() => handleToggleSinExistencias(lIdx)}
-                                className={`h-[34px] px-2 rounded-lg transition-colors text-xs flex items-center gap-1 ${
+                                className={`h-[34px] px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${
                                   isSinStock
-                                    ? 'text-rose-700 bg-rose-100 hover:bg-rose-200 border border-rose-300 font-bold'
-                                    : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200'
+                                    ? 'text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-rose-600'
+                                    : 'text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 active:bg-rose-100 border border-slate-300 hover:border-rose-300'
                                 }`}
                                 title={isSinStock ? 'Reactivar artículo (Proveedor tiene stock)' : 'Marcar Sin Stock / No Disponible'}
                               >
-                                <Ban size={13} />
-                                <span className="hidden sm:inline text-[10px] font-medium">
+                                <Ban size={13} className={isSinStock ? 'text-white' : 'text-rose-600'} />
+                                <span className="hidden sm:inline text-[11px]">
                                   {isSinStock ? 'Sin Stock' : 'Agotado'}
                                 </span>
                               </button>
@@ -937,15 +996,15 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               <button
                                 type="button"
                                 onClick={() => handleToggleSustituto(lIdx)}
-                                className={`h-[34px] px-2 rounded-lg transition-colors text-xs flex items-center gap-1 ${
+                                className={`h-[34px] px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${
                                   isSust
-                                    ? 'text-amber-900 bg-amber-200 hover:bg-amber-300 border border-amber-400 font-bold'
-                                    : 'text-slate-500 hover:text-amber-700 hover:bg-amber-50 border border-slate-200'
+                                    ? 'text-amber-950 bg-amber-200 hover:bg-amber-300 active:bg-amber-400 border border-amber-400'
+                                    : 'text-slate-600 hover:text-amber-800 bg-white hover:bg-amber-50 active:bg-amber-100 border border-slate-300 hover:border-amber-300'
                                 }`}
                                 title={isSust ? 'Editar datos del sustituto' : 'Convertir en Producto Sustituto'}
                               >
-                                <Repeat size={13} />
-                                <span className="hidden sm:inline text-[10px] font-medium">
+                                <Repeat size={13} className={isSust ? 'text-amber-900' : 'text-amber-600'} />
+                                <span className="hidden sm:inline text-[11px]">
                                   {isSust ? 'Sustituto' : 'Sustituto'}
                                 </span>
                               </button>
@@ -953,7 +1012,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               <button
                                 type="button"
                                 onClick={() => handleRemoveDetailLine(lIdx)}
-                                className="h-[34px] w-[34px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200"
+                                className="h-[34px] w-[34px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-rose-600 active:bg-rose-700 rounded-lg transition-all border border-slate-200 hover:border-rose-600 shadow-2xs"
                                 title="Eliminar línea de cotización"
                               >
                                 <Trash2 size={13} />
@@ -986,6 +1045,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                         <div className="flex-1 min-w-[200px]">
                           <input
                             type="text"
+                            maxLength={250}
                             placeholder={
                               isSust
                                 ? 'Especificaciones técnicas o notas del producto sustituto...'
@@ -1033,13 +1093,33 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             </span>
             <span className="text-[11px] text-slate-500 font-medium">Incluye impuestos</span>
           </div>
-          <div className="w-full sm:w-44">
+          <div className="w-full sm:w-44 max-w-[190px]">
             <TextInput
               placeholder="Q 0.00"
               type="number"
+              min={0}
               step="0.01"
               value={data.precioTotal}
-              onChange={(e) => handleFieldChange('precioTotal', e.target.value)}
+              onKeyDown={(e) => {
+                if (['e', 'E', '-', '+'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                if (!/^\d*(\.\d{0,2})?$/.test(text)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') {
+                  handleFieldChange('precioTotal', '');
+                } else {
+                  const num = parseFloat(raw);
+                  handleFieldChange('precioTotal', isNaN(num) ? '0.00' : Math.max(0, num).toString());
+                }
+              }}
               isReadOnly={isDisabled}
               className="text-right font-mono font-bold text-sm bg-slate-50 focus:bg-white"
             />

@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Wallet,
   SlidersHorizontal,
+  Eye,
 } from 'lucide-react';
 import { Button, StatCard, DataTable, Pagination } from '../../components/ui';
 import { SolicitudCompraClientService } from './services/solicitudCompraClientService';
@@ -29,6 +30,7 @@ import { MatrizCotizacionesView } from './components/MatrizCotizacionesView';
 import { SolicitudOriginalInfo } from './components/SolicitudOriginalCard';
 import { SolicitudCreacionView } from './components/SolicitudCreacionView';
 import { SolicitudCreacionModal } from './components/SolicitudCreacionModal';
+import { SolicitudResumenModal } from './components/SolicitudResumenModal';
 import { ProveedoresCatalogView } from './components/ProveedoresCatalogView';
 import { EstadosCatalogView } from './components/EstadosCatalogView';
 import {
@@ -102,8 +104,10 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   }, [activeStageView?.stage, activeStageView?.solicitud?.solNoDocumento]);
 
   // Modal para creación de nueva solicitud dentro de Registros
-  // Modal para creación de nueva solicitud dentro de Registros
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
+  // Modal para resumen dinámico de la solicitud seleccionada
+  const [selectedSolicitudForResumen, setSelectedSolicitudForResumen] = useState<ISolicitudCompra | null>(null);
 
   // Ámbito de visualización de registros: 'activas' (por defecto) vs 'finalizadas' (historial)
   const [viewScope, setViewScope] = useState<'activas' | 'finalizadas'>('activas');
@@ -245,11 +249,23 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       header: 'NO. DOCUMENTO',
       accessorKey: 'solNoDocumento',
       align: 'left' as const,
-      cell: ({ row }: { row: ISolicitudCompra }) => (
-        <span className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">
-          {row.solNoDocumento}
-        </span>
-      ),
+      cell: ({ row }: { row: ISolicitudCompra }) => {
+        const defaultStage = getStageForSolicitud(row);
+        const targetStage = defaultStage === 'rechazada' ? 'aprobacion' : defaultStage;
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveStageView({ stage: targetStage, solicitud: row });
+            }}
+            className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors text-left cursor-pointer"
+            title={`Continuar flujo de trabajo en la etapa: ${targetStage}`}
+          >
+            {row.solNoDocumento}
+          </button>
+        );
+      },
     },
     {
       header: 'FECHA',
@@ -344,23 +360,19 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       header: 'ACCIONES',
       align: 'center' as const,
       cell: ({ row }: { row: ISolicitudCompra }) => {
-        const currentStage = getStageForSolicitud(row);
-        const isComplete = isStatusFullyComplete(row.solNombreEstado, row.solNotas);
         return (
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
+            icon={Eye}
             onClick={(e) => {
               e.stopPropagation();
-              setActiveStageView({ stage: currentStage, solicitud: row });
+              setSelectedSolicitudForResumen(row);
             }}
-            className={`text-xs font-semibold ${
-              isComplete
-                ? 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50'
-                : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-            }`}
+            className="text-xs font-semibold text-slate-700 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 border-slate-200 shadow-2xs transition-all"
+            title="Ver resumen y auditoría en tiempo real de la compra"
           >
-            {isComplete ? 'Ver Detalle' : 'Gestionar'} <ArrowRight size={13} className="ml-1" />
+            Ver Detalle
           </Button>
         );
       },
@@ -1139,7 +1151,8 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             isLoading={isLoading}
             onRowClick={(sol) => {
               const defaultStage = getStageForSolicitud(sol);
-              setActiveStageView({ stage: defaultStage, solicitud: sol });
+              const targetStage = defaultStage === 'rechazada' ? 'aprobacion' : defaultStage;
+              setActiveStageView({ stage: targetStage, solicitud: sol });
             }}
             emptyText={
               viewScope === 'activas'
@@ -1170,6 +1183,17 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             onSuccess={() => {
               setIsCreateModalOpen(false);
               loadData();
+            }}
+          />
+
+          {/* Modal de Resumen Integral y Auditoría de Compra */}
+          <SolicitudResumenModal
+            isOpen={Boolean(selectedSolicitudForResumen)}
+            onClose={() => setSelectedSolicitudForResumen(null)}
+            solicitud={selectedSolicitudForResumen}
+            onNavigateToStage={(stageKey, sol) => {
+              setSelectedSolicitudForResumen(null);
+              setActiveStageView({ stage: stageKey, solicitud: sol });
             }}
           />
         </div>
