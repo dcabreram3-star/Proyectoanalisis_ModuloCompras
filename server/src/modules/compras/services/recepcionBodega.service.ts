@@ -32,6 +32,37 @@ export class RecepcionBodegaService {
     if (!dto.idBodega) {
       throw new Error('Debe seleccionar la bodega de destino para el ingreso físico.');
     }
+
+    // Validación estricta de control de horario de recepción (08:00 a 20:00 hrs)
+    if (dto.fechaLlegada) {
+      const fechaVal = String(dto.fechaLlegada);
+      let hours: number | null = null;
+      let minutes: number = 0;
+
+      if (fechaVal.includes('T')) {
+        const timePart = fechaVal.split('T')[1];
+        if (timePart) {
+          const parts = timePart.split(':');
+          hours = Number(parts[0]);
+          minutes = Number(parts[1] || 0);
+        }
+      } else {
+        const d = new Date(dto.fechaLlegada);
+        if (!isNaN(d.getTime())) {
+          hours = d.getHours();
+          minutes = d.getMinutes();
+        }
+      }
+
+      if (hours !== null && !isNaN(hours)) {
+        if (hours < 8) {
+          throw new Error('Horario no autorizado (Madrugada): Las recepciones en bodega únicamente están permitidas dentro del horario diurno a partir de las 8:00 AM (08:00 hrs). El registro en horario de madrugada (00:00 a 07:59 hrs) no está permitido.');
+        }
+        if (hours > 20 || (hours === 20 && minutes > 0)) {
+          throw new Error('Horario no autorizado (Nocturno): Las recepciones en bodega únicamente están permitidas hasta las 8:00 PM (20:00 hrs). El registro en horario nocturno posterior a las 20:00 hrs no está permitido.');
+        }
+      }
+    }
     
     const items = (dto.detalles && dto.detalles.length > 0) ? dto.detalles : (dto.items || []);
     if (!items || items.length === 0) {

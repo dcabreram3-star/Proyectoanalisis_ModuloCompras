@@ -328,17 +328,21 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
     setErrorMsg(null);
 
     try {
+      // Sanitizar texto para evitar fallos por caracteres no deseados en Oracle DB
+      const cleanNoFactura = noFacturaInput.replace(/[<>{}`\\]/g, '').trim().slice(0, 40);
+      const cleanNotas = notasLiquidacionInput.replace(/[<>{}`\\]/g, '').trim().slice(0, 450);
+
       const dto: ILiquidarThreeWayMatchDTO = {
         noPo: matchData.ordenCompra.ocoNoPo,
         noRecepcion: matchData.recepcionBodega.rboNoRecepcion,
         noDocumentoSolicitud: matchData.solicitud.solNoDocumento,
-        noFactura: noFacturaInput.trim(),
+        noFactura: cleanNoFactura,
         idProveedor: matchData.cotizacion ? matchData.cotizacion.cotIdProveedor : 1,
         fechaFactura: fechaFacturaInput || new Date().toISOString(),
         subtotalFactura: Number(subtotalFacturaInput),
         montoIvaFactura: Number(montoIvaFacturaInput),
         totalFactura: Number(totalFacturaInput),
-        notasLiquidacion: notasLiquidacionInput.trim() || undefined,
+        notasLiquidacion: cleanNotas || undefined,
         toleranciaAceptada: hayDiscrepancias ? toleranciaAceptada : true,
         items: lineItems,
       };
@@ -346,7 +350,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
       const updated = await ThreeWayMatchClientService.liquidar(dto);
       setMatchData(updated);
       setLineItems(updated.comparison?.items || []);
-      setSuccessMsg(`¡3-Way Match completado con éxito! Factura ${noFacturaInput.trim()} conciliada por línea y guardada en CXP_DOCUMENTO_DETALLE.`);
+      setSuccessMsg(`¡3-Way Match completado con éxito! Factura ${cleanNoFactura} conciliada por línea y guardada en CXP_DOCUMENTO_DETALLE.`);
       setIsConfirmOpen(false);
 
       setTimeout(() => {
@@ -528,12 +532,18 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4 print:hidden">
           <div className="flex items-center gap-3">
             {onBack && (
-              <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack}>
-                Volver a Registros
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ArrowLeft}
+                onClick={onBack}
+                className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Volver a Solicitudes
               </Button>
             )}
             <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
               isLiquidado
                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                 : 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -541,7 +551,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
               <ShieldCheck size={14} className={isLiquidado ? 'text-emerald-700' : 'text-blue-600'} />
               {isLiquidado ? 'Etapa 6/6: Finalizada' : 'Etapa 6 de 6: 3-Way Match & Liquidación'}
             </span>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 hidden sm:block">
               Conciliación Tripartita Documental
             </h1>
           </div>
@@ -553,6 +563,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
               icon={RefreshCw}
               onClick={() => loadSingleMatchData(solicitud.noDocumento)}
               disabled={isLoading}
+              className="font-semibold shadow-sm transition-all"
             >
               Actualizar
             </Button>
@@ -562,7 +573,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                 size="sm"
                 icon={Printer}
                 onClick={() => window.print()}
-                className="bg-white border-slate-300 hover:bg-slate-50 text-slate-700 shadow-2xs font-semibold"
+                className="font-semibold shadow-sm transition-all"
               >
                 Imprimir Dictamen
               </Button>
@@ -657,7 +668,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                 onClick={() => {
                   if (onNavigateToStage) onNavigateToStage('bodega');
                 }}
-                className="bg-amber-700 hover:bg-amber-800 text-white"
+                className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-sm font-semibold transition-all"
               >
                 Ir a Recepción en Bodega (Etapa 5)
               </Button>
@@ -791,10 +802,22 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                   </label>
                   <input
                     type="text"
+                    maxLength={40}
                     value={noFacturaInput}
-                    onChange={(e) => setNoFacturaInput(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[<>{}`\\]/g, '').toUpperCase();
+                      setNoFacturaInput(sanitized);
+                    }}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text');
+                      if (/[<>{}`\\]/.test(text)) {
+                        e.preventDefault();
+                        const sanitized = text.replace(/[<>{}`\\]/g, '').toUpperCase().slice(0, 40);
+                        setNoFacturaInput(sanitized);
+                      }
+                    }}
                     placeholder="Ej: FACT-2026-9481"
-                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white font-mono font-bold text-slate-900 text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none"
+                    className="w-full max-w-sm h-8 px-2.5 rounded-lg border border-slate-200 bg-white font-mono font-bold text-slate-900 text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none uppercase transition-all"
                   />
                 </div>
 
@@ -803,10 +826,25 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                     <label className="block font-semibold text-slate-700 mb-1">Subtotal (Q)</label>
                     <input
                       type="number"
+                      min="0"
                       step="0.01"
                       value={subtotalFacturaInput}
-                      onChange={(e) => handleSubtotalChange(Number(e.target.value))}
-                      className="w-full h-8 px-2 text-right rounded-lg border border-slate-200 bg-white font-mono font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-100 outline-none"
+                      onKeyDown={(e) => {
+                        if (['e', 'E', '-', '+'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const text = e.clipboardData.getData('text');
+                        if (isNaN(Number(text)) || Number(text) < 0) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        handleSubtotalChange(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-full h-8 px-2.5 text-right rounded-lg border border-slate-200 bg-white font-mono font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -815,7 +853,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                       type="number"
                       disabled
                       value={montoIvaFacturaInput}
-                      className="w-full h-8 px-2 text-right rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-500 text-xs cursor-not-allowed"
+                      className="w-full h-8 px-2.5 text-right rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-500 text-xs cursor-not-allowed select-none"
                     />
                   </div>
                 </div>
@@ -844,28 +882,34 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {!isLiquidado && (
                 <>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={CheckCircle2}
                     onClick={handleAlinearConPO}
-                    className="px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors shadow-2xs"
+                    className="font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border-blue-200 shadow-sm transition-all text-xs"
                     title="Ajustar todas las cantidades y precios exactamente a la Orden de Compra"
                   >
                     Alinear con PO (100% Conforme)
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={Warehouse}
                     onClick={handleSincronizarConBodega}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+                    className="font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border-slate-200 shadow-sm transition-all text-xs"
                     title="Ajustar las cantidades a lo efectivamente recibido en Almacén"
                   >
                     Sincronizar con Bodega
-                  </button>
+                  </Button>
                 </>
               )}
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 Tolerancia: ±0.00%
               </span>
             </div>
@@ -939,6 +983,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                           <input
                             type="number"
                             min="0"
+                            max="99999"
                             step="1"
                             value={item.cantidadFacturada}
                             onKeyDown={(e) => {
@@ -946,11 +991,17 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                                 e.preventDefault();
                               }
                             }}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData('text');
+                              if (!/^\d+$/.test(text)) {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) => {
                               const parsed = parseInt(e.target.value, 10);
-                              handleLineItemChange(idx, 'cantidadFacturada', isNaN(parsed) ? 0 : parsed);
+                              handleLineItemChange(idx, 'cantidadFacturada', isNaN(parsed) ? 0 : Math.max(0, parsed));
                             }}
-                            className="w-16 h-7 text-center rounded border border-slate-300 font-mono font-bold text-xs bg-white focus:ring-2 focus:ring-blue-100 outline-none"
+                            className="w-20 h-8 text-center rounded-lg border border-slate-300 font-mono font-bold text-xs bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
                           />
                         )}
                       </td>
@@ -967,10 +1018,25 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                           <input
                             type="number"
                             min="0"
+                            max="99999999.99"
                             step="0.01"
                             value={item.precioUnitarioFactura}
-                            onChange={(e) => handleLineItemChange(idx, 'precioUnitarioFactura', parseFloat(e.target.value))}
-                            className="w-24 h-7 text-right rounded border border-slate-300 font-mono font-bold text-xs bg-white px-1.5 focus:ring-2 focus:ring-blue-100 outline-none"
+                            onKeyDown={(e) => {
+                              if (['e', 'E', '-', '+'].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData('text');
+                              if (isNaN(Number(text)) || Number(text) < 0) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const parsed = parseFloat(e.target.value);
+                              handleLineItemChange(idx, 'precioUnitarioFactura', isNaN(parsed) ? 0 : Math.max(0, parsed));
+                            }}
+                            className="w-28 h-8 text-right rounded-lg border border-slate-300 font-mono font-bold text-xs bg-white px-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
                           />
                         )}
                       </td>
@@ -1084,23 +1150,40 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                     id="tolerancia-check"
                     checked={toleranciaAceptada}
                     onChange={(e) => setToleranciaAceptada(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
                   />
-                  <label htmlFor="tolerancia-check" className="text-xs font-bold text-slate-800 cursor-pointer">
+                  <label htmlFor="tolerancia-check" className="text-xs font-bold text-slate-800 cursor-pointer select-none">
                     Autorizo la liquidación de la Factura aceptando las variaciones a nivel de línea.
                   </label>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Justificación / Nota de Aprobación de Discrepancia <span className="text-rose-500">*</span>
-                  </label>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Justificación / Nota de Aprobación de Discrepancia <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {notasLiquidacionInput.length}/500
+                    </span>
+                  </div>
                   <textarea
                     rows={2}
+                    maxLength={500}
                     value={notasLiquidacionInput}
-                    onChange={(e) => setNotasLiquidacionInput(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[<>{}`\\]/g, '');
+                      setNotasLiquidacionInput(sanitized);
+                    }}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text');
+                      if (/[<>{}`\\]/.test(text)) {
+                        e.preventDefault();
+                        const sanitized = text.replace(/[<>{}`\\]/g, '');
+                        setNotasLiquidacionInput((prev) => (prev + sanitized).slice(0, 500));
+                      }
+                    }}
                     placeholder="Ej: Aprobado ajuste por entrega parcial acordada con el proveedor..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none"
+                    className="w-full max-w-2xl p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all resize-y"
                   />
                 </div>
               </div>
@@ -1150,7 +1233,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                   icon={ShieldCheck}
                   onClick={() => setIsConfirmOpen(true)}
                   disabled={isSubmitting || !hasBodega || !hasPo || liveComparison.isBlocked}
-                  className="w-full justify-center bg-emerald-700 hover:bg-emerald-600 text-white shadow-md font-bold text-sm py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold text-sm py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {liveComparison.isBlocked
                     ? 'Bloqueado por Discrepancia'
@@ -1198,11 +1281,12 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
 
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             icon={RefreshCw}
             onClick={loadGeneralFacturas}
             disabled={isLoadingGeneral}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
           >
             Actualizar Historial
           </Button>
@@ -1243,7 +1327,11 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
           <TextInput
             placeholder="Buscar por Factura, PO, Recepción o Proveedor..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            maxLength={80}
+            onChange={(e) => {
+              const sanitized = e.target.value.replace(/[<>{}`\\]/g, '');
+              setSearchQuery(sanitized);
+            }}
             icon={Search}
           />
         </div>
@@ -1292,7 +1380,8 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedFacturaModal(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Cerrar modal"
               >
                 <X size={20} />
               </button>
@@ -1331,7 +1420,12 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
             </div>
 
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
-              <Button variant="secondary" onClick={() => setSelectedFacturaModal(null)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedFacturaModal(null)}
+                className="font-semibold text-slate-700 shadow-sm transition-all"
+              >
                 Cerrar
               </Button>
             </div>

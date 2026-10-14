@@ -12,6 +12,9 @@ import {
   Ban,
   Loader2,
   X,
+  Check,
+  RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import { Button, StatusBadge, TextArea } from '../../../components/ui';
 import { SolicitudOriginalCard, SolicitudOriginalInfo } from './SolicitudOriginalCard';
@@ -53,64 +56,52 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
   const [motivoRechazo, setMotivoRechazo] = useState<string>('');
   const [rejectError, setRejectError] = useState<string | null>(null);
 
-  // Carga inicial de datos de la solicitud y sus artículos desde Oracle DB
-  useEffect(() => {
-    let isMounted = true;
+  // Carga de datos de la solicitud y sus artículos desde Oracle DB
+  const fetchData = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const completa = await SolicitudCompraClientService.getSolicitudCompleta(solicitud.noDocumento);
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const completa = await SolicitudCompraClientService.getSolicitudCompleta(solicitud.noDocumento);
-        if (!isMounted) return;
+      if (completa) {
+        setSolicitudData(completa);
+        setNotasAprobacion(completa.solNotas || '');
 
-        if (completa) {
-          setSolicitudData(completa);
-          setNotasAprobacion(completa.solNotas || '');
+        const mappedItems: EditableDetalleItem[] = (completa.detalles || []).map((d) => ({
+          idDetalle: d.dsoIdDetalleSolicitud,
+          codigoArticulo: d.dsoCodigoArticulo,
+          descripcion: d.artDescripcion || d.dsoCodigoArticulo,
+          unidad: d.umeAbreviatura || d.umeNombreUnidad || 'UND',
+          cantidadPedida: Number(d.dsoCantidadPedida || 0),
+          cantidadAprobada: Number(d.dsoCantidadAprobada ?? d.dsoCantidadPedida ?? 0),
+        }));
 
-          const mappedItems: EditableDetalleItem[] = (completa.detalles || []).map((d) => ({
-            idDetalle: d.dsoIdDetalleSolicitud,
-            codigoArticulo: d.dsoCodigoArticulo,
-            descripcion: d.artDescripcion || d.dsoCodigoArticulo,
-            unidad: d.umeAbreviatura || d.umeNombreUnidad || 'UND',
-            cantidadPedida: Number(d.dsoCantidadPedida || 0),
-            cantidadAprobada: Number(d.dsoCantidadAprobada ?? d.dsoCantidadPedida ?? 0),
-          }));
+        setItems(mappedItems);
+      } else {
+        // Fallback a detalles directos si la ruta completa no devuelve datos
+        const detalles = await SolicitudCompraClientService.getDetalles(solicitud.noDocumento);
 
-          setItems(mappedItems);
-        } else {
-          // Fallback a detalles directos si la ruta completa no devuelve datos
-          const detalles = await SolicitudCompraClientService.getDetalles(solicitud.noDocumento);
-          if (!isMounted) return;
+        const mapped: EditableDetalleItem[] = detalles.map((d) => ({
+          idDetalle: d.dsoIdDetalleSolicitud,
+          codigoArticulo: d.dsoCodigoArticulo,
+          descripcion: d.artDescripcion || d.dsoCodigoArticulo,
+          unidad: d.umeAbreviatura || d.umeNombreUnidad || 'UND',
+          cantidadPedida: Number(d.dsoCantidadPedida || 0),
+          cantidadAprobada: Number(d.dsoCantidadAprobada ?? d.dsoCantidadPedida ?? 0),
+        }));
 
-          const mapped: EditableDetalleItem[] = detalles.map((d) => ({
-            idDetalle: d.dsoIdDetalleSolicitud,
-            codigoArticulo: d.dsoCodigoArticulo,
-            descripcion: d.artDescripcion || d.dsoCodigoArticulo,
-            unidad: d.umeAbreviatura || d.umeNombreUnidad || 'UND',
-            cantidadPedida: Number(d.dsoCantidadPedida || 0),
-            cantidadAprobada: Number(d.dsoCantidadAprobada ?? d.dsoCantidadPedida ?? 0),
-          }));
-
-          setItems(mapped);
-        }
-      } catch (err: any) {
-        console.error('[AprobacionView.fetchData Error]:', err);
-        if (isMounted) {
-          setErrorMsg(err.message || 'Error al obtener los detalles de la solicitud de compra.');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setItems(mapped);
       }
-    };
+    } catch (err: any) {
+      console.error('[AprobacionView.fetchData Error]:', err);
+      setErrorMsg(err.message || 'Error al obtener los detalles de la solicitud de compra.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
-
-    return () => {
-      isMounted = false;
-    };
   }, [solicitud.noDocumento]);
 
   const estadoActual = (solicitudData?.solNombreEstado || solicitud.estado || 'PENDIENTE').toUpperCase();
@@ -129,12 +120,17 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
   const totalCantidadPedida = items.reduce((acc, curr) => acc + curr.cantidadPedida, 0);
   const totalCantidadAprobada = items.reduce((acc, curr) => acc + curr.cantidadAprobada, 0);
 
-  // Manejo de cambio en la cantidad aprobada
-  const handleCantidadAprobadaChange = (idDetalle: number, valStr: string) => {
-    const parsed = parseInt(valStr, 10);
-    const val = isNaN(parsed) ? 0 : Math.max(0, parsed);
+  // Manejo de cambio en la cantidad aprobada con estricto bloqueo de negativos y límite superior
+  const handleCantidadAprobadaChange = (idDetalle: number, val: number) => {
+    const intVal = Number.isInteger(val) ? val : Math.trunc(val || 0);
     setItems((prev) =>
-      prev.map((item) => (item.idDetalle === idDetalle ? { ...item, cantidadAprobada: val } : item))
+      prev.map((item) => {
+        if (item.idDetalle === idDetalle) {
+          const clamped = Math.max(0, Math.min(item.cantidadPedida, intVal));
+          return { ...item, cantidadAprobada: clamped };
+        }
+        return item;
+      })
     );
   };
 
@@ -148,7 +144,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
     setItems((prev) => prev.map((i) => ({ ...i, cantidadAprobada: 0 })));
   };
 
-  // Guardar Cambios sin alterar el estado
+  // Guardar Cambios sin alterar el estado del pipeline
   const handleGuardarCambios = async () => {
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -156,7 +152,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
     try {
       const payload = {
-        notas: notasAprobacion,
+        notas: notasAprobacion.trim() || undefined,
         detalles: items.map((i) => ({
           idDetalle: i.idDetalle,
           cantidadAprobada: i.cantidadAprobada,
@@ -239,25 +235,45 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
   return (
     <div className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
-      {/* Barra de Navegación Superior */}
+      {/* Barra de Navegación Superior Estándar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack} disabled={isSubmitting}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={ArrowLeft}
+            onClick={onBack}
+            disabled={isSubmitting}
+            className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          >
             Volver a Registros
           </Button>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <span className="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full flex items-center gap-1.5">
             <ShieldCheck size={14} />
-            Etapa 1 de 6
+            Etapa 1 de 6: Aprobación
           </span>
           <h1 className="text-xl font-bold text-slate-900">
             Aprobación de Solicitud de Compra
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-500">Estado actual:</span>
-          <StatusBadge status={estadoActual} size="md" />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={RefreshCw}
+            onClick={fetchData}
+            disabled={isLoading || isSubmitting}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
+          >
+            Actualizar
+          </Button>
+          <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Estado:</span>
+            <StatusBadge status={estadoActual} size="md" />
+          </div>
         </div>
       </div>
 
@@ -271,12 +287,19 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
       {/* Alertas de Notificación */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-800 text-sm animate-fadeIn">
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-800 text-sm animate-fadeIn shadow-xs">
           <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold">Operación exitosa</p>
-            <p className="text-xs text-emerald-700 mt-0.5">{successMsg}</p>
+            <p className="font-bold text-emerald-900">Operación exitosa</p>
+            <p className="text-xs text-emerald-700 mt-0.5 font-medium">{successMsg}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMsg(null)}
+            className="text-emerald-500 hover:text-emerald-700 p-1"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -370,20 +393,24 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
           {isPendiente && (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="success"
+                size="sm"
+                icon={Check}
                 onClick={handleAprobarTodo}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all"
               >
                 Aprobar Todo (100%)
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RotateCcw}
                 onClick={handlePonerEnCero}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                className="font-semibold shadow-sm transition-all"
               >
                 Restablecer a 0
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -393,11 +420,11 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200">
                 <th className="py-3 px-4 w-12 text-center">#</th>
-                <th className="py-3 px-4 w-32">Código</th>
+                <th className="py-3 px-4 w-32 font-mono">Código</th>
                 <th className="py-3 px-4">Descripción del Artículo</th>
                 <th className="py-3 px-4 w-28 text-center">Unidad</th>
                 <th className="py-3 px-4 w-32 text-right">Cant. Pedida</th>
-                <th className="py-3 px-4 w-40 text-right">Cant. Aprobada</th>
+                <th className="py-3 px-4 w-36 text-center">Cant. Aprobada</th>
                 <th className="py-3 px-4 w-32 text-center">Estado Línea</th>
               </tr>
             </thead>
@@ -433,28 +460,44 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                           {item.unidad}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-semibold text-slate-700">
+                      <td className="py-3.5 px-4 text-right font-semibold text-slate-700 font-mono">
                         {item.cantidadPedida}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-center">
                         {isPendiente ? (
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-center">
                             <input
                               type="number"
                               step="1"
                               min={0}
+                              max={item.cantidadPedida}
                               value={item.cantidadAprobada}
                               onKeyDown={(e) => {
                                 if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
                                   e.preventDefault();
                                 }
                               }}
-                              onChange={(e) => handleCantidadAprobadaChange(item.idDetalle, e.target.value)}
-                              className="w-24 h-8 px-2.5 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all text-slate-900"
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text');
+                                if (!/^\d+$/.test(text)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const parsed = parseInt(e.target.value, 10);
+                                handleCantidadAprobadaChange(item.idDetalle, isNaN(parsed) ? 0 : parsed);
+                              }}
+                              className={`w-20 sm:w-24 h-8 px-2 text-center text-xs font-bold rounded-lg border outline-none font-mono transition-all ${
+                                isTotal
+                                  ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-2 focus:ring-emerald-200'
+                                  : isParcial
+                                  ? 'border-amber-400 bg-amber-50/60 text-amber-900 focus:ring-2 focus:ring-amber-200'
+                                  : 'border-rose-300 bg-rose-50/40 text-rose-900 focus:ring-2 focus:ring-rose-200'
+                              }`}
                             />
                           </div>
                         ) : (
-                          <span className="font-bold text-slate-900">{item.cantidadAprobada}</span>
+                          <span className="font-bold text-slate-900 font-mono text-sm">{item.cantidadAprobada}</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -465,7 +508,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                         )}
                         {isParcial && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            <AlertCircle size={12} /> Parcial
+                            <AlertCircle size={12} /> Parcial (-{item.cantidadPedida - item.cantidadAprobada})
                           </span>
                         )}
                         {isCero && (
@@ -486,7 +529,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                     Totales Acumulados:
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-sm">{totalCantidadPedida}</td>
-                  <td className="py-3 px-4 text-right font-mono text-sm text-blue-600">{totalCantidadAprobada}</td>
+                  <td className="py-3 px-4 text-center font-mono text-sm text-blue-600">{totalCantidadAprobada}</td>
                   <td className="py-3 px-4 text-center text-xs text-slate-400 font-normal">
                     {totalItems} artículos
                   </td>
@@ -497,7 +540,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
         </div>
       </div>
 
-      {/* Dictamen y Observaciones */}
+      {/* Dictamen y Observaciones con Ancho Proporcional */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
           <span className="w-1 h-4 bg-indigo-600 rounded-full inline-block" />
@@ -508,14 +551,21 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
         </p>
 
         {isPendiente ? (
-          <TextArea
-            value={notasAprobacion}
-            onChange={(e) => setNotasAprobacion(e.target.value)}
-            placeholder="Ejemplo: Se autoriza la compra de los insumos según la cuota asignada para el presente trimestre..."
-            rows={3}
-          />
+          <div className="w-full max-w-3xl space-y-1">
+            <TextArea
+              value={notasAprobacion}
+              onChange={(e) => setNotasAprobacion(e.target.value)}
+              placeholder="Ejemplo: Se autoriza la compra de los insumos según la cuota asignada para el presente trimestre..."
+              rows={3}
+              maxLength={500}
+              className="w-full text-xs"
+            />
+            <div className="flex justify-end text-[11px] text-slate-400">
+              <span>{notasAprobacion.length}/500 caracteres</span>
+            </div>
+          </div>
         ) : (
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium">
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium max-w-3xl">
             {notasAprobacion || 'Sin notas registradas para este dictamen.'}
           </div>
         )}
@@ -528,10 +578,17 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
         title="Validación de Aprobación"
       />
 
-      {/* Barra de Acciones */}
+      {/* Barra de Acciones Estándar (Inspirado en Bodega) */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack} disabled={isSubmitting}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={ArrowLeft}
+            onClick={onBack}
+            disabled={isSubmitting}
+            className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          >
             Regresar a Solicitudes
           </Button>
         </div>
@@ -549,6 +606,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                 setIsRejectModalOpen(true);
               }}
               disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm font-semibold transition-all"
             >
               Rechazar Solicitud
             </Button>
@@ -560,17 +618,19 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
               icon={Save}
               onClick={handleGuardarCambios}
               disabled={isSubmitting}
+              className="font-semibold shadow-sm transition-all"
             >
               {isSubmitting ? 'Guardando...' : 'Guardar Ajustes'}
             </Button>
 
             {/* Aprobar */}
             <Button
-              variant="primary"
+              variant="success"
               size="sm"
               icon={CheckCircle2}
               onClick={handleAprobarSolicitud}
               disabled={isSubmitting || totalCantidadAprobada <= 0}
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all"
             >
               {isSubmitting ? 'Aprobando...' : 'Aprobar Solicitud'}
             </Button>
@@ -598,8 +658,10 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => !isSubmitting && setIsRejectModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+                title="Cerrar modal"
               >
                 <X size={18} />
               </button>
@@ -621,13 +683,19 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                 </label>
                 <TextArea
                   value={motivoRechazo}
+                  maxLength={300}
                   onChange={(e) => {
                     setMotivoRechazo(e.target.value);
                     setRejectError(null);
                   }}
                   placeholder="Indica el motivo del rechazo (ej. presupuesto insuficiente, solicitud duplicada, especificaciones no conformes)..."
                   rows={3}
+                  className="w-full text-xs"
                 />
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Mínimo requerido para auditoría</span>
+                  <span>{motivoRechazo.length}/300 caracteres</span>
+                </div>
                 {rejectError && (
                   <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
                     <AlertCircle size={13} /> {rejectError}
@@ -642,6 +710,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                   size="sm"
                   onClick={() => setIsRejectModalOpen(false)}
                   disabled={isSubmitting}
+                  className="font-semibold shadow-sm transition-all"
                 >
                   Cancelar
                 </Button>
@@ -651,6 +720,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                   icon={XCircle}
                   onClick={handleConfirmRechazo}
                   disabled={isSubmitting || !motivoRechazo.trim()}
+                  className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm font-semibold transition-all"
                 >
                   {isSubmitting ? 'Rechazando...' : 'Confirmar Rechazo'}
                 </Button>
@@ -662,3 +732,4 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
     </div>
   );
 };
+

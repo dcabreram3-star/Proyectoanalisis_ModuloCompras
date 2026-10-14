@@ -82,7 +82,7 @@ export const OrdenCompraDocumentModal: React.FC<OrdenCompraDocumentModalProps> =
                 href={`/api/compras/cotizaciones/${ordenCompra.ocoIdCotizacionGanadora}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 border border-slate-700 text-xs font-semibold transition-all shadow-2xs"
               >
                 <FileText size={14} className="text-blue-400" />
                 Ver Cotización PDF
@@ -93,7 +93,7 @@ export const OrdenCompraDocumentModal: React.FC<OrdenCompraDocumentModalProps> =
               size="sm"
               icon={Printer}
               onClick={handlePrint}
-              className="bg-slate-800 text-slate-200 hover:bg-slate-700 border-slate-700 text-xs font-semibold"
+              className="bg-slate-800 text-slate-200 hover:bg-slate-700 active:bg-slate-900 border-slate-700 text-xs font-semibold transition-all shadow-2xs"
             >
               Imprimir
             </Button>
@@ -102,7 +102,7 @@ export const OrdenCompraDocumentModal: React.FC<OrdenCompraDocumentModalProps> =
               size="sm"
               icon={Download}
               onClick={handleDownloadPdf}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs text-xs font-semibold"
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-xs text-xs font-semibold transition-all"
             >
               Descargar PDF
             </Button>
@@ -398,22 +398,29 @@ export const OrdenCompraDocumentModal: React.FC<OrdenCompraDocumentModalProps> =
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-            <Button variant="secondary" onClick={onClose}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onClose}
+              className="font-semibold shadow-sm transition-all"
+            >
               Cerrar
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               icon={Printer}
               onClick={handlePrint}
-              className="text-slate-700 hover:bg-slate-100 border-slate-300"
+              className="text-slate-700 hover:bg-slate-100 active:bg-slate-200 border-slate-300 font-semibold shadow-sm transition-all"
             >
               Imprimir
             </Button>
             <Button
               variant="primary"
+              size="sm"
               icon={Download}
               onClick={handleDownloadPdf}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all"
             >
               Descargar PDF
             </Button>

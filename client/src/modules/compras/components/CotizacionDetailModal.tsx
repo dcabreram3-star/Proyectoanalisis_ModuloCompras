@@ -232,14 +232,14 @@ export const CotizacionDetailModal: React.FC<CotizacionDetailModalProps> = ({
                       href={pdfApiUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg font-semibold text-xs transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 rounded-lg font-semibold text-xs transition-all shadow-sm"
                     >
                       <ExternalLink size={13} /> Abrir Pestaña
                     </a>
                     <a
                       href={pdfApiUrl}
                       download={`cotizacion_${cotizacion.cotIdCotizacion}.pdf`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold text-xs transition-all shadow-sm"
                     >
                       <Download size={13} /> Descargar PDF
                     </a>
@@ -262,7 +262,13 @@ export const CotizacionDetailModal: React.FC<CotizacionDetailModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-end">
-          <Button variant="secondary" icon={X} onClick={onClose}>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={X}
+            onClick={onClose}
+            className="font-semibold shadow-sm transition-all"
+          >
             Cerrar Ficha
           </Button>
         </div>

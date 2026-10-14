@@ -183,10 +183,16 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
+      // Sanitizar texto para evitar fallos por caracteres no deseados en Oracle DB
+      const cleanNotas = notasPresupuesto
+        .replace(/[<>{}`\\]/g, '')
+        .trim()
+        .slice(0, 450);
+
       const poResult = await OrdenCompraClientService.autorizarPresupuesto({
         noDocumento: currentSolicitud.noDocumento,
         idCotizacionGanadora: cotizacionGanadora.cotIdCotizacion,
-        notasAutorizacion: notasPresupuesto.trim(),
+        notasAutorizacion: cleanNotas,
         subtotal: finanzas.subtotal,
         montoIva: finanzas.iva,
         total: finanzas.total,
@@ -210,7 +216,14 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
   // Ejecutar Rechazo Presupuestario
   const handleRechazarPresupuesto = async () => {
     if (!currentSolicitud) return;
-    if (!motivoRechazo.trim()) {
+
+    // Sanitizar motivo de rechazo
+    const cleanMotivo = motivoRechazo
+      .replace(/[<>{}`\\]/g, '')
+      .trim()
+      .slice(0, 300);
+
+    if (!cleanMotivo) {
       setErrorMsg('Debe detallar el motivo del rechazo presupuestario.');
       return;
     }
@@ -220,7 +233,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
     try {
       await OrdenCompraClientService.rechazarPresupuesto({
         noDocumento: currentSolicitud.noDocumento,
-        motivoRechazo: motivoRechazo.trim(),
+        motivoRechazo: cleanMotivo,
       });
 
       setSuccessMsg('Se ha registrado el rechazo presupuestario exitosamente.');
@@ -301,7 +314,10 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         {/* Top Header & Breadcrumb */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={ArrowLeft}
               onClick={() => {
                 if (selectedSolicitudFromTable) {
                   setSelectedSolicitudFromTable(null);
@@ -309,17 +325,18 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                   onBack();
                 }
               }}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 font-semibold transition-colors group"
+              className="font-semibold text-slate-600 hover:text-slate-900 transition-colors"
             >
-              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-              <span>Volver a Solicitudes</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-900 font-bold">Visto Bueno de Presupuesto</span>
-            </button>
+              Volver a Solicitudes
+            </Button>
             <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-            <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full flex items-center gap-1">
-              Etapa 4 de 6
+            <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full flex items-center gap-1.5">
+              <PieChart size={14} />
+              Etapa 4 de 6: Presupuesto
             </span>
+            <h1 className="text-xl font-bold text-slate-900 hidden sm:block">
+              Visto Bueno de Presupuesto
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -328,8 +345,9 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                 variant="primary"
                 size="sm"
                 icon={ArrowRight}
+                iconPosition="right"
                 onClick={() => onNavigateToStage('bodega')}
-                className="shadow-sm"
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
               >
                 Avanzar a Recepción en Bodega (Etapa 5)
               </Button>
@@ -339,6 +357,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
               size="sm"
               icon={RefreshCw}
               onClick={() => loadSingleSolicitudData(solicitudEnriquecida.noDocumento)}
+              className="font-semibold shadow-sm transition-all"
             >
               Actualizar
             </Button>
@@ -413,7 +432,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                         const url = CotizacionClientService.getDocumentoUrl(cotizacionGanadora.cotIdCotizacion);
                         window.open(url, '_blank');
                       }}
-                      className="text-xs shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                      className="text-xs shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 border-blue-200 font-semibold shadow-sm transition-all"
                     >
                       Ver Cotización PDF
                     </Button>
@@ -426,7 +445,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                       setSelectedPoDocument(ordenCompraExistente);
                       setIsPoDocumentModalOpen(true);
                     }}
-                    className="text-xs shrink-0"
+                    className="text-xs shrink-0 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
                   >
                     Ver / Imprimir PO
                   </Button>
@@ -437,7 +456,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                     onClick={() => {
                       generarOrdenCompraPdf(ordenCompraExistente);
                     }}
-                    className="text-xs shrink-0"
+                    className="text-xs shrink-0 font-semibold shadow-sm transition-all"
                   >
                     Descargar PDF
                   </Button>
@@ -590,7 +609,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                           const url = CotizacionClientService.getDocumentoUrl(cotizacionGanadora.cotIdCotizacion);
                           window.open(url, '_blank');
                         }}
-                        className="text-xs bg-white text-blue-700 hover:bg-blue-50 border-blue-200 shadow-2xs font-semibold"
+                        className="text-xs bg-white text-blue-700 hover:bg-blue-50 active:bg-blue-100 border-blue-200 shadow-2xs font-semibold transition-all"
                       >
                         Ver Cotización PDF
                       </Button>
@@ -599,7 +618,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         download={`cotizacion_${cotizacionGanadora.cotIdCotizacion}.pdf`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold transition-colors border border-slate-300 shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 rounded-lg text-xs font-semibold transition-all border border-slate-300 shadow-2xs"
                       >
                         <Download size={13} className="text-slate-600" />
                         Descargar Documento
@@ -624,15 +643,43 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                   </div>
                 </div>
 
-                {/* Observaciones / Notas Opcionales */}
-                <div className="space-y-2">
-                  <TextArea
-                    label="Observaciones o Notas de Autorización (Opcional)"
-                    placeholder="Ingrese cualquier aclaración, resolución o visto bueno financiero..."
+                {/* Observaciones / Notas Opcionales con tamaño proporcional y sanitización */}
+                <div className="space-y-1.5 max-w-2xl">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                      Observaciones o Notas de Autorización (Opcional)
+                    </label>
+                    <span className={`text-[11px] font-medium ${notasPresupuesto.length > 450 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                      {notasPresupuesto.length}/500
+                    </span>
+                  </div>
+                  <textarea
                     value={notasPresupuesto}
-                    onChange={(e) => setNotasPresupuesto(e.target.value)}
-                    rows={2}
+                    maxLength={500}
+                    onKeyDown={(e) => {
+                      if (['<', '>', '`'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text');
+                      if (/[<>{}`]/.test(text)) {
+                        e.preventDefault();
+                        const sanitized = text.replace(/[<>{}`]/g, '').slice(0, 500 - notasPresupuesto.length);
+                        setNotasPresupuesto((prev) => (prev + sanitized).slice(0, 500));
+                      }
+                    }}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[<>{}`]/g, '');
+                      setNotasPresupuesto(sanitized);
+                    }}
+                    placeholder="Ingrese cualquier aclaración, resolución o visto bueno financiero..."
+                    rows={3}
+                    className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none leading-relaxed shadow-xs transition-all"
                   />
+                  <p className="text-[11px] text-slate-400">
+                    Máximo 500 caracteres. No se permiten caracteres especiales no imprimibles o etiquetas HTML.
+                  </p>
                 </div>
 
                 {/* Alerta / Validación In-situ (Visible sin necesidad de scroll) */}
@@ -643,10 +690,11 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                 />
 
                 {/* Acciones de Visto Bueno / Autorización */}
-                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-100">
                   <Button
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    variant="danger"
+                    size="md"
+                    className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm font-semibold transition-all w-full sm:w-auto"
                     icon={XCircle}
                     onClick={() => setIsRejectModalOpen(true)}
                     disabled={isSubmitting}
@@ -656,7 +704,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
 
                   <Button
                     variant="primary"
-                    className="bg-emerald-600 hover:bg-emerald-700 shadow-sm px-6"
+                    size="md"
+                    className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all px-6 w-full sm:w-auto"
                     icon={FileCheck}
                     onClick={() => setIsConfirmAuthOpen(true)}
                     disabled={!cotizacionGanadora || isSubmitting}
@@ -678,6 +727,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                     size="sm"
                     icon={ArrowLeft}
                     onClick={() => onNavigateToStage('seleccion')}
+                    className="font-semibold shadow-sm transition-all"
                   >
                     Ir a Selección de Cotizaciones
                   </Button>
@@ -697,6 +747,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
           confirmText="Autorizar y Emitir PO"
           cancelText="Cancelar"
           variant="primary"
+          confirmIcon={FileCheck}
           isLoading={isSubmitting}
           onConfirm={handleAutorizarPresupuesto}
           onClose={() => setIsConfirmAuthOpen(false)}
@@ -705,7 +756,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         {/* Modal de Rechazo Presupuestario */}
         {isRejectModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-5 animate-scaleUp">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4 animate-scaleUp">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5 text-red-600">
                   <AlertTriangle size={22} />
@@ -714,39 +765,74 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                 <button
                   onClick={() => setIsRejectModalOpen(false)}
                   className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                  disabled={isSubmitting}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <p className="text-xs text-slate-600">
-                Indique el motivo por el cual no se autoriza la compra (ej. fondos insuficientes o ajuste necesario):
-              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs">
+                Indique el motivo detallado por el cual no se autoriza la compra (ej. fondos insuficientes o ajuste presupuestario requerido):
+              </div>
 
-              <TextArea
-                label="Motivo del Rechazo *"
-                placeholder="Especifique detalladamente el motivo..."
-                value={motivoRechazo}
-                onChange={(e) => setMotivoRechazo(e.target.value)}
-                rows={4}
-              />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Motivo del Rechazo <span className="text-red-500">*</span>
+                  </label>
+                  <span className={`text-[11px] font-medium ${motivoRechazo.length > 270 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                    {motivoRechazo.length}/300
+                  </span>
+                </div>
+                <textarea
+                  value={motivoRechazo}
+                  maxLength={300}
+                  onKeyDown={(e) => {
+                    if (['<', '>', '`'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    if (/[<>{}`]/.test(text)) {
+                      e.preventDefault();
+                      const sanitized = text.replace(/[<>{}`]/g, '').slice(0, 300 - motivoRechazo.length);
+                      setMotivoRechazo((prev) => (prev + sanitized).slice(0, 300));
+                    }
+                  }}
+                  onChange={(e) => {
+                    const sanitized = e.target.value.replace(/[<>{}`]/g, '');
+                    setMotivoRechazo(sanitized);
+                  }}
+                  placeholder="Especifique detalladamente el motivo para auditoría..."
+                  rows={3}
+                  className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none leading-relaxed shadow-xs transition-all"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Campo obligatorio para registro contable y auditoría (máx. 300 caracteres).
+                </p>
+              </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <Button
                   variant="secondary"
+                  size="sm"
                   icon={X}
                   onClick={() => setIsRejectModalOpen(false)}
                   disabled={isSubmitting}
+                  className="font-semibold shadow-sm transition-all"
                 >
                   Cancelar
                 </Button>
                 <Button
                   variant="danger"
+                  size="sm"
                   icon={XCircle}
                   onClick={handleRechazarPresupuesto}
                   disabled={!motivoRechazo.trim() || isSubmitting}
+                  className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm font-semibold transition-all"
                 >
-                  Confirmar Rechazo
+                  {isSubmitting ? 'Rechazando...' : 'Confirmar Rechazo'}
                 </Button>
               </div>
             </div>
@@ -864,7 +950,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                     }
                   });
                 }}
-                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800"
+                className="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-semibold shadow-2xs transition-all"
                 title="Imprimir / Descargar Orden de Compra Oficial"
               >
                 Imprimir PO
@@ -885,7 +971,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                   estado: row.solNombreEstado || 'Pendiente',
                 });
               }}
-              className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
             >
               {row.tienePo ? 'Detalle' : 'Validar'}
             </Button>
@@ -909,7 +995,14 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" icon={RefreshCw} onClick={loadGeneralData}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={RefreshCw}
+            onClick={loadGeneralData}
+            disabled={isLoadingGeneral}
+            className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm font-semibold transition-all"
+          >
             Actualizar
           </Button>
         </div>
@@ -948,7 +1041,12 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
       {errorMsg && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center justify-between">
           <span>{errorMsg}</span>
-          <Button variant="secondary" size="sm" onClick={loadGeneralData}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={loadGeneralData}
+            className="font-semibold shadow-sm transition-all"
+          >
             Reintentar
           </Button>
         </div>
@@ -962,7 +1060,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
             type="text"
             placeholder="Buscar por Documento, Responsable o Departamento..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            maxLength={80}
+            onChange={(e) => setSearchQuery(e.target.value.replace(/[<>{}`]/g, ''))}
             className="w-full h-9 pl-9 pr-4 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all"
           />
         </div>
@@ -992,7 +1091,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                 setFilterEstadoPresupuesto('TODOS');
                 setSearchQuery('');
               }}
-              className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
             >
               Limpiar
             </Button>
