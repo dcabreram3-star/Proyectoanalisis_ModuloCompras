@@ -26,3 +26,4 @@ export { IVA_GT, LIMITE_CONSUMIDOR_FINAL } from "./modules/cxc/facturacion/factu
 
 // Autenticación: reglas de contraseña y roles usados por el login del cliente
 export { ROLES, ROL_LABEL, PASSWORD_MIN, PASSWORD_MAX, evaluarClave, clavePermitida, fortalezaClave, USERNAME_REGEX, crearUsuarioSchema, editarUsuarioSchema, recuperarClaveSchema, restablecerClaveSchema } from "./modules/auth/auth";
+export * from './modules/inventario';

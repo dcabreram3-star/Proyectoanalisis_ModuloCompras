@@ -9,6 +9,16 @@ import LoginPage from '../modules/auth/LoginPage';
 import CambiarClavePage from '../modules/auth/CambiarClavePage';
 import RecuperarClavePage from '../modules/auth/RecuperarClavePage';
 import RestablecerClavePage from '../modules/auth/RestablecerClavePage';
+import React, { useState } from 'react';
+import { AppLayout } from '../components/ui/AppLayout';
+import { DashboardView } from '../modules/dashboard/DashboardView';
+import { ComprasView } from '../modules/compras/ComprasView';
+import { ProductosView } from '../modules/productos/ProductosView';
+import { InventarioView } from '../modules/inventario/InventarioView';
+import { CxpView } from '../modules/cxp/CxpView';
+import { CxcView } from '../modules/cxc/CxcView';
+import { BancosView } from '../modules/bancos/BancosView';
+
 
 const router = createBrowserRouter([
   // Públicas
@@ -36,6 +46,32 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
+  const [activeModule, setActiveModule] = useState<string>('compras');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const renderModuleView = () => {
+    switch (activeModule) {
+      case 'dashboard':
+        return <DashboardView />;
+      case 'compras':
+        return <ComprasView />;
+      case 'productos':
+        return <ProductosView />;
+      case 'inventario':
+        return <InventarioView />;
+      case 'cuentas_pagar':
+      case 'cxp':
+        return <CxpView />;
+      case 'cuentas_cobrar':
+      case 'cxc':
+        return <CxcView />;
+      case 'bancos':
+        return <BancosView />;
+      default:
+        return <ComprasView />;
+    }
+  };
+
   return (
     <AppErrorBoundary>
       <div className="erp-app min-h-screen bg-slate-50">
@@ -46,5 +82,14 @@ export default function App() {
         </ToastProvider>
       </div>
     </AppErrorBoundary>
+    <AppLayout
+      activeModule={activeModule}
+      onSelectModule={(moduleId: string) => setActiveModule(moduleId)}
+      tabs={[]}
+      searchQuery={searchQuery}
+      onSearchChange={(query: string) => setSearchQuery(query)}
+    >
+      {renderModuleView()}
+    </AppLayout>
   );
 }
