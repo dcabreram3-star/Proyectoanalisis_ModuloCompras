@@ -1,34 +1,71 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { config } from './config/index.js';
-import { initializePool, closePool, checkDatabaseHealth } from './config/database.js';
+import cxcRoutes from './modules/cxc/routes';
+import authRoutes from './modules/auth/auth.routes';
+import usuariosRoutes from './modules/usuarios/usuarios.routes';
 import comprasRouter from './modules/compras/routes/index.js';
 import inventarioRouter from './modules/inventario/routes/index.js';
+import { blockIfPasswordChangeRequired, enforceReadOnlyRole, requireAuth } from './modules/auth/auth.middleware';
+import { errorHandler, noStore, requestLogger, securityHeaders } from './middlewares';
+import { initializePool, closePool, checkDatabaseHealth } from './config/database';
+import { config } from './config';
+import { logger } from './shared/logger';
 
 const app = express();
 const PORT = config.port;
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(requestLogger);
+app.use(cors({
+  origin(origin, callback) {
+    // Herramientas locales/server-to-server pueden no enviar Origin.
+    if (!origin || config.corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Origen no permitido por CORS'));
+  },
+  // La cookie de renovación viaja solo a orígenes de la lista blanca.
+  credentials: true,
+  // Compras/Inventario usan PUT.
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
+// Compras/Inventario envían archivos en base64 (cotizaciones): límite propio de 50mb
+// SOLO para esos routers, montados antes del parser global de 1mb.
+const largeBodyParsers = [
+  express.json({ limit: '50mb' }),
+  express.urlencoded({ extended: true, limit: '50mb' }),
+];
+app.use('/api/compras', ...largeBodyParsers, comprasRouter);
+app.use('/api/inventario', ...largeBodyParsers, inventarioRouter);
 
-// Ruta de salud básica y estado de la base de datos (Health Check)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+
+// Health check con estado de la base de datos.
 app.get('/health', async (_req, res) => {
   const dbHealth = await checkDatabaseHealth();
   res.status(dbHealth.isHealthy ? 200 : 503).json({
     status: dbHealth.isHealthy ? 'OK' : 'DEGRADED',
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     environment: config.nodeEnv,
     database: dbHealth,
   });
 });
 
-// Registro de módulos del sistema
-app.use('/api/compras', comprasRouter);
-app.use('/api/inventario', inventarioRouter);
+// Login/renovación/cierre de sesión (públicas, con su propia protección).
+app.use('/api/auth', noStore, authRoutes);
 
-// Manejo 404 para rutas de la API (Siempre responde JSON)
+// Datos financieros: evitar caché de navegador/proxy y exigir sesión válida,
+// clave ya cambiada y rol con permiso para la operación.
+app.use('/api/admin/usuarios', noStore, requireAuth, blockIfPasswordChangeRequired, usuariosRoutes);
+app.use('/api/cxc', noStore, requireAuth, blockIfPasswordChangeRequired, enforceReadOnlyRole, cxcRoutes);
+
+// 404 JSON para rutas de API desconocidas.
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -36,46 +73,37 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Middleware global de captura de errores para la API
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[ERP Server Error]:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Error interno del servidor',
-    error: config.nodeEnv === 'development' ? err.stack : undefined,
-  });
-});
+app.use(errorHandler);
 
-
-const server = app.listen(PORT, async () => {
-  console.log(`[ERP Server]: API base corriendo en http://localhost:${PORT}`);
-  console.log(`[ERP Server]: Entorno: ${config.nodeEnv}`);
-
-  // Intento de inicialización del pool al arrancar (opcional / no bloqueante en desarrollo sin .env)
+async function bootstrap() {
   try {
-    if (config.oracle.user && config.oracle.password && config.oracle.connectString) {
-      await initializePool();
-    } else {
-      console.warn('[ERP Server]: Variables de conexión a Oracle no configuradas aún en .env. El pool se inicializará bajo demanda.');
-    }
+    await initializePool();
+
+    const server = app.listen(PORT, () => {
+      logger.info('server_started', { port: PORT, environment: config.nodeEnv });
+    });
+
+    let shuttingDown = false;
+    const shutdown = async () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      logger.info('server_shutdown_initiated');
+
+      server.close(async () => {
+        try {
+          await closePool(10);
+        } finally {
+          process.exit(0);
+        }
+      });
+    };
+
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
   } catch (error) {
-    console.error('[ERP Server]: Advertencia al inicializar el pool de Oracle en arranque:', error);
+    logger.error('server_startup_failed', { error: error instanceof Error ? error.message : String(error) });
+    process.exit(1);
   }
-});
+}
 
-// Manejo de apagado controlado (Graceful Shutdown)
-const handleGracefulShutdown = async (signal: string) => {
-  console.log(`\n[ERP Server]: Señal ${signal} recibida. Cerrando servidor y conexiones...`);
-  server.close(async () => {
-    console.log('[ERP Server]: Servidor HTTP cerrado.');
-    try {
-      await closePool(5);
-    } catch (err) {
-      console.error('[ERP Server]: Error al cerrar el pool de conexiones:', err);
-    }
-    process.exit(0);
-  });
-};
-
-process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
-process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+void bootstrap();

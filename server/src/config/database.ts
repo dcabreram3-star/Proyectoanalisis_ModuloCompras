@@ -254,12 +254,18 @@ export async function closePool(drainTime: number = 10): Promise<void> {
   }
 }
 
+/** Alias consumidos por CxC/Auth/scripts (misma implementación que initializePool/closePool). */
+export const initOraclePool = initializePool;
+export const closeOraclePool = (): Promise<void> => closePool(10);
+
 export default {
   initializePool,
+  initOraclePool,
   getPool,
   getConnection,
   execute,
   withTransaction,
   checkDatabaseHealth,
   closePool,
+  closeOraclePool,
 };
