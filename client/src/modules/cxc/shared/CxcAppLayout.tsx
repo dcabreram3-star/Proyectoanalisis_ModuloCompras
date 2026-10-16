@@ -250,7 +250,7 @@ export const CxcAppLayout = ({ children }: CxcAppLayoutProps) => {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate(`/modulos?modulo=${item.id}`)}
                   className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-150 group"
                   aria-label={`Ir a ${item.label}`}
                 >

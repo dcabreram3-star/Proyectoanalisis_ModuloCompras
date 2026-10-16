@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, type LucideIcon } from 'lucide-react';
 
 const DEFAULT_DATE_MIN = '1900-01-01';
 const DEFAULT_DATE_MAX = '2100-12-31';
@@ -129,7 +129,34 @@ const semanticValidityMessage = ({
  * y notación científica. Las reglas de negocio siguen validadas también
  * en el formulario y en el backend.
  */
-export const TextInput = ({
+export type TextRestriction =
+  | 'none'
+  | 'letters'
+  | 'integer'
+  | 'decimal'
+  | 'alphanumeric'
+  | 'identifier'
+  | 'nit';
+
+export interface TextInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value'> {
+  label?: string;
+  required?: boolean;
+  error?: string;
+  icon?: LucideIcon;
+  isReadOnly?: boolean;
+  placeholder?: string;
+  value?: string | number;
+  type?: string;
+  helperText?: string;
+  className?: string;
+  id?: string;
+  restriction?: TextRestriction;
+  allowNegative?: boolean;
+  decimalPlaces?: number;
+  uppercase?: boolean;
+}
+
+export const TextInput: React.FC<TextInputProps> = ({
   label,
   required = false,
   error,
@@ -401,21 +428,15 @@ export const Select: React.FC<SelectProps> = ({
         </div>
       </div>
 
-      {error && (
-        <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-          {error}
-        </span>
-      )}
-
-      {!error && helperText && (
-        <span className="text-xs text-slate-500">{helperText}</span>
-      )}
+      {error && <span id={errorId} role="alert" className="text-xs text-red-600 font-medium">{error}</span>}
+      {!error && resolvedHelperText && <span id={helpId} className="text-xs text-slate-500 leading-relaxed">{resolvedHelperText}</span>}
     </div>
   );
 };
 
 export interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
+  showCharacterCount?: boolean;
   required?: boolean;
   error?: string;
   isReadOnly?: boolean;
@@ -432,6 +453,7 @@ export const TextArea: React.FC<TextAreaProps> = ({
   required = false,
   error,
   isReadOnly = false,
+  rows = 3,
   placeholder = '',
   value,
   onChange,
@@ -457,14 +479,15 @@ export const TextArea: React.FC<TextAreaProps> = ({
   return (
     <div className={`w-full flex flex-col gap-1.5 ${className}`}>
       {label && (
-        <label htmlFor={textareaId} className="text-xs font-semibold text-slate-700 flex items-center">
+        <label htmlFor={areaId} className="text-xs font-semibold text-slate-700 flex items-center">
           {label}
           {required && <span className="text-red-500 ml-0.5" title="Campo requerido" aria-hidden="true">*</span>}
         </label>
       )}
 
       <textarea
-        id={textareaId}
+        id={areaId}
+        rows={rows}
         value={value}
         onChange={onChange}
         onBlur={(event) => { setTouched(true); props.onBlur?.(event); }}
@@ -476,7 +499,6 @@ export const TextArea: React.FC<TextAreaProps> = ({
         aria-readonly={isReadOnly || undefined}
         aria-invalid={Boolean(error) || undefined}
         aria-describedby={error ? errorId : resolvedHelperText ? helpId : undefined}
-        rows={rows}
         className={`
           w-full px-3 py-2 text-sm rounded-lg border transition-all duration-150 outline-none resize-y
           ${isReadOnly
