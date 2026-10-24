@@ -1,4 +1,5 @@
 import { execute, withTransaction } from '../../../config/database.js';
+import { BitacoraRepository } from './bitacora.repository.js';
 import {
   ISolicitudCompra,
   ISolicitudCompraFilterParams,
@@ -60,8 +61,12 @@ function mapRowToSolicitud(row: ISolicitudCompraDbRow): ISolicitudCompra {
     nombreEstado = '3WAY_MATCH';
   } else if (estadoId === 4 || tienePo) {
     nombreEstado = 'RECIBIDA';
-  } else if (estadoId === 3 && (tieneCotGanadora || notasUpper.includes('ADJUDICAD') || notasUpper.includes('PRESUPUESTO'))) {
-    nombreEstado = 'PRESUPUESTO';
+  } else if (
+    estadoUpper.includes('PRESUPUESTO') ||
+    estadoUpper.includes('PENDIENTE DE VALIDACI') ||
+    (estadoId === 3 && (tieneCotGanadora || notasUpper.includes('ADJUDICAD') || notasUpper.includes('PRESUPUESTO')))
+  ) {
+    nombreEstado = rawEstado || 'Pendiente de Validación de Presupuesto';
   }
 
   return {
@@ -319,11 +324,26 @@ export class SolicitudCompraRepository {
    */
   static async aprobar(noDocumento: string, dto: IAprobarSolicitudDTO): Promise<ISolicitudCompraCompleta> {
     await withTransaction(async (conn) => {
-      // 1. Obtener ID del estado APROBADA (generalmente 2)
+      // 1. Obtener o insertar estado "Pendiente de Validación de Presupuesto" en CMP_ESTADO (COMP-003)
       const estRes = await conn.execute<any>(
-        `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(EST_NOMBRE_ESTADO) = 'APROBADA' AND ROWNUM = 1`
+        `SELECT EST_ID_ESTADO, EST_NOMBRE_ESTADO FROM CMP_ESTADO 
+         WHERE UPPER(TRIM(EST_NOMBRE_ESTADO)) IN ('PENDIENTE DE VALIDACIÓN DE PRESUPUESTO', 'PENDIENTE DE VALIDACION DE PRESUPUESTO', 'PRESUPUESTO') 
+         ORDER BY CASE WHEN UPPER(TRIM(EST_NOMBRE_ESTADO)) LIKE '%VALIDACI%' THEN 1 ELSE 2 END, EST_ID_ESTADO ASC`
       );
-      const estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : 2;
+      let estId: number;
+      if (estRes.rows && estRes.rows.length > 0) {
+        estId = Number(estRes.rows[0].EST_ID_ESTADO);
+      } else {
+        const maxRes = await conn.execute<any>(
+          `SELECT NVL(MAX(EST_ID_ESTADO), 0) + 1 AS NEXT_ID FROM CMP_ESTADO`
+        );
+        const nextId = Number(maxRes.rows?.[0]?.NEXT_ID || 3);
+        await conn.execute(
+          `INSERT INTO CMP_ESTADO (EST_ID_ESTADO, EST_NOMBRE_ESTADO) VALUES (:nextId, 'Pendiente de Validación de Presupuesto')`,
+          { nextId }
+        );
+        estId = nextId;
+      }
 
       // 2. Actualizar cantidades aprobadas si se enviaron
       if (dto.detalles && dto.detalles.length > 0) {
@@ -351,10 +371,13 @@ export class SolicitudCompraRepository {
         );
       }
 
-      // 3. Actualizar estado y dictamen en notas
-      const notaAprobacion = dto.notasAprobacion
-        ? `[APROBADA]: ${dto.notasAprobacion}`
-        : `[APROBADA]: Autorizada para cotización`;
+      // 3. Registrar formalmente la transición, actor responsable, fecha exacta y dictamen (COMP-003)
+      const fechaExacta = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const actorId = (dto as any).usuarioAprobador || (dto as any).idUsuario || 'Gerencia / Compras';
+      const dictamen = dto.notasAprobacion && dto.notasAprobacion.trim()
+        ? dto.notasAprobacion.trim()
+        : 'Autorizada para cotización y validación presupuestaria';
+      const notaAprobacion = `[APROBADA - Pendiente de Validación de Presupuesto] [${fechaExacta}] [Actor: ${actorId}]: ${dictamen}`;
 
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
@@ -366,6 +389,25 @@ export class SolicitudCompraRepository {
           nota: notaAprobacion,
           noDocumento,
         }
+      );
+
+      // 4. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          idUsuario: typeof actorId === 'number' ? actorId : null,
+          accion: 'APROBACION_SOLICITUD',
+          valoresPrevios: { noDocumento, etapaPrevia: 'PENDIENTE' },
+          valoresPosteriores: {
+            noDocumento,
+            nuevoEstado: 'Pendiente de Validación de Presupuesto',
+            estadoId: estId,
+            fechaExacta,
+            actor: String(actorId),
+            dictamen,
+            detallesAprobados: dto.detalles,
+          },
+        },
+        conn
       );
     });
 
@@ -386,7 +428,6 @@ export class SolicitudCompraRepository {
       );
       let estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : null;
       if (!estId) {
-        // Si no existe el estado RECHAZADA en el catálogo, insertarlo dinámicamente con el siguiente ID disponible
         const maxRes = await conn.execute<any>(
           `SELECT NVL(MAX(EST_ID_ESTADO), 0) + 1 AS NEXT_ID FROM CMP_ESTADO`
         );
@@ -406,8 +447,10 @@ export class SolicitudCompraRepository {
         { noDocumento }
       );
 
-      // 3. Actualizar estado y registrar motivo de rechazo
-      const notaRechazo = `[RECHAZADA]: ${dto.motivoRechazo.trim()}`;
+      // 3. Registrar formalmente el rechazo, timestamp y actor (COMP-003)
+      const fechaExacta = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const actorId = (dto as any).usuarioRechazo || (dto as any).idUsuario || 'Gerencia / Compras';
+      const notaRechazo = `[RECHAZADA] [${fechaExacta}] [Actor: ${actorId}]: ${dto.motivoRechazo.trim()}`;
 
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
@@ -419,6 +462,24 @@ export class SolicitudCompraRepository {
           nota: notaRechazo,
           noDocumento,
         }
+      );
+
+      // 4. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          idUsuario: typeof actorId === 'number' ? actorId : null,
+          accion: 'RECHAZO_SOLICITUD',
+          valoresPrevios: { noDocumento, etapaPrevia: 'PENDIENTE' },
+          valoresPosteriores: {
+            noDocumento,
+            nuevoEstado: 'RECHAZADA',
+            estadoId: estId,
+            fechaExacta,
+            actor: String(actorId),
+            motivoRechazo: dto.motivoRechazo.trim(),
+          },
+        },
+        conn
       );
     });
 
@@ -469,14 +530,28 @@ export class SolicitudCompraRepository {
   }
 
   /**
-   * Crea una nueva solicitud de compra con sus detalles usando una transacción
+   * Crea una nueva solicitud de compra con sus detalles usando una transacción atómica.
+   * Si no se suministra noDocumento, genera de forma atómica y consecutiva el folio 'SOL-YYYY-XXXX'.
    */
-  static async create(solicitudData: import('@erp/contracts').ISolicitudCompraCreateDTO, noDocumento: string): Promise<string> {
+  static async create(solicitudData: import('@erp/contracts').ISolicitudCompraCreateDTO, noDocParam?: string): Promise<string> {
     return withTransaction(async (connection) => {
       // 1. Obtener y validar el estado inicial dinámicamente en CMP_ESTADO
       const idEstadoInicial = await this.obtenerEstadoInicial(connection);
 
-      // 2. Insertar cabecera
+      // 2. Generación atómica y consecutiva del folio si no se especificó
+      let noDocumento = noDocParam;
+      if (!noDocumento || noDocumento.trim() === '') {
+        const year = new Date().getFullYear();
+        const nextCodeRes = await connection.execute<any>(`
+          SELECT NVL(MAX(TO_NUMBER(REGEXP_SUBSTR(SOL_NO_DOCUMENTO, '[0-9]+$'))), 0) + 1 AS NEXT_NUM 
+          FROM CMP_SOLICITUD_COMPRA 
+          WHERE REGEXP_LIKE(SOL_NO_DOCUMENTO, '^SOL-[0-9]{4}-[0-9]+$')
+        `);
+        const nextNum = Number(nextCodeRes.rows?.[0]?.NEXT_NUM || 1);
+        noDocumento = `SOL-${year}-${String(nextNum).padStart(4, '0')}`;
+      }
+
+      // 3. Insertar cabecera
       const sqlCabecera = `
         INSERT INTO CMP_SOLICITUD_COMPRA (
           SOL_NO_DOCUMENTO,

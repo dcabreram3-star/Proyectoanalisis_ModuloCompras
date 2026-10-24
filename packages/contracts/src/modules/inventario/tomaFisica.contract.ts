@@ -14,6 +14,22 @@ export interface IGuardarConteoDTO {
   detalles: IDetalleConteoDTO[];
 }
 
+export interface IMovimientoConcurrenteDTO {
+  idMovimiento: number;
+  numeroMovimiento: string;
+  fechaMovimiento?: string;
+  tipoMovimiento: string;
+  codigoArticulo: string;
+  cantidad: number;
+}
+
+export interface IGuardarConteoResponseDTO {
+  success: boolean;
+  message: string;
+  movimientosConcurrentes?: IMovimientoConcurrenteDTO[];
+  advertenciaConcurrencia?: string;
+}
+
 export interface IDetalleTomaResponseDTO {
   idDetalle: number;
   codigoArticulo: string;

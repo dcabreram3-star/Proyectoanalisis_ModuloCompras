@@ -1,4 +1,5 @@
 import { execute, withTransaction } from '../../../config/database.js';
+import { BitacoraRepository } from './bitacora.repository.js';
 import {
   IOrdenCompra,
   IDetalleOrdenCompra,
@@ -166,7 +167,15 @@ export class OrdenCompraRepository {
       let idCotizacion = dto.idCotizacionGanadora;
       let cotPrecioTotal = dto.total || 0;
 
-      if (!idCotizacion || idCotizacion <= 0) {
+      if (idCotizacion && idCotizacion > 0 && (!cotPrecioTotal || cotPrecioTotal <= 0)) {
+        const cotRes = await conn.execute<any>(
+          `SELECT COT_PRECIO_TOTAL FROM CMP_COTIZACION WHERE COT_ID_COTIZACION = :idCot`,
+          { idCot: idCotizacion }
+        );
+        if (cotRes.rows && cotRes.rows.length > 0) {
+          cotPrecioTotal = Number(cotRes.rows[0].COT_PRECIO_TOTAL || 0);
+        }
+      } else if (!idCotizacion || idCotizacion <= 0) {
         const cotGanRes = await conn.execute<any>(
           `SELECT COT_ID_COTIZACION, COT_PRECIO_TOTAL 
            FROM CMP_COTIZACION 
@@ -414,6 +423,23 @@ export class OrdenCompraRepository {
         }
       );
 
+      // Registrar emisión de Orden de Compra en bitácora inalterable (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          accion: 'EMISION_ORDEN_COMPRA',
+          valoresPrevios: { noDocumentoSolicitud: dto.noDocumento, etapaPrevia: 'PRESUPUESTO' },
+          valoresPosteriores: {
+            noPo: noPoFinal,
+            idCotizacionGanadora: idCotizacion,
+            subtotal: subtotalFinal,
+            iva: ivaFinal,
+            total: totalFinal,
+            estadoPo: 4,
+          },
+        },
+        conn
+      );
+
       return noPoFinal;
     });
 
@@ -439,6 +465,16 @@ export class OrdenCompraRepository {
           nota: notaRechazo,
           noSol: dto.noDocumento,
         }
+      );
+
+      // Registrar rechazo presupuestario en bitácora (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          accion: 'RECHAZO_PRESUPUESTO',
+          valoresPrevios: { noDocumentoSolicitud: dto.noDocumento, etapa: 'PRESUPUESTO' },
+          valoresPosteriores: { motivoRechazo: dto.motivoRechazo.trim(), fecha: new Date().toISOString() },
+        },
+        conn
       );
     });
     return true;

@@ -1,4 +1,4 @@
-import { ITomaFisicaCreateDTO, IGuardarConteoDTO, ITomaFisicaResponseDTO } from '@erp/contracts';
+import { ITomaFisicaCreateDTO, IGuardarConteoDTO, ITomaFisicaResponseDTO, IGuardarConteoResponseDTO } from '@erp/contracts';
 
 const API_BASE = '/api/inventario/toma-fisica';
 
@@ -22,7 +22,7 @@ export class TomaFisicaClientService {
     return data;
   }
 
-  static async guardarConteo(idToma: number, payload: IGuardarConteoDTO): Promise<{ success: boolean; message: string }> {
+  static async guardarConteo(idToma: number, payload: IGuardarConteoDTO): Promise<IGuardarConteoResponseDTO> {
     const res = await fetch(`${API_BASE}/${idToma}/conteo`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

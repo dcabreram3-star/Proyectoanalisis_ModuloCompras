@@ -131,12 +131,16 @@ export const AuditoriaView: React.FC = () => {
     if (!tomaActiva) return;
     setIsLoading(true);
     try {
-      await TomaFisicaClientService.guardarConteo(tomaActiva.idToma, {
+      const res = await TomaFisicaClientService.guardarConteo(tomaActiva.idToma, {
         idToma: tomaActiva.idToma,
         idUsuario: 3,
         detalles,
       });
-      setFeedbackMsg({ type: 'success', text: 'Auditoría guardada, ajustada y cerrada exitosamente.' });
+      const adv = res.advertenciaConcurrencia ? ` ⚠️ ${res.advertenciaConcurrencia}` : '';
+      setFeedbackMsg({
+        type: 'success',
+        text: `${res.message || 'Auditoría guardada, ajustada y cerrada exitosamente.'}${adv}`,
+      });
       setConfirmCierreModal({ isOpen: false, detallesConteo: [], sinContarCount: 0 });
       await cargarTomaActiva();
     } catch (error: any) {

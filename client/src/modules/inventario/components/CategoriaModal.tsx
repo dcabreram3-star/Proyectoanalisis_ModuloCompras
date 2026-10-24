@@ -125,16 +125,18 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA CATEGORÍA"
-            required
-            placeholder="Ej. Suministros de Oficina, Laptops..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            autoFocus
-            maxLength={100}
-            error={nombreError || undefined}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NOMBRE DE LA CATEGORÍA"
+              required
+              placeholder="Ej. Suministros de Oficina, Laptops..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              autoFocus
+              maxLength={100}
+              error={nombreError || undefined}
+            />
+          </div>
 
           <div className="pt-1">
             <Checkbox

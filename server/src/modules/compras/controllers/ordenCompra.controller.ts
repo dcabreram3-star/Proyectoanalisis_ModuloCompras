@@ -157,6 +157,17 @@ export class OrdenCompraController {
         return;
       }
 
+      // Validación estricta de Magic Bytes de PDF y seguridad (COMP-008)
+      const { validatePdfBuffer } = await import('../utils/fileValidator.js');
+      const valRes = validatePdfBuffer(file.buffer);
+      if (!valRes.valid) {
+        res.status(400).json({
+          success: false,
+          message: valRes.error,
+        });
+        return;
+      }
+
       const { OrdenCompraRepository } = await import('../repositories/ordenCompra.repository.js');
       await OrdenCompraRepository.guardarPdfBlob(noPo, file.buffer);
 

@@ -170,7 +170,7 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
             </div>
           )}
 
-          <div>
+          <div className="max-w-sm">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               BODEGA ASIGNADA
             </label>
@@ -187,18 +187,20 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
             </select>
           </div>
 
-          <TextInput
-            label="CÓDIGO DE UBICACIÓN"
-            required
-            placeholder="Ej. A-01-R2, PAS-1-N3..."
-            value={codigo}
-            onChange={(e) => handleCodigoChange(e.target.value)}
-            maxLength={30}
-            autoFocus
-            error={codigoError || undefined}
-          />
+          <div className="max-w-xs">
+            <TextInput
+              label="CÓDIGO DE UBICACIÓN"
+              required
+              placeholder="Ej. A-01-R2, PAS-1-N3..."
+              value={codigo}
+              onChange={(e) => handleCodigoChange(e.target.value)}
+              maxLength={30}
+              autoFocus
+              error={codigoError || undefined}
+            />
+          </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5 max-w-xs">
             <TextInput
               label="PASILLO"
               placeholder="Ej. P1"

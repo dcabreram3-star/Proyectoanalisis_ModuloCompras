@@ -11,16 +11,26 @@ import {
 
 export class ArticuloController {
   
-  // GET: Obtener todos (con filtro opcional de solo activos)
+  // GET: Obtener todos (con soporte para paginación y filtros INV-011)
   static async obtenerTodos(req: Request, res: Response) {
     try {
-      const { soloActivos, activo } = req.query;
+      const { soloActivos, activo, search, categoriaId, marcaId, page, limit } = req.query;
       const soloActivosBool = soloActivos === 'true' || soloActivos === '1';
-      const activoNum = activo !== undefined ? Number(activo) : undefined;
+      const activoNum = activo !== undefined && activo !== '' ? Number(activo) : undefined;
+      const pageNum = page !== undefined && page !== '' ? Math.max(1, Number(page)) : undefined;
+      const limitNum = limit !== undefined && limit !== '' ? Math.max(1, Number(limit)) : undefined;
+      const catId = categoriaId !== undefined && categoriaId !== '' ? Number(categoriaId) : undefined;
+      const marId = marcaId !== undefined && marcaId !== '' ? Number(marcaId) : undefined;
+      const searchStr = typeof search === 'string' ? search.trim() : undefined;
 
       const articulos = await ArticuloRepository.obtenerTodos({
         soloActivos: soloActivosBool,
         activo: activoNum,
+        search: searchStr,
+        categoriaId: catId,
+        marcaId: marId,
+        page: pageNum,
+        limit: limitNum,
       });
       res.json(articulos);
     } catch (error) {
@@ -61,17 +71,20 @@ export class ArticuloController {
     }
   }
 
-  // DELETE: Eliminar Físico / Permanente (Hard Delete)
+  // DELETE: Eliminar / Desactivación Lógica (INV-004)
   static async eliminar(req: Request, res: Response) {
     try {
       const { codigo } = req.params;
       const codigoValidado = validateStrictCode(codigo, 'código del artículo', 30);
-      const exito = await ArticuloRepository.eliminar(codigoValidado);
+      const resultado = await ArticuloRepository.eliminar(codigoValidado);
       
-      if (exito) {
-        res.json({ message: 'Artículo eliminado permanentemente de la base de datos.' });
+      if (resultado.success) {
+        res.json({ 
+          message: resultado.message,
+          softDeleted: resultado.softDeleted 
+        });
       } else {
-        res.status(404).json({ message: 'Artículo no encontrado.' });
+        res.status(404).json({ message: resultado.message || 'Artículo no encontrado.' });
       }
     } catch (error: any) {
       console.error('[ArticuloController] Error en eliminar:', error);

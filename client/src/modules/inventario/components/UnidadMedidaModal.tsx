@@ -152,26 +152,32 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA UNIDAD"
-            required
-            placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA, UNIDAD..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            maxLength={50}
-            autoFocus
-            error={nombreError || undefined}
-          />
+          <div className="space-y-4">
+            <div className="max-w-sm">
+              <TextInput
+                label="NOMBRE DE LA UNIDAD"
+                required
+                placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA, UNIDAD..."
+                value={nombre}
+                onChange={(e) => handleNombreChange(e.target.value)}
+                maxLength={50}
+                autoFocus
+                error={nombreError || undefined}
+              />
+            </div>
 
-          <TextInput
-            label="ABREVIATURA / SÍMBOLO"
-            required
-            placeholder="Ej. KG, M, L, CJ, UND, M/S..."
-            value={abreviatura}
-            onChange={(e) => handleAbreviaturaChange(e.target.value)}
-            maxLength={10}
-            error={abreviaturaError || undefined}
-          />
+            <div className="w-36">
+              <TextInput
+                label="ABREVIATURA / SÍMBOLO"
+                required
+                placeholder="Ej. KG, UND..."
+                value={abreviatura}
+                onChange={(e) => handleAbreviaturaChange(e.target.value)}
+                maxLength={10}
+                error={abreviaturaError || undefined}
+              />
+            </div>
+          </div>
 
           <div className="pt-1">
             <Checkbox

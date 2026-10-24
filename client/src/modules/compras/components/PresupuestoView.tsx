@@ -1080,7 +1080,6 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
             <option value="TODOS">Todos los Registros</option>
             <option value="PENDIENTES">Pendientes de Presupuesto</option>
             <option value="AUTORIZADAS">Autorizadas / PO Emitida</option>
-            <option value="RECHAZADAS">Rechazadas</option>
           </select>
 
           {(filterEstadoPresupuesto !== 'TODOS' || searchQuery) && (

@@ -125,16 +125,18 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA MARCA"
-            required
-            placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            autoFocus
-            maxLength={100}
-            error={nombreError || undefined}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NOMBRE DE LA MARCA"
+              required
+              placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              autoFocus
+              maxLength={100}
+              error={nombreError || undefined}
+            />
+          </div>
 
           <div className="pt-1">
             <Checkbox

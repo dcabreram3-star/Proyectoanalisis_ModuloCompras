@@ -440,7 +440,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         {/* Cabecera */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-w-md">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
               Responsable Solicitante <span className="text-red-500">*</span>
             </label>
@@ -458,7 +458,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
             </select>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-w-lg">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
               Notas o Justificación de Compra
             </label>
@@ -550,7 +550,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         </div>
 
                         {/* Campo Nombre / Descripción */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 max-w-xl">
                           <label className="text-xs font-semibold text-slate-700 block">
                             Nombre o Descripción del Artículo <span className="text-red-500">*</span>
                           </label>
@@ -565,7 +565,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         </div>
 
                         {/* Campos Obligatorios: Categoría, Marca y Unidad de Medida */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                               <Tag size={12} className="text-slate-500" />
@@ -626,7 +626,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                       </div>
                     ) : (
                       /* Buscador de Artículos Activos */
-                      <div className="space-y-1">
+                      <div className="space-y-1 max-w-xl">
                         <label className="text-xs font-semibold text-slate-700 block">
                           Artículo del Catálogo Activo <span className="text-red-500">*</span>
                         </label>
@@ -643,7 +643,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                   </div>
 
                   {/* Cantidad */}
-                  <div className="w-full md:w-32 shrink-0 space-y-1">
+                  <div className="w-24 sm:w-28 shrink-0 space-y-1">
                     <label className="text-xs font-semibold text-slate-700 block">
                       Cantidad <span className="text-red-500">*</span>
                     </label>

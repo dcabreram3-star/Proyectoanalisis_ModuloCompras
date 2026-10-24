@@ -9,7 +9,7 @@ import LoginPage from '../modules/auth/LoginPage';
 import CambiarClavePage from '../modules/auth/CambiarClavePage';
 import RecuperarClavePage from '../modules/auth/RecuperarClavePage';
 import RestablecerClavePage from '../modules/auth/RestablecerClavePage';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '../components/ui/AppLayout';
 import { DashboardView } from '../modules/dashboard/DashboardView';
 import { ComprasView } from '../modules/compras/ComprasView';
@@ -23,12 +23,36 @@ import { BancosView } from '../modules/bancos/BancosView';
  * Shell de los módulos operativos (Compras, Productos, Inventario, ...): navegación por
  * estado dentro de AppLayout. CxC tiene su propio layout con rutas, así que al elegirlo
  * se navega a su dashboard.
+ * 
+ * PROD-002: Unificación y clarificación de accesos al catálogo de artículos/productos.
  */
 function ModulosErp() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [activeModule, setActiveModule] = useState<string>(searchParams.get('modulo') ?? 'compras');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Normalizar aliases directos (ej. 'articulos' o 'catalogo' -> 'productos')
+  const rawModule = searchParams.get('modulo') ?? 'compras';
+  const isArticulosAlias = rawModule === 'articulos' || rawModule === 'catalogo';
+  const initialModule = isArticulosAlias ? 'productos' : rawModule;
+  const initialTab = searchParams.get('tab') ?? (rawModule === 'articulos' ? 'articulos' : undefined);
+
+  const [activeModule, setActiveModule] = useState<string>(initialModule);
+  const [activeTab, setActiveTab] = useState<string | undefined>(initialTab);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Sincronizar navegación si la URL o searchParams cambian externamente
+  useEffect(() => {
+    const mod = searchParams.get('modulo');
+    if (mod) {
+      if (mod === 'articulos' || mod === 'catalogo') {
+        setActiveModule('productos');
+        setActiveTab(mod === 'articulos' ? 'articulos' : undefined);
+      } else {
+        setActiveModule(mod);
+        setActiveTab(searchParams.get('tab') ?? undefined);
+      }
+    }
+  }, [searchParams]);
 
   const handleSelectModule = (moduleId: string) => {
     if (moduleId === 'cuentas_cobrar' || moduleId === 'cxc') {
@@ -36,6 +60,8 @@ function ModulosErp() {
       return;
     }
     setActiveModule(moduleId);
+    setActiveTab(undefined);
+    setSearchParams({ modulo: moduleId });
   };
 
   const renderModuleView = () => {
@@ -45,9 +71,35 @@ function ModulosErp() {
       case 'compras':
         return <ComprasView />;
       case 'productos':
-        return <ProductosView />;
+      case 'articulos':
+      case 'catalogo':
+        return (
+          <ProductosView
+            activeTab={activeTab}
+            onTabChange={(tabId) => {
+              setActiveTab(tabId);
+              setSearchParams(
+                tabId && tabId !== 'hub'
+                  ? { modulo: 'productos', tab: tabId }
+                  : { modulo: 'productos' }
+              );
+            }}
+          />
+        );
       case 'inventario':
-        return <InventarioView />;
+        return (
+          <InventarioView
+            activeTab={activeTab}
+            onTabChange={(tabId) => {
+              setActiveTab(tabId);
+              setSearchParams(
+                tabId && tabId !== 'hub'
+                  ? { modulo: 'inventario', tab: tabId }
+                  : { modulo: 'inventario' }
+              );
+            }}
+          />
+        );
       case 'cuentas_pagar':
       case 'cxp':
         return <CxpView />;
@@ -84,6 +136,12 @@ const router = createBrowserRouter([
   { path: '/', element: <ProtectedRoute><Navigate to="/cxc/dashboard" replace /></ProtectedRoute> },
   { path: '/modulos', element: <ProtectedRoute><ModulosErp /></ProtectedRoute> },
   { path: '/ui-kit', element: <ProtectedRoute><ComponentShowcase /></ProtectedRoute> },
+  // Redirecciones directas y unificación de accesos por URL (PROD-002)
+  { path: '/productos', element: <ProtectedRoute><Navigate to="/modulos?modulo=productos" replace /></ProtectedRoute> },
+  { path: '/articulos', element: <ProtectedRoute><Navigate to="/modulos?modulo=productos&tab=articulos" replace /></ProtectedRoute> },
+  { path: '/catalogo', element: <ProtectedRoute><Navigate to="/modulos?modulo=productos" replace /></ProtectedRoute> },
+  { path: '/inventario', element: <ProtectedRoute><Navigate to="/modulos?modulo=inventario" replace /></ProtectedRoute> },
+  { path: '/compras', element: <ProtectedRoute><Navigate to="/modulos?modulo=compras" replace /></ProtectedRoute> },
   ...routes.map((r) => ({ ...r, element: <ProtectedRoute>{r.element}</ProtectedRoute> })),
   {
     path: '*',

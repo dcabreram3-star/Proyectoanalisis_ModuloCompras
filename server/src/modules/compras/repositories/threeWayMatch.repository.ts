@@ -1,4 +1,5 @@
 import { execute, withTransaction } from '../../../config/database.js';
+import { BitacoraRepository } from './bitacora.repository.js';
 import {
   IFacturaCxP,
   IThreeWayMatchData,
@@ -340,9 +341,39 @@ export class ThreeWayMatchRepository {
   static async liquidar(dto: ILiquidarThreeWayMatchDTO): Promise<IThreeWayMatchData> {
     const noFacturaFinal = dto.noFactura.trim();
 
+    // 1. Si el DTO incluye items con discrepancias explícitas, bloquear de inmediato (COMP-005)
+    if (dto.items && dto.items.length > 0) {
+      const difCant = dto.items.reduce((acc, it) => acc + Math.abs(it.diferenciaCantidad || 0), 0);
+      const difPrecio = dto.items.reduce((acc, it) => acc + Math.abs(it.diferenciaPrecio || 0), 0);
+      const anyDiscrepante = dto.items.some(
+        (it) => it.resultadoTresVias && it.resultadoTresVias !== 'CONFORME'
+      );
+
+      if (difCant !== 0 || difPrecio > 0.001 || anyDiscrepante) {
+        throw new Error(
+          `Bloqueo de Integridad 3-Way Match (COMP-005): La liquidación no puede proceder debido a discrepancias detectadas entre la Orden de Compra, la Recepción de Bodega y la Factura. ` +
+          `Diferencia en cantidades: ${difCant}, Diferencia en precios: Q${difPrecio.toFixed(2)}. ` +
+          `El sistema requiere conformidad estricta (100% CONFORME) para habilitar el pasivo en Cuentas por Pagar.`
+        );
+      }
+    }
+
     // Obtener datos consolidados previos
     const preMatch = await this.getThreeWayMatchData(dto.noDocumentoSolicitud);
     const comparisonItems = dto.items && dto.items.length > 0 ? dto.items : preMatch.comparison.items;
+
+    // Validación estricta de Discrepancias globales (COMP-005)
+    const difCantGlobal = comparisonItems.reduce((acc, it) => acc + Math.abs(it.diferenciaCantidad || 0), 0);
+    const difPrecioGlobal = comparisonItems.reduce((acc, it) => acc + Math.abs(it.diferenciaPrecio || 0), 0);
+    const difTotalGlobal = Math.abs(dto.totalFactura - (preMatch.ordenCompra?.ocoTotal || dto.totalFactura));
+
+    if (difCantGlobal !== 0 || difPrecioGlobal > 0.001 || difTotalGlobal >= 0.01) {
+      throw new Error(
+        `Bloqueo de Integridad 3-Way Match (COMP-005): La liquidación no puede proceder debido a discrepancias detectadas entre la Orden de Compra, la Recepción de Bodega y la Factura. ` +
+        `Diferencia en cantidades: ${difCantGlobal}, Diferencia en precios: Q${difPrecioGlobal.toFixed(2)}, Diferencia total: Q${difTotalGlobal.toFixed(2)}. ` +
+        `El sistema requiere conformidad estricta (100% CONFORME) para habilitar el pasivo en Cuentas por Pagar.`
+      );
+    }
 
     await withTransaction(async (conn) => {
       // 1. Verificar si la factura ya existe en CMP_FACTURA_CXP
@@ -394,21 +425,23 @@ export class ThreeWayMatchRepository {
         pdfPath: dto.rutaArchivoPdf || null,
       });
 
-      // 3. Insertar en CXP_DOCUMENTO y CXP_DOCUMENTO_DETALLE (Estructura formal CXP)
-      try {
-        const docIdRes = await conn.execute<any>(`SELECT NVL(MAX(ID_DOCUMENTO), 0) + 1 AS NEXT_ID FROM CXP_DOCUMENTO`);
-        const idDocumento = Number(docIdRes.rows?.[0]?.NEXT_ID || 1);
+      // 3. Inserción estrictamente atómica en CXP_DOCUMENTO y CXP_DOCUMENTO_DETALLE (COMP-005)
+      const docIdRes = await conn.execute<any>(`SELECT NVL(MAX(ID_DOCUMENTO), 0) + 1 AS NEXT_ID FROM CXP_DOCUMENTO`);
+      const idDocumento = Number(docIdRes.rows?.[0]?.NEXT_ID || 1);
+      const resTresViasGlobal = 'COINCIDE';
 
-        const difCantGlobal = comparisonItems.reduce((acc, it) => acc + Math.abs(it.diferenciaCantidad || 0), 0);
-        const difPrecioGlobal = comparisonItems.reduce((acc, it) => acc + Math.abs(it.diferenciaPrecio || 0), 0);
-        const difTotalGlobal = Math.abs(dto.totalFactura - (preMatch.ordenCompra?.ocoTotal || dto.totalFactura));
-        const resTresViasGlobal = (difCantGlobal === 0 && difPrecioGlobal === 0 && difTotalGlobal < 0.01) ? 'CONFORME' : 'DISCREPANCIA';
+      // Separación de SERIE y NUMERO_DOCUMENTO para indexación unívoca en Cuentas por Pagar (UX_CXP_DOC_DUPLICADO)
+      const facParts = (noFacturaFinal || '').split('-');
+      const serieFac = facParts.length > 1 ? facParts[0].slice(0, 40) : 'FACT';
+      const numFac = facParts.length > 1 ? facParts.slice(1).join('-').slice(0, 80) : noFacturaFinal.slice(0, 80);
 
         await conn.execute(
           `INSERT INTO CXP_DOCUMENTO (
             ID_DOCUMENTO,
             ID_PROVEEDOR,
             ID_SUCURSAL,
+            SERIE,
+            NUMERO_DOCUMENTO,
             NO_FACTURA_COMPRA,
             NO_ORDEN_COMPRA,
             NO_RECEPCION,
@@ -451,13 +484,15 @@ export class ThreeWayMatchRepository {
             :idDoc,
             :idProv,
             1,
+            :serieFac,
+            :numFac,
             :noFac,
             :noPo,
             :noRec,
             'FACTURA',
             'D',
             'COMPRAS',
-            'AUTOMATICO',
+            'CON_OC',
             SYSDATE,
             SYSTIMESTAMP,
             30,
@@ -483,9 +518,9 @@ export class ThreeWayMatchRepository {
             :difPrecio,
             0,
             :difTotal,
-            'MEDIA',
+            'NORMAL',
             'PENDIENTE',
-            'LIQUIDADO',
+            'APROBADA',
             'N',
             1,
             SYSTIMESTAMP
@@ -493,6 +528,8 @@ export class ThreeWayMatchRepository {
           {
             idDoc: idDocumento,
             idProv: dto.idProveedor,
+            serieFac,
+            numFac,
             noFac: noFacturaFinal,
             noPo: dto.noPo,
             noRec: dto.noRecepcion,
@@ -522,15 +559,13 @@ export class ThreeWayMatchRepository {
           const difCant = +(cantOrd - cantRec);
           const difPre = +(preOrd - preFact).toFixed(2);
 
-          let resLinea = it.resultadoTresVias || 'CONFORME';
-          if (!it.resultadoTresVias) {
-            if (cantOrd !== cantRec && Math.abs(preOrd - preFact) > 0.001) {
-              resLinea = 'DISCREPANCIA_AMBAS';
-            } else if (cantOrd !== cantRec) {
-              resLinea = 'DISCREPANCIA_CANTIDAD';
-            } else if (Math.abs(preOrd - preFact) > 0.001) {
-              resLinea = 'DISCREPANCIA_PRECIO';
-            }
+          let resLinea = 'COINCIDE';
+          if (it.resultadoTresVias && ['NO_APLICA', 'COINCIDE', 'DENTRO_TOLERANCIA', 'DIFERENCIA', 'BLOQUEADO'].includes(it.resultadoTresVias)) {
+            resLinea = it.resultadoTresVias;
+          } else if (it.resultadoTresVias === 'CONFORME') {
+            resLinea = 'COINCIDE';
+          } else if (cantOrd !== cantRec || Math.abs(preOrd - preFact) > 0.001) {
+            resLinea = 'DIFERENCIA';
           }
 
           await conn.execute(
@@ -602,9 +637,6 @@ export class ThreeWayMatchRepository {
             }
           );
         }
-      } catch (cxpErr) {
-        console.warn('[ThreeWayMatchRepository.liquidar] Warning al guardar en CXP_DOCUMENTO/DETALLE:', cxpErr);
-      }
 
       // 4. Actualizar la Orden de Compra a estado LIQUIDADO / CERRADO (ID 5)
       await conn.execute(
@@ -621,12 +653,32 @@ export class ThreeWayMatchRepository {
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
          SET SOL_ID_ESTADO = 5,
-             SOL_NOTAS = CASE WHEN SOL_NOTAS IS NULL THEN :nota ELSE SUBSTR(SOL_NOTAS || ' | ' || :nota, 1, 500) END
+             SOL_NOTAS = CASE WHEN SOL_NOTAS IS NULL THEN SUBSTRB(:nota, 1, 480) ELSE SUBSTRB(SOL_NOTAS || ' | ' || :nota, 1, 480) END
          WHERE SOL_NO_DOCUMENTO = :noSol`,
         {
           nota: notaLiquidacion,
           noSol: dto.noDocumentoSolicitud,
         }
+      );
+
+      // 6. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          accion: 'CIERRE_3WAY_MATCH_LIQUIDADO',
+          valoresPrevios: {
+            noPo: dto.noPo,
+            noRecepcion: dto.noRecepcion,
+            noSolicitud: dto.noDocumentoSolicitud,
+          },
+          valoresPosteriores: {
+            noFactura: noFacturaFinal,
+            idDocumentoCxP: idDocumento,
+            totalFactura: dto.totalFactura,
+            resultadoTresVias: 'CONFORME',
+            fecha: new Date().toISOString(),
+          },
+        },
+        conn
       );
 
       return noFacturaFinal;

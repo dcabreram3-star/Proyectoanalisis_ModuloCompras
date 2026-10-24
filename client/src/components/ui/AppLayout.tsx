@@ -66,13 +66,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   className = ''
 }) => {
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'compras', label: 'Compras', icon: ShoppingCart },
-    { id: 'productos', label: 'Productos', icon: Package },
-    { id: 'inventario', label: 'Inventario', icon: Warehouse },
-    { id: 'cuentas_pagar', label: 'Cuentas por Pagar', icon: FileSpreadsheet },
-    { id: 'cuentas_cobrar', label: 'Cuentas por Cobrar', icon: Coins },
-    { id: 'bancos', label: 'Bancos', icon: Landmark },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, title: 'Panel Principal' },
+    { id: 'compras', label: 'Compras', icon: ShoppingCart, title: 'Gestión de Requisiciones, Cotizaciones y Órdenes de Compra' },
+    { id: 'productos', label: 'Productos', icon: Package, title: 'Catálogo Maestro de Artículos, Categorías, Marcas y Unidades' },
+    { id: 'inventario', label: 'Inventario', icon: Warehouse, title: 'Control de Stock, Almacenes, Bodegas, Lotes y Kardex' },
+    { id: 'cuentas_pagar', label: 'Cuentas por Pagar', icon: FileSpreadsheet, title: 'Cuentas por Pagar a Proveedores' },
+    { id: 'cuentas_cobrar', label: 'Cuentas por Cobrar', icon: Coins, title: 'Cuentas por Cobrar a Clientes' },
+    { id: 'bancos', label: 'Bancos', icon: Landmark, title: 'Conciliación Bancaria y Tesorería' },
   ];
 
   return (
@@ -97,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onSelectModule && onSelectModule(item.id)}
+              title={item.title || item.label}
               className={`
                 w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group
                 ${isActive

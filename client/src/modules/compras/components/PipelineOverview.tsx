@@ -64,21 +64,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
             <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
               6 Etapas
             </span>
-            {rejectedCount > 0 && (
-              <button
-                type="button"
-                onClick={() => onStageClick && onStageClick(activeStage === 'rechazada' ? 'TODAS' : ('rechazada' as any))}
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-full border transition-all cursor-pointer ${
-                  activeStage === 'rechazada'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
-                }`}
-                title={activeStage === 'rechazada' ? 'Quitar filtro de rechazadas' : `Filtrar ${rejectedCount} solicitud(es) rechazada(s)`}
-              >
-                <Ban className="w-3 h-3" />
-                <span>{rejectedCount} Rechazada{rejectedCount > 1 ? 's' : ''}</span>
-              </button>
-            )}
+
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             {subtitle ||
@@ -199,11 +185,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
           <span>de</span>
           <span className="tabular-nums font-bold text-slate-800">{total}</span>
           <span>registros han completado la etapa 6 (3-Way Match)</span>
-          {rejectedCount > 0 && (
-            <span className="text-slate-400 pl-1">
-              • <strong className="text-rose-600 font-semibold">{rejectedCount}</strong> {rejectedCount === 1 ? 'solicitud rechazada' : 'solicitudes rechazadas'} (ciclo detenido)
-            </span>
-          )}
+
         </div>
 
         {isFiltering && (
