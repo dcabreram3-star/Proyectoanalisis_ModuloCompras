@@ -6,6 +6,8 @@ import {
   IUpdateSolicitudCompraDTO,
   IAprobarSolicitudDTO,
   IRechazarSolicitudDTO,
+  IEmpleadoResponsableOption,
+  IDepartamentoOption,
 } from '@erp/contracts';
 
 const API_BASE = '/api/compras/solicitudes';
@@ -20,6 +22,8 @@ export class SolicitudCompraClientService {
       if (filters.noDocumento) queryParams.append('noDocumento', filters.noDocumento);
       if (filters.idDepartamento) queryParams.append('idDepartamento', String(filters.idDepartamento));
       if (filters.idEstado) queryParams.append('idEstado', String(filters.idEstado));
+      if (filters.soloActivas !== undefined) queryParams.append('soloActivas', String(filters.soloActivas));
+      if (filters.soloHistorial !== undefined) queryParams.append('soloHistorial', String(filters.soloHistorial));
 
       const url = queryParams.toString() ? `${API_BASE}?${queryParams.toString()}` : API_BASE;
       const response = await fetch(url);
@@ -184,6 +188,46 @@ export class SolicitudCompraClientService {
     } catch (error) {
       console.error('[SolicitudCompraClientService.crearSolicitud Error]:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Consulta los empleados activos registrados en la base de datos Oracle
+   */
+  static async getEmpleados(): Promise<IEmpleadoResponsableOption[]> {
+    try {
+      const response = await fetch(`${API_BASE}/empleados`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Error al obtener empleados de la base de datos`);
+      }
+      const resData = await response.json();
+      if (resData.success && Array.isArray(resData.data)) {
+        return resData.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('[SolicitudCompraClientService.getEmpleados Error]:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Consulta los departamentos activos registrados en la base de datos Oracle
+   */
+  static async getDepartamentos(): Promise<IDepartamentoOption[]> {
+    try {
+      const response = await fetch(`${API_BASE}/departamentos`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Error al obtener departamentos de la base de datos`);
+      }
+      const resData = await response.json();
+      if (resData.success && Array.isArray(resData.data)) {
+        return resData.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('[SolicitudCompraClientService.getDepartamentos Error]:', error);
+      return [];
     }
   }
 }

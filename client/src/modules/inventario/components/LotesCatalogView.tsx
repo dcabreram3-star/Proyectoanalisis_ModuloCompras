@@ -15,6 +15,7 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import { ILote, ICreateLoteDTO, IUpdateLoteDTO, EstadoLoteType } from '@erp/contracts';
 import { LoteClientService } from '../services/loteClientService';
 import { LoteModal } from './LoteModal';
+import { UnifiedStatusBadge } from '../../../shared/components/UnifiedStatusBadge';
 
 export const LotesCatalogView: React.FC = () => {
   const [lotes, setLotes] = useState<ILote[]>([]);
@@ -205,9 +206,7 @@ export const LotesCatalogView: React.FC = () => {
       header: 'ESTADO',
       accessorKey: 'lotEstado',
       cell: ({ value }: { value: EstadoLoteType }) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadge(value)}`}>
-          {value}
-        </span>
+        <UnifiedStatusBadge status={value} size="sm" />
       ),
     },
     {

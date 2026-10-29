@@ -568,6 +568,7 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
 
   return (
     <div
+      data-testid={`proveedor-cotizacion-card proveedor-cotizacion-card-${index}`}
       className={`bg-white rounded-xl border p-3.5 sm:p-4 shadow-2xs space-y-3.5 transition-all duration-200 ${
         isDisabled
           ? 'opacity-40 bg-slate-50/70 select-none pointer-events-none border-slate-200'

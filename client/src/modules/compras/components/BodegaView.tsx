@@ -816,7 +816,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
   // RENDER: Vista de Solicitud Específica (Etapa 5 del Pipeline)
   if (solicitud) {
     return (
-      <div className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
+      <div data-testid="bodega-panel" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
         {/* Encabezado de Navegación */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
@@ -1106,6 +1106,15 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
         ) : (
           /* FORMULARIO DE RECEPCIÓN FÍSICA E INSPECCIÓN */
           <div className="space-y-6">
+            {/* Banner Informativo de Horario Laboral de Bodega */}
+            <div data-testid="banner-horario-laboral" className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-3 shadow-2xs">
+              <Clock size={18} className="text-blue-600 shrink-0" />
+              <div className="flex-1">
+                <span className="font-bold">Horario de Operaciones en Almacén:</span>
+                <span className="ml-1 text-blue-800">08:00 AM a 08:00 PM (08:00 a 20:00 hrs). Las recepciones en horario nocturno o de madrugada no están autorizadas por política interna de control y seguridad.</span>
+              </div>
+            </div>
+
             {/* 1. SECCIÓN: DATOS DE TRANSPORTE Y GUÍA DE DESPACHO */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1178,6 +1187,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                 />
 
                 <TextInput
+                  data-testid="input-fecha-llegada"
                   label="Fecha y Hora de Llegada"
                   type="datetime-local"
                   required
@@ -1191,6 +1201,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                 />
 
                 <Select
+                  data-testid="select-bodega-destino"
                   label="Bodega de Destino"
                   required
                   value={idBodega}
@@ -1438,7 +1449,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
               </div>
 
               {/* Tabla de Artículos a Recibir */}
-              <div className="overflow-x-auto">
+              <div data-testid="tabla-items-recepcion" className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-100/75 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
@@ -1671,6 +1682,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
                   )}
 
                   <Button
+                    data-testid="btn-confirmar-recepcion"
                     variant="primary"
                     size="lg"
                     icon={PackageCheck}
@@ -1708,7 +1720,7 @@ export const BodegaView: React.FC<BodegaViewProps> = ({
 
   // RENDER: Vista Standalone / Historial General de Recepciones de Bodega
   return (
-    <div className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
+    <div data-testid="bodega-panel" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>

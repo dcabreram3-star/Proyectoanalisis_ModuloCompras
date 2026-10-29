@@ -16,4 +16,21 @@ export class MovimientoInventarioController {
       });
     }
   }
+
+  static async agregarExistencias(req: Request, res: Response): Promise<void> {
+    try {
+      const payload = req.body;
+      const idUsuarioSesion = req.auth?.sub ? Number(req.auth.sub) : undefined;
+      const resultado = await MovimientoInventarioService.agregarExistencias(payload, idUsuarioSesion);
+
+      res.status(201).json(resultado);
+    } catch (error: any) {
+      console.error('[MovimientoInventarioController.agregarExistencias] Error:', error.message);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error al añadir existencias al producto',
+      });
+    }
+  }
 }
+

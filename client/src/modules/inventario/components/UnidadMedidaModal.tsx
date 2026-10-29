@@ -152,12 +152,12 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
             </div>
           )}
 
-          <div className="space-y-4">
-            <div className="max-w-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="sm:col-span-2">
               <TextInput
                 label="NOMBRE DE LA UNIDAD"
                 required
-                placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA, UNIDAD..."
+                placeholder="Ej. KILOGRAMO, METRO, LITRO, CAJA..."
                 value={nombre}
                 onChange={(e) => handleNombreChange(e.target.value)}
                 maxLength={50}
@@ -166,9 +166,9 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
               />
             </div>
 
-            <div className="w-36">
+            <div className="sm:col-span-1">
               <TextInput
-                label="ABREVIATURA / SÍMBOLO"
+                label="ABREVIATURA"
                 required
                 placeholder="Ej. KG, UND..."
                 value={abreviatura}

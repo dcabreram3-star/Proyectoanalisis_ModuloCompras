@@ -580,6 +580,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                         Ver Artículos
                       </Button>
                       <Button
+                        data-testid="btn-adjudicar-cotizacion"
                         variant="primary"
                         icon={Award}
                         size="sm"

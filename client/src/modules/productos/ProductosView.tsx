@@ -21,6 +21,8 @@ import { MarcasCatalogView } from '../inventario/components/MarcasCatalogView';
 import { UnidadesMedidaCatalogView } from '../inventario/components/UnidadesMedidaCatalogView';
 import { VehiculosCatalogView } from '../inventario/components/VehiculosCatalogView';
 import { ConductoresCatalogView } from '../inventario/components/ConductoresCatalogView';
+import { ModuleTutorialMenu } from '../../shared/tutoriales';
+import { PRODUCTOS_TUTORIALS } from './tutoriales/productosTutorialsData';
 
 /**
  * =============================================================================
@@ -111,8 +113,9 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             </p>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="flex items-center gap-3">
+            <ModuleTutorialMenu module="productos" tutorials={PRODUCTOS_TUTORIALS} />
+            <div className="hidden lg:flex w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-center text-blue-600 shadow-xs">
               <Layers size={32} className="text-blue-600" />
             </div>
           </div>
@@ -485,8 +488,10 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           </div>
         </div>
 
-        {/* Acceso rápido a otras secciones agrupado por dominio (PROD-001) */}
+        {/* Acceso rápido a otras secciones agrupado por dominio (PROD-001) y Tutoriales */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <ModuleTutorialMenu module="productos" tutorials={PRODUCTOS_TUTORIALS} />
+          <div className="h-4 w-px bg-slate-200 hidden sm:block shrink-0" />
           {/* Grupo Core: Productos */}
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 hidden sm:inline">

@@ -432,10 +432,23 @@ export const AuditoriaView: React.FC = () => {
                             <input
                               type="number"
                               min="0"
+                              step="1"
                               value={fisico}
                               placeholder="-"
+                              onKeyDown={(e) => {
+                                if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text');
+                                if (!/^\d*$/.test(text)) {
+                                  e.preventDefault();
+                                }
+                              }}
                               onChange={(e) => {
-                                const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                                const clean = e.target.value.replace(/\D/g, '');
+                                const val = clean === '' ? '' : parseInt(clean, 10);
                                 setConteos({ ...conteos, [d.codigoArticulo]: val });
                               }}
                               className="w-24 h-9 px-2.5 text-center font-bold text-sm text-indigo-950 bg-white border-2 border-indigo-200 rounded-lg focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 transition-all"

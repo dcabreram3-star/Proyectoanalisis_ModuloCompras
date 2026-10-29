@@ -254,7 +254,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 w-full pb-12 min-w-0">
+    <div data-testid="matriz-cotizaciones-panel" className="space-y-6 w-full pb-12 min-w-0">
       {/* Top Breadcrumb & Document ID */}
       <div className="flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-3">
@@ -324,6 +324,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             title="Activar para registrar únicamente 1 proveedor con justificación técnica o comercial"
           >
             <input
+              data-testid="check-excepcion-unico"
               type="checkbox"
               id="chk-proveedor-unico"
               checked={esExcepcionUnico}
@@ -428,6 +429,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             Cancelar
           </Button>
           <Button
+            data-testid="btn-enviar-seleccion"
             variant="primary"
             icon={Send}
             disabled={isSubmitting}

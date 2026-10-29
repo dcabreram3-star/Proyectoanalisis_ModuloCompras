@@ -1,5 +1,9 @@
 import { MovimientoInventarioRepository } from '../repositories/movimientoInventario.repository.js';
-import { IMovimientoInventarioCreateDTO, IMovimientoInventarioResponseDTO } from '@erp/contracts';
+import {
+  IMovimientoInventarioCreateDTO,
+  IMovimientoInventarioResponseDTO,
+  IAgregarExistenciasDTO,
+} from '@erp/contracts';
 import { InventarioCriterios } from '../utils/inventarioCriterios.js';
 
 export class MovimientoInventarioService {
@@ -38,10 +42,10 @@ export class MovimientoInventarioService {
         throw new Error(`Debe especificar un código de artículo válido ${indexStr}.`);
       }
 
-      // Validar cantidad: debe ser un número entero y estrictamente positivo (> 0)
-      if (typeof det.cantidad !== 'number' || isNaN(det.cantidad) || !Number.isInteger(det.cantidad) || det.cantidad <= 0) {
+      // Validar cantidad: debe ser un número entero o decimal positivo mayor a cero (> 0)
+      if (typeof det.cantidad !== 'number' || isNaN(det.cantidad) || !isFinite(det.cantidad) || det.cantidad <= 0) {
         throw new Error(
-          `La cantidad para el artículo "${det.codigoArticulo}" ${indexStr} debe ser un número entero y positivo mayor a 0 (recibido: ${det.cantidad}).`
+          `La cantidad para el artículo "${det.codigoArticulo}" ${indexStr} debe ser un número positivo mayor a 0 (recibido: ${det.cantidad}).`
         );
       }
 
@@ -72,4 +76,56 @@ export class MovimientoInventarioService {
       advertenciaConcurrencia: resultado.advertenciaConcurrencia
     };
   }
+
+  /**
+   * Registra un incremento directo de existencias a un artículo existente en una bodega específica.
+   * Actualiza atómicamente CMP_INVENTARIO y registra el movimiento de kardex como 'AJU_ENTRADA'.
+   */
+  static async agregarExistencias(
+    data: IAgregarExistenciasDTO,
+    idUsuarioSesion?: number
+  ): Promise<IMovimientoInventarioResponseDTO> {
+    if (!data.codigoArticulo || typeof data.codigoArticulo !== 'string' || data.codigoArticulo.trim() === '') {
+      throw new Error('Debe especificar un código de artículo válido.');
+    }
+    const idBodega = Number(data.idBodega);
+    if (isNaN(idBodega) || idBodega <= 0) {
+      throw new Error('Debe seleccionar una bodega válida.');
+    }
+    const cantidad = Number(data.cantidad);
+    if (isNaN(cantidad) || !isFinite(cantidad) || cantidad <= 0) {
+      throw new Error('La cantidad a añadir debe ser un número positivo mayor a 0 (entero o decimal).');
+    }
+
+    let costoUnitario: number | undefined = undefined;
+    if (data.costoUnitario !== undefined && data.costoUnitario !== null && data.costoUnitario !== ('' as any)) {
+      const parsedCosto = Number(data.costoUnitario);
+      if (isNaN(parsedCosto) || !isFinite(parsedCosto) || parsedCosto < 0) {
+        throw new Error('El costo unitario debe ser un valor numérico mayor o igual a 0.');
+      }
+      costoUnitario = parsedCosto;
+    }
+
+    const idUsuarioFinal = data.idUsuario ? Number(data.idUsuario) : (idUsuarioSesion || 1);
+    const codArticuloClean = data.codigoArticulo.trim().toUpperCase();
+
+    const payload: IMovimientoInventarioCreateDTO = {
+      tipoMovimiento: 'AJU_ENTRADA',
+      idBodegaOrigen: idBodega,
+      idUsuario: idUsuarioFinal,
+      observaciones: data.notas?.trim() || `Ajuste manual de entrada / Añadir existencias a ${codArticuloClean}`,
+      detalles: [
+        {
+          codigoArticulo: codArticuloClean,
+          cantidad,
+          costoUnitario: costoUnitario !== undefined ? costoUnitario : 0,
+          idUbicacion: data.idUbicacion ? Number(data.idUbicacion) : undefined,
+          idLote: data.idLote ? Number(data.idLote) : undefined,
+        },
+      ],
+    };
+
+    return await this.crearMovimiento(payload);
+  }
 }
+

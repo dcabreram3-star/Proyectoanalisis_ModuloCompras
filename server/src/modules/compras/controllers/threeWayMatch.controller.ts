@@ -75,6 +75,12 @@ export class ThreeWayMatchController {
   static async liquidar(req: Request, res: Response): Promise<void> {
     try {
       const payload = req.body;
+
+      // Extraer ID de usuario autenticado de la sesión si no viene en el payload
+      if (!payload.idUsuarioCreador && req.auth?.sub) {
+        payload.idUsuarioCreador = Number(req.auth.sub);
+      }
+
       const resultado = await ThreeWayMatchService.liquidarThreeWayMatch(payload);
 
       res.status(201).json({

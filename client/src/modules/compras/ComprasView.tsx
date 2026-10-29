@@ -23,6 +23,7 @@ import {
   Wallet,
   SlidersHorizontal,
   Eye,
+  History,
 } from 'lucide-react';
 import { Button, StatCard, DataTable, Pagination } from '../../components/ui';
 import { SolicitudCompraClientService } from './services/solicitudCompraClientService';
@@ -47,19 +48,22 @@ import { SeleccionCotizacionView } from './components/SeleccionCotizacionView';
 import { PresupuestoView } from './components/PresupuestoView';
 import { BodegaView } from './components/BodegaView';
 import { ThreeWayMatchView } from './components/ThreeWayMatchView';
-import { GuiasSistemaView } from './components/GuiasSistemaView';
+import { HistorialComprasView } from './components/HistorialComprasView';
 import { ISolicitudCompra } from '@erp/contracts';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { scrollToTop } from '../../utils/scroll';
+import { UnifiedStatusBadge } from '../../shared/components/UnifiedStatusBadge';
+import { ModuleTutorialMenu, TutorialTour, markCompleted, type Tutorial } from '../../shared/tutoriales';
+import { COMPRAS_TUTORIALS } from './tutoriales/comprasTutorialsData';
 
 export type ComprasSection =
   | 'hub'
   | 'dashboard'
   | 'registros'
+  | 'historial'
   | 'presupuesto'
   | 'proveedores'
-  | 'estados'
-  | 'guias';
+  | 'estados';
 
 export interface ComprasViewProps {
   activeTab?: string;
@@ -109,9 +113,6 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   // Modal para resumen dinámico de la solicitud seleccionada
   const [selectedSolicitudForResumen, setSelectedSolicitudForResumen] = useState<ISolicitudCompra | null>(null);
 
-  // Ámbito de visualización de registros: 'activas' (por defecto) vs 'finalizadas' (historial)
-  const [viewScope, setViewScope] = useState<'activas' | 'finalizadas'>('activas');
-
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterEstado, setFilterEstado] = useState<string>('TODOS');
@@ -128,7 +129,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const data = await SolicitudCompraClientService.getSolicitudes();
+      const data = await SolicitudCompraClientService.getSolicitudes({ soloActivas: true });
       setSolicitudes(data);
     } catch (error: any) {
       console.error('[ComprasView]: Error al cargar solicitudes de compra desde Oracle DB:', error);
@@ -143,24 +144,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     loadData();
   }, [currentSection]);
 
-  // Conteos por ámbito estricto
-  const activasCount = useMemo(() => {
-    return solicitudes.filter((s) => {
-      const isComplete = isStatusFullyComplete(s.solNombreEstado, s.solNotas);
-      const isRej = isStatusRejected(s.solNombreEstado, s.solNotas);
-      return !isComplete && !isRej;
-    }).length;
-  }, [solicitudes]);
-
-  const historialCount = useMemo(() => {
-    return solicitudes.filter((s) => {
-      const isComplete = isStatusFullyComplete(s.solNombreEstado, s.solNotas);
-      const isRej = isStatusRejected(s.solNombreEstado, s.solNotas);
-      return isComplete || isRej;
-    }).length;
-  }, [solicitudes]);
-
-  // Solicitudes activas en curso para el PipelineOverview
+  // Solicitudes activas en curso (excluye categóricamente finalizadas y rechazadas)
   const activasSolicitudes = useMemo(() => {
     return solicitudes.filter((s) => {
       const isComplete = isStatusFullyComplete(s.solNombreEstado, s.solNotas);
@@ -169,21 +153,16 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     });
   }, [solicitudes]);
 
-  // Filtered dataset
+  const activasCount = activasSolicitudes.length;
+
+  // Filtered dataset: la bandeja operativa muestra EXCLUSIVAMENTE solicitudes activas en proceso
   const filteredSolicitudes = useMemo(() => {
     return solicitudes.filter((item) => {
       const isComplete = isStatusFullyComplete(item.solNombreEstado, item.solNotas);
       const isRej = isStatusRejected(item.solNombreEstado, item.solNotas);
 
-      // 1. Exclusión de Solicitudes Activas:
-      // La pestaña de Activas solo debe mostrar solicitudes en curso (NO finalizadas y NO rechazadas)
-      if (viewScope === 'activas' && (isComplete || isRej)) {
-        return false;
-      }
-
-      // 2. Inclusión en el Historial:
-      // La pestaña de Historial debe incluir tanto las solicitudes Finalizadas como las Rechazadas
-      if (viewScope === 'finalizadas' && !isComplete && !isRej) {
+      // Exclusión estricta de solicitudes finalizadas y rechazadas en el gestor principal
+      if (isComplete || isRej) {
         return false;
       }
 
@@ -199,19 +178,16 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       const filterUpper = filterEstado.toUpperCase();
       const matchEstado =
         filterEstado === 'TODOS' ||
-        (filterUpper.startsWith('RECHAZAD') && isRej) ||
-        (!isRej && (
-          estadoName === filterUpper ||
-          (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
-          (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT'))
-        ));
+        (filterUpper.startsWith('APROBAD') && estadoName.startsWith('APROBAD')) ||
+        (filterUpper.startsWith('PENDIENT') && estadoName.startsWith('PENDIENT')) ||
+        estadoName === filterUpper;
 
       const itemStage = getStageForSolicitud(item);
       const matchEtapa = filterEtapa === 'TODAS' || itemStage === filterEtapa;
 
       return matchSearch && matchEstado && matchEtapa;
     });
-  }, [solicitudes, viewScope, searchQuery, filterEstado, filterEtapa]);
+  }, [solicitudes, searchQuery, filterEstado, filterEtapa]);
 
   // Paginated dataset
   const totalPages = Math.ceil(filteredSolicitudes.length / itemsPerPage) || 1;
@@ -221,12 +197,12 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
   }, [filteredSolicitudes, currentPage, itemsPerPage]);
 
   // Stat metrics
-  const totalCount = viewScope === 'activas' ? activasCount : historialCount;
-  const aprobadasCount = solicitudes.filter(
-    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
+  const totalCount = filteredSolicitudes.length;
+  const aprobadasCount = filteredSolicitudes.filter(
+    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('APROBAD')
   ).length;
-  const pendientesCount = solicitudes.filter(
-    (s) => !isStatusRejected(s.solNombreEstado, s.solNotas) && (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
+  const pendientesCount = filteredSolicitudes.filter(
+    (s) => (s.solNombreEstado || '').toUpperCase().startsWith('PENDIENT')
   ).length;
   const totalMontoEstimado = filteredSolicitudes.reduce((acc, curr) => acc + (curr.solMontoTotalEstimado || 0), 0);
 
@@ -306,37 +282,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       header: 'ESTADO',
       accessorKey: 'solNombreEstado',
       align: 'center' as const,
-      cell: ({ row }: { row: ISolicitudCompra }) => {
-        const est = (row.solNombreEstado || 'Pendiente').toUpperCase();
-        let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200';
-        let displayLabel = row.solNombreEstado || 'Pendiente';
-
-        if (est.startsWith('FINALIZAD') || est === 'CERRADA' || est === 'LIQUIDADA') {
-          colorClasses = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
-          displayLabel = 'FINALIZADA';
-        } else if (est.includes('3WAY') || est.includes('MATCH')) {
-          colorClasses = 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold';
-          displayLabel = '3-WAY MATCH';
-        } else if (est.startsWith('RECIBID') || est.includes('BODEGA')) {
-          colorClasses = 'bg-cyan-50 text-cyan-700 border-cyan-200 font-semibold';
-        } else if (est.includes('PRESUP') || est.includes('ADJUDICAD')) {
-          colorClasses = 'bg-purple-50 text-purple-700 border-purple-200 font-semibold';
-        } else if (est.startsWith('APROBAD')) {
-          colorClasses = 'bg-blue-50 text-blue-700 border-blue-200 font-semibold';
-        } else if (est.startsWith('PENDIENT') || est.startsWith('SOLICITAD')) {
-          colorClasses = 'bg-amber-50 text-amber-700 border-amber-200 font-semibold';
-        } else if (est.startsWith('RECHAZAD') || est.startsWith('DENEGAD') || est.startsWith('CANCELAD')) {
-          colorClasses = 'bg-rose-50 text-rose-700 border-rose-200 font-semibold';
-        }
-
-        return (
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] border ${colorClasses}`}
-          >
-            {displayLabel}
-          </span>
-        );
-      },
+      cell: ({ row }: { row: ISolicitudCompra }) => (
+        <UnifiedStatusBadge status={row.solNombreEstado || 'Pendiente'} size="sm" />
+      ),
     },
     {
       header: 'ETAPA DEL PROCESO',
@@ -365,6 +313,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             variant="secondary"
             size="sm"
             icon={Eye}
+            data-testid="btn-ver-detalle"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedSolicitudForResumen(row);
@@ -378,6 +327,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       },
     },
   ];
+
 
   // Stage Navigation within the Stage Sub-view
   const handleNavigateToStage = (newStage: PipelineStageId) => {
@@ -395,14 +345,72 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     loadData();
   };
 
+  // Tutorial interactivo activo gestionado a nivel raíz para persistencia entre vistas y modales
+  const [runningTutorial, setRunningTutorial] = useState<Tutorial | null>(null);
+
+  const handleCloseTutorial = (completed: boolean) => {
+    if (completed && runningTutorial) {
+      markCompleted('compras', runningTutorial.id);
+    }
+    setRunningTutorial(null);
+  };
+
+  const handleSelectTutorial = (tutorial: Tutorial) => {
+    const fallbackSol: ISolicitudCompra = solicitudes[0] || {
+      solNoDocumento: 'SOL-2026-0001',
+      solFecha: '2026-03-01',
+      solIdDepartamento: 1,
+      solIdUsuarioResponsable: 1,
+      solIdEstado: 1,
+      solMontoTotalEstimado: 2500,
+      solNombreDepartamento: 'Operaciones',
+      solNombreResponsable: 'Ana López',
+      solNombreEstado: 'PENDIENTE',
+    };
+
+    if (tutorial.id === 'compras-solicitud-creacion') {
+      setCurrentSection('registros');
+      setActiveStageView(null);
+      setIsCreateModalOpen(true);
+    } else if (tutorial.id === 'compras-solicitud-lista' || tutorial.id === 'compras-pipeline-overview') {
+      setCurrentSection('registros');
+      setActiveStageView(null);
+      setIsCreateModalOpen(false);
+    } else if (tutorial.id === 'compras-aprobacion') {
+      setIsCreateModalOpen(false);
+      const targetSol = solicitudes.find((s) => (s.solNombreEstado || '').toUpperCase().includes('PENDIENTE')) || fallbackSol;
+      setActiveStageView({ stage: 'aprobacion', solicitud: targetSol });
+    } else if (tutorial.id === 'compras-cotizaciones-matriz') {
+      setIsCreateModalOpen(false);
+      const targetSol = solicitudes.find((s) => (s.solNombreEstado || '').toUpperCase().includes('APROBADA')) || fallbackSol;
+      setActiveStageView({ stage: 'matriz', solicitud: targetSol });
+    } else if (tutorial.id === 'compras-orden-compra') {
+      setIsCreateModalOpen(false);
+      const targetSol = solicitudes.find((s) => (s.solNombreEstado || '').toUpperCase().includes('ORDEN')) || fallbackSol;
+      setActiveStageView({ stage: 'presupuesto', solicitud: targetSol });
+    } else if (tutorial.id === 'compras-recepcion-bodega') {
+      setIsCreateModalOpen(false);
+      const targetSol = solicitudes.find((s) => (s.solNombreEstado || '').toUpperCase().includes('RECIBIDA')) || fallbackSol;
+      setActiveStageView({ stage: 'bodega', solicitud: targetSol });
+    } else if (tutorial.id === 'compras-three-way-match') {
+      setIsCreateModalOpen(false);
+      const targetSol = solicitudes.find((s) => (s.solNombreEstado || '').toUpperCase().includes('MATCH') || (s.solNombreEstado || '').toUpperCase().includes('FINALIZADA')) || fallbackSol;
+      setActiveStageView({ stage: '3way', solicitud: targetSol });
+    }
+
+    setRunningTutorial(tutorial);
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER: SUB-VISTA DE ETAPA DEL PIPELINE (SI HAY UNA SELECCIONADA)
   // ─────────────────────────────────────────────────────────────────────────────
   if (activeStageView) {
     const solInfo = getSolicitudInfoForMatriz(activeStageView.solicitud);
+    let stageViewContent: React.ReactNode = null;
+
     switch (activeStageView.stage) {
       case 'aprobacion':
-        return (
+        stageViewContent = (
           <AprobacionView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -413,8 +421,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       case 'matriz':
-        return (
+        stageViewContent = (
           <MatrizCotizacionesView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -425,8 +434,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       case 'seleccion':
-        return (
+        stageViewContent = (
           <SeleccionCotizacionView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -437,8 +447,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       case 'presupuesto':
-        return (
+        stageViewContent = (
           <PresupuestoView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -449,8 +460,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       case 'bodega':
-        return (
+        stageViewContent = (
           <BodegaView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -461,8 +473,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       case '3way':
-        return (
+        stageViewContent = (
           <ThreeWayMatchView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -473,8 +486,9 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
       default:
-        return (
+        stageViewContent = (
           <MatrizCotizacionesView
             solicitud={solInfo}
             onBack={handleCloseStageView}
@@ -485,7 +499,21 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         );
+        break;
     }
+
+    return (
+      <>
+        {stageViewContent}
+        {runningTutorial && (
+          <TutorialTour
+            key={runningTutorial.id}
+            tutorial={runningTutorial}
+            onClose={handleCloseTutorial}
+          />
+        )}
+      </>
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -511,11 +539,20 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             </p>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="flex items-center gap-3">
+            <ModuleTutorialMenu
+              module="compras"
+              tutorials={COMPRAS_TUTORIALS}
+              activeTab={currentSection}
+              onSelectTutorial={handleSelectTutorial}
+              runningTutorial={runningTutorial}
+              onCloseTour={handleCloseTutorial}
+            />
+            <div className="hidden lg:flex w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-center text-blue-600 shadow-xs">
               <ShoppingCart size={32} className="text-blue-600" />
             </div>
           </div>
+
         </div>
 
         {/* CONTENEDOR DE CATEGORÍAS (GRID PRINCIPAL) */}
@@ -746,16 +783,17 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
                 </div>
               </button>
 
-              {/* Card 3: Guías del Sistema */}
+              {/* Card 3: Historial de Solicitudes */}
               <button
                 type="button"
-                onClick={() => handleNavigate('guias')}
+                data-testid="card-historial-solicitudes"
+                onClick={() => handleNavigate('historial')}
                 className="group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-purple-500 hover:shadow-lg transition-all duration-200 text-left flex flex-col justify-between overflow-hidden cursor-pointer"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-200 shadow-2xs">
-                      <BookOpen size={24} />
+                      <History size={24} />
                     </div>
                     <span className="p-1.5 rounded-lg text-slate-400 group-hover:text-purple-600 group-hover:bg-purple-50 transition-colors">
                       <ChevronRight size={18} className="transition-transform group-hover:translate-x-1" />
@@ -764,19 +802,19 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
 
                   <div>
                     <h3 className="text-base font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
-                      Guías del Sistema
+                      Historial de Solicitudes
                     </h3>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      Manuales y documentación multimedia de apoyo.
+                      Expedientes cerrados, 3-Way Match liquidados y solicitudes rechazadas.
                     </p>
                   </div>
                 </div>
 
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span className="font-semibold text-purple-600 group-hover:underline">
-                    Ver documentación
+                    Consultar historial
                   </span>
-                  <span className="text-[11px] text-slate-400">Ayuda & Manuales</span>
+                  <span className="text-[11px] text-slate-400">Auditoría & Cierre</span>
                 </div>
               </button>
             </div>
@@ -803,6 +841,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       category: 'Operaciones y Funcionalidades',
       icon: <FileText size={18} className="text-indigo-600" />,
     },
+    historial: {
+      title: 'Historial de Solicitudes',
+      category: 'Catálogos y Referencias del Sistema',
+      icon: <History size={18} className="text-purple-600" />,
+    },
     presupuesto: {
       title: 'Control Presupuestario',
       category: 'Operaciones y Funcionalidades',
@@ -817,11 +860,6 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       title: 'Catálogo de Estados',
       category: 'Catálogos y Referencias del Sistema',
       icon: <GitBranch size={18} className="text-cyan-600" />,
-    },
-    guias: {
-      title: 'Guías y Manuales del Sistema',
-      category: 'Catálogos y Referencias del Sistema',
-      icon: <BookOpen size={18} className="text-purple-600" />,
     },
   };
 
@@ -865,16 +903,25 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
           </div>
         </div>
 
-        {/* Acceso rápido a otras secciones relacionadas */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+        {/* Acceso rápido a otras secciones relacionadas y Tutoriales */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <ModuleTutorialMenu
+            module="compras"
+            tutorials={COMPRAS_TUTORIALS}
+            activeTab={currentSection}
+            onSelectTutorial={handleSelectTutorial}
+            runningTutorial={runningTutorial}
+            onCloseTour={handleCloseTutorial}
+          />
+          <div className="h-4 w-px bg-slate-200 hidden sm:block shrink-0" />
           {(
             [
               { id: 'dashboard', label: 'Dashboard' },
               { id: 'registros', label: 'Registros' },
+              { id: 'historial', label: 'Historial' },
               { id: 'presupuesto', label: 'Presupuesto' },
               { id: 'proveedores', label: 'Proveedores' },
               { id: 'estados', label: 'Estados' },
-              { id: 'guias', label: 'Guías' },
             ] as const
           ).map((item) => {
             const isActive = currentSection === item.id;
@@ -896,15 +943,19 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
       </div>
 
       {/* RENDERIZADO SEGÚN LA SECCIÓN SELECCIONADA */}
+      {currentSection === 'historial' && (
+        <HistorialComprasView
+          onVerDetalle={(sol) => setSelectedSolicitudForResumen(sol)}
+        />
+      )}
       {currentSection === 'presupuesto' && <PresupuestoView />}
       {currentSection === 'proveedores' && <ProveedoresCatalogView />}
       {currentSection === 'estados' && <EstadosCatalogView />}
-      {currentSection === 'guias' && <GuiasSistemaView />}
 
       {(currentSection === 'dashboard' || currentSection === 'registros') && (
-        <div className="space-y-6">
+        <div data-testid="compras-registros-view" className="space-y-6">
           {/* Header Bar de Registros / Dashboard */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div data-testid="compras-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
                 <FileText className="text-blue-600" size={28} />
@@ -927,6 +978,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
                 icon={Plus}
                 onClick={() => setIsCreateModalOpen(true)}
                 className="shadow-sm"
+                data-testid="btn-nueva-solicitud"
               >
                 Crear Solicitud
               </Button>
@@ -934,7 +986,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
           </div>
 
           {/* Summary Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div data-testid="compras-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="Total Solicitudes"
               value={totalCount}
@@ -998,16 +1050,26 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               </span>
             </div>
 
-            {/* Texto de estado contextual */}
-            <div className="text-xs text-slate-500 px-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Bandeja operativa: solicitudes vigentes en curso (excluye finalizadas y rechazadas)</span>
+            {/* Texto de estado contextual con enlace directo al Historial */}
+            <div className="text-xs text-slate-500 px-2 flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Bandeja operativa en curso</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => handleNavigate('historial')}
+                className="text-purple-600 font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer ml-2"
+              >
+                <span>Ver Historial</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
           </div>
 
           {/* Pipeline de las 6 etapas interactivo (enfocado en el flujo activo) */}
           <PipelineOverview
-            registros={viewScope === 'activas' ? activasSolicitudes : solicitudes}
+            registros={activasSolicitudes}
             activeStage={filterEtapa}
             onStageClick={(stg) => {
               setFilterEtapa(stg);
@@ -1016,10 +1078,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
           />
 
           {/* Toolbar Search & Filters */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+          <div data-testid="compras-search-toolbar" className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative flex items-center w-full md:w-80">
               <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
               <input
+                data-testid="input-buscar-solicitud"
                 type="text"
                 placeholder="Buscar por No. Documento o Notas..."
                 value={searchQuery}
@@ -1039,6 +1102,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               </div>
 
               <select
+                data-testid="select-filtro-etapa"
                 value={filterEtapa}
                 onChange={(e) => {
                   setFilterEtapa(e.target.value);
@@ -1060,6 +1124,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               </div>
 
               <select
+                data-testid="select-filtro-estado"
                 value={filterEstado}
                 onChange={(e) => {
                   setFilterEstado(e.target.value);
@@ -1093,34 +1158,34 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
           </div>
 
           {/* Main DataTable list from Oracle Database */}
-          <DataTable
-            columns={tableColumns}
-            data={paginatedSolicitudes}
-            isLoading={isLoading}
-            onRowClick={(sol) => {
-              const defaultStage = getStageForSolicitud(sol);
-              const targetStage = defaultStage === 'rechazada' ? 'aprobacion' : defaultStage;
-              setActiveStageView({ stage: targetStage, solicitud: sol });
-            }}
-            emptyText={
-              viewScope === 'activas'
-                ? 'No se encontraron solicitudes de compra activas en curso actualmente.'
-                : 'No se encontraron solicitudes finalizadas en el historial.'
-            }
-          />
+          <div data-testid="tabla-solicitudes">
+            <DataTable
+              columns={tableColumns}
+              data={paginatedSolicitudes}
+              isLoading={isLoading}
+              onRowClick={(sol) => {
+                const defaultStage = getStageForSolicitud(sol);
+                const targetStage = defaultStage === 'rechazada' ? 'aprobacion' : defaultStage;
+                setActiveStageView({ stage: targetStage, solicitud: sol });
+              }}
+              emptyText="No se encontraron solicitudes de compra activas en curso actualmente."
+            />
+          </div>
 
           {/* Pagination Footer */}
           {!isLoading && filteredSolicitudes.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(page) => setCurrentPage(page)}
-              showingText={`Mostrando ${Math.min(
-                (currentPage - 1) * itemsPerPage + 1,
-                filteredSolicitudes.length
-              )}-${Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de ${filteredSolicitudes.length
-                } solicitudes`}
-            />
+            <div data-testid="compras-pagination">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+                showingText={`Mostrando ${Math.min(
+                  (currentPage - 1) * itemsPerPage + 1,
+                  filteredSolicitudes.length
+                )}-${Math.min(currentPage * itemsPerPage, filteredSolicitudes.length)} de ${filteredSolicitudes.length
+                  } solicitudes`}
+              />
+            </div>
           )}
 
           {/* Modal para Creación de Solicitud de Compra */}
@@ -1145,6 +1210,15 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             }}
           />
         </div>
+      )}
+
+      {/* Tour interactivo activo si está en ejecución en vistas principales o modales */}
+      {runningTutorial && (
+        <TutorialTour
+          key={runningTutorial.id}
+          tutorial={runningTutorial}
+          onClose={handleCloseTutorial}
+        />
       )}
     </div>
   );

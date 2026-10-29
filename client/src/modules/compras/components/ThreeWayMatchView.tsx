@@ -30,6 +30,7 @@ import {
   IItemThreeWayComparison,
 } from '@erp/contracts';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { useAuth } from '../../../shared/auth/AuthContext';
 
 export interface ThreeWayMatchViewProps {
   solicitud?: SolicitudOriginalInfo;
@@ -44,6 +45,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
   onSuccess,
   onNavigateToStage,
 }) => {
+  const { usuario } = useAuth();
   // Estado para Solicitud individual
   const [matchData, setMatchData] = useState<IThreeWayMatchData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -344,6 +346,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
         totalFactura: Number(totalFacturaInput),
         notasLiquidacion: cleanNotas || undefined,
         toleranciaAceptada: hayDiscrepancias ? toleranciaAceptada : true,
+        idUsuarioCreador: usuario?.idUsuario ? Number(usuario.idUsuario) : 1,
         items: lineItems,
       };
 
@@ -509,7 +512,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
     const hasPo = Boolean(matchData?.ordenCompra);
 
     return (
-      <div id="threeway-match-document" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
+      <div id="threeway-match-document" data-testid="three-way-match-panel" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
         {/* Encabezado Oficial Exclusivo para Impresión */}
         <div className="hidden print:block border-b-2 border-slate-800 pb-4 mb-4">
           <div className="flex justify-between items-start">
@@ -677,7 +680,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
         ) : null}
 
         {/* 1. SECCIÓN: LOS 3 PILARES DEL 3-WAY MATCH (COMPARATIVA TRIPARTITA) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div data-testid="tarjeta-tres-vias-comparativa" className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* PILAR 1: ORDEN DE COMPRA (PO) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4 relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -755,7 +758,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
           </div>
 
           {/* PILAR 3: FACTURA DEL PROVEEDOR (CXP) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4 relative">
+          <div data-testid="formulario-factura-proveedor" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4 relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
                 <Receipt size={18} className="text-emerald-600" />
@@ -870,7 +873,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
         </div>
 
         {/* 2. SECCIÓN: MATRIZ DETALLADA DE CONCILIACIÓN ÍTEM POR ÍTEM */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div data-testid="tabla-conciliacion-lineas" className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div>
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
@@ -1228,6 +1231,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
                 </div>
               ) : (
                 <Button
+                  data-testid="btn-liquidar-three-way-match"
                   variant="primary"
                   size="lg"
                   icon={ShieldCheck}
@@ -1266,7 +1270,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
 
   // RENDER: Vista Standalone / Historial General de Facturas CXP
   return (
-    <div className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
+    <div data-testid="three-way-match-panel" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>

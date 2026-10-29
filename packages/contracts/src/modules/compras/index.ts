@@ -7,4 +7,3 @@ export * from './unidadMedida.contract.js';
 export * from './ordenCompra.contract.js';
 export * from './recepcionBodega.contract.js';
 export * from './threeWayMatch.contract.js';
-export * from './guiaSistema.contract.js';

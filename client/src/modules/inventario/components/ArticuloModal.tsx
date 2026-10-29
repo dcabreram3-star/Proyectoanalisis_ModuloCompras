@@ -6,6 +6,7 @@ import { CategoriaClientService } from '../services/categoriaClientService';
 import { MarcaClientService } from '../services/marcaClientService';
 import { UnidadMedidaClientService } from '../services/unidadMedidaClientService';
 import { sanitizeStrictCode, sanitizeNominalText } from '../../../utils/sanitizers';
+import { FormActionButtons } from '../../../shared/components/FormActionButtons';
 
 import { articuloService } from '../services/articulo.service';
 
@@ -195,10 +196,13 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scaleUp">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+      <div
+        data-testid="modal-articulo"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[88vh] flex flex-col overflow-hidden animate-scaleUp my-auto"
+      >
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <Package size={18} />
@@ -213,121 +217,128 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+            title="Cerrar modal"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
-              <AlertCircle size={16} className="text-red-500 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-1">
-              <TextInput
-                label="CÓDIGO (AUTO-ASIGNADO)"
-                required
-                placeholder="Calculando código..."
-                value={codigo}
-                onChange={(e) => handleCodigoChange(e.target.value)}
-                isReadOnly={true}
-                maxLength={30}
-                error={codigoError || undefined}
-                helperText="Asignado automáticamente"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <TextInput
-                label="DESCRIPCIÓN DEL ARTÍCULO"
-                required
-                placeholder="Ej. Laptop HP ProBook 450 G9 16GB..."
-                value={descripcion}
-                onChange={(e) => handleDescripcionChange(e.target.value)}
-                maxLength={250}
-                autoFocus={true}
-                error={descripcionError || undefined}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Select
-                label="CATEGORÍA"
-                required
-                value={idCategoria}
-                onChange={(e) => setIdCategoria(Number(e.target.value))}
-                options={categorias}
-                disabled={isEditing}
-              />
-            </div>
-            <div>
-              <Select
-                label="MARCA"
-                required
-                value={idMarca}
-                onChange={(e) => setIdMarca(Number(e.target.value))}
-                options={marcas}
-                disabled={isEditing}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Select
-                label="UNIDAD COMPRA"
-                value={idUnidadCompra}
-                onChange={(e) => setIdUnidadCompra(Number(e.target.value))}
-                options={unidades}
-                disabled={isEditing}
-              />
-            </div>
-            <div>
-              <Select
-                label="UNIDAD VENTA"
-                value={idUnidadVenta}
-                onChange={(e) => setIdUnidadVenta(Number(e.target.value))}
-                options={unidades}
-                disabled={isEditing}
-              />
-            </div>
-          </div>
-
-          <div className="pt-2 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-            <Checkbox
-              label="Maneja Control de Lote y Vencimiento"
-              helperText="Exige registrar lote y fecha de expiración en las entradas y salidas de inventario."
-              checked={manejaLote}
-              onChange={(e) => setManejaLote(e.target.checked)}
-              disabled={isEditing}
-            />
-            {isEditing && (
-              <Checkbox
-                label="Artículo Activo"
-                helperText="Los artículos inactivos no pueden solicitarse en compras ni transferirse."
-                checked={activo}
-                onChange={(e) => setActivo(e.target.checked)}
-                disabled
-              />
+        {/* Form con contenedor con scroll y footer fijo */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Body */}
+          <div className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
+                <AlertCircle size={16} className="text-red-500 shrink-0" />
+                <span>{error}</span>
+              </div>
             )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-1">
+                <TextInput
+                  label="CÓDIGO (AUTO-ASIGNADO)"
+                  required
+                  placeholder="Calculando código..."
+                  value={codigo}
+                  onChange={(e) => handleCodigoChange(e.target.value)}
+                  isReadOnly={true}
+                  maxLength={30}
+                  error={codigoError || undefined}
+                  helperText="Asignado automáticamente"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <TextInput
+                  label="DESCRIPCIÓN DEL ARTÍCULO"
+                  required
+                  placeholder="Ej. Laptop HP ProBook 450 G9 16GB..."
+                  value={descripcion}
+                  onChange={(e) => handleDescripcionChange(e.target.value)}
+                  maxLength={250}
+                  autoFocus={true}
+                  error={descripcionError || undefined}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Select
+                  label="CATEGORÍA"
+                  required
+                  value={idCategoria}
+                  onChange={(e) => setIdCategoria(Number(e.target.value))}
+                  options={categorias}
+                  disabled={isEditing}
+                />
+              </div>
+              <div>
+                <Select
+                  label="MARCA"
+                  required
+                  value={idMarca}
+                  onChange={(e) => setIdMarca(Number(e.target.value))}
+                  options={marcas}
+                  disabled={isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Select
+                  label="UNIDAD COMPRA"
+                  value={idUnidadCompra}
+                  onChange={(e) => setIdUnidadCompra(Number(e.target.value))}
+                  options={unidades}
+                  disabled={isEditing}
+                />
+              </div>
+              <div>
+                <Select
+                  label="UNIDAD VENTA"
+                  value={idUnidadVenta}
+                  onChange={(e) => setIdUnidadVenta(Number(e.target.value))}
+                  options={unidades}
+                  disabled={isEditing}
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+              <Checkbox
+                label="Maneja Control de Lote y Vencimiento"
+                helperText="Exige registrar lote y fecha de expiración en las entradas y salidas de inventario."
+                checked={manejaLote}
+                onChange={(e) => setManejaLote(e.target.checked)}
+                disabled={isEditing}
+              />
+              {isEditing && (
+                <Checkbox
+                  label="Artículo Activo"
+                  helperText="Los artículos inactivos no pueden solicitarse en compras ni transferirse."
+                  checked={activo}
+                  onChange={(e) => setActivo(e.target.checked)}
+                  disabled
+                />
+              )}
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button variant="secondary" icon={X} onClick={onClose} disabled={isSubmitting} type="button">
-              Cancelar
-            </Button>
-            <Button variant="primary" icon={Save} disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Guardando...' : isEditing ? 'Actualizar' : 'Guardar Artículo'}
-            </Button>
+          {/* Fixed Footer: Always visible outside scroll area */}
+          <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 shrink-0">
+            <FormActionButtons
+              onCancel={onClose}
+              isSubmitting={isSubmitting}
+              isEditing={isEditing}
+              createLabel="Guardar Artículo"
+              editLabel="Actualizar"
+              skipConfirm
+            />
           </div>
         </form>
       </div>

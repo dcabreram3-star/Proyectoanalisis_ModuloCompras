@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Package,
+  PackagePlus,
   Search,
   Plus,
   Edit2,
@@ -16,6 +17,8 @@ import { Button, StatCard, DataTable, ConfirmDialog } from '../../../components/
 import type { IArticulo, ICrearArticuloDTO, IActualizarArticuloDTO } from '@erp/contracts';
 import { articuloService } from '../services/articulo.service';
 import { ArticuloModal } from './ArticuloModal';
+import { AgregarExistenciasModal } from './AgregarExistenciasModal';
+import { UnifiedStatusBadge } from '../../../shared/components/UnifiedStatusBadge';
 
 export const ArticulosCatalogView: React.FC = () => {
   const [articulos, setArticulos] = useState<IArticulo[]>([]);
@@ -36,6 +39,8 @@ export const ArticulosCatalogView: React.FC = () => {
     accion: string;
   } | null>(null);
   const [isToggling, setIsToggling] = useState<boolean>(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState<boolean>(false);
+  const [selectedArticuloParaStock, setSelectedArticuloParaStock] = useState<string | undefined>(undefined);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -231,15 +236,7 @@ export const ArticulosCatalogView: React.FC = () => {
       accessorKey: 'ART_ACTIVO',
       align: 'center' as const,
       cell: ({ value }: { value: number }) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-            value === 1
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : 'bg-slate-100 text-slate-600 border-slate-200'
-          }`}
-        >
-          {value === 1 ? 'Activo' : 'Inactivo'}
-        </span>
+        <UnifiedStatusBadge status={value === 1 ? 'Activo' : 'Inactivo'} size="sm" />
       ),
     },
     {
@@ -249,6 +246,17 @@ export const ArticulosCatalogView: React.FC = () => {
         const isActivo = row.ART_ACTIVO === 1;
         return (
           <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedArticuloParaStock(row.ART_CODIGO_ARTICULO);
+                setIsStockModalOpen(true);
+              }}
+              className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+              title={`Añadir existencias a ${row.ART_CODIGO_ARTICULO}`}
+            >
+              <PackagePlus size={15} />
+            </button>
             <button
               type="button"
               onClick={() => handleOpenEdit(row)}
@@ -302,6 +310,17 @@ export const ArticulosCatalogView: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <Button variant="secondary" icon={RefreshCw} onClick={loadData} disabled={isLoading}>
             Actualizar
+          </Button>
+          <Button
+            variant="secondary"
+            icon={PackagePlus}
+            onClick={() => {
+              setSelectedArticuloParaStock(undefined);
+              setIsStockModalOpen(true);
+            }}
+            className="text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 shadow-2xs font-semibold"
+          >
+            Añadir Existencias
           </Button>
           <Button variant="primary" icon={Plus} onClick={handleOpenCreate}>
             Nuevo Artículo
@@ -473,6 +492,21 @@ export const ArticulosCatalogView: React.FC = () => {
         confirmText={articuloToToggle?.nuevoEstado === 1 ? 'Activar Artículo' : 'Desactivar Artículo'}
         variant={articuloToToggle?.nuevoEstado === 1 ? 'primary' : 'warning'}
         isLoading={isToggling}
+      />
+
+      {/* Modal para Añadir Existencias Directas */}
+      <AgregarExistenciasModal
+        isOpen={isStockModalOpen}
+        onClose={() => {
+          setIsStockModalOpen(false);
+          setSelectedArticuloParaStock(undefined);
+        }}
+        initialArticuloCodigo={selectedArticuloParaStock}
+        onSuccess={() => {
+          loadData();
+          setSuccessMsg('Existencias añadidas correctamente al producto.');
+          setTimeout(() => setSuccessMsg(null), 4000);
+        }}
       />
     </div>
   );

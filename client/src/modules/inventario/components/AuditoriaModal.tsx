@@ -98,21 +98,23 @@ export const AuditoriaModal: React.FC<AuditoriaModalProps> = ({
             Al iniciar, el sistema capturará automáticamente el stock teórico actual de los artículos de la bodega seleccionada. Luego podrás ingresar el conteo físico real para calcular discrepancias.
           </div>
 
-          <Select
-            label="BODEGA A AUDITAR"
-            required
-            value={idBodega}
-            onChange={(e) => setIdBodega(Number(e.target.value))}
-            options={bodegaOptions}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="BODEGA A AUDITAR"
+              required
+              value={idBodega}
+              onChange={(e) => setIdBodega(Number(e.target.value))}
+              options={bodegaOptions}
+            />
 
-          <Select
-            label="AUDITOR RESPONSABLE"
-            required
-            value={idUsuario}
-            onChange={(e) => setIdUsuario(Number(e.target.value))}
-            options={AUDITORES}
-          />
+            <Select
+              label="AUDITOR RESPONSABLE"
+              required
+              value={idUsuario}
+              onChange={(e) => setIdUsuario(Number(e.target.value))}
+              options={AUDITORES}
+            />
+          </div>
 
           <TextInput
             label="MOTIVO / ALCANCE DE LA AUDITORÍA"

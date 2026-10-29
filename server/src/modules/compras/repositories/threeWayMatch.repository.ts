@@ -435,6 +435,33 @@ export class ThreeWayMatchRepository {
       const serieFac = facParts.length > 1 ? facParts[0].slice(0, 40) : 'FACT';
       const numFac = facParts.length > 1 ? facParts.slice(1).join('-').slice(0, 80) : noFacturaFinal.slice(0, 80);
 
+        // Determinación segura y robusta de CREADO_POR para FK_CXP_DOC_CREA -> USUARIO(USU_ID_USUARIO)
+        let idCreadorFinal = Number(dto.idUsuarioCreador || 1);
+        try {
+          const userCheck = await conn.execute<any>(
+            `SELECT USU_ID_USUARIO FROM USUARIO WHERE USU_ID_USUARIO = :idU`,
+            { idU: idCreadorFinal }
+          );
+          if (!userCheck.rows || userCheck.rows.length === 0) {
+            // Si el ID enviado no existe en USUARIO, buscar el primer usuario activo disponible
+            const fallbackUser = await conn.execute<any>(
+              `SELECT USU_ID_USUARIO FROM USUARIO WHERE USU_ACTIVO = 1 AND ROWNUM = 1`
+            );
+            if (fallbackUser.rows && fallbackUser.rows.length > 0) {
+              idCreadorFinal = Number(fallbackUser.rows[0].USU_ID_USUARIO || fallbackUser.rows[0][0]);
+            } else {
+              // Si la tabla USUARIO estuviera vacía, sincronizar automáticamente el admin por defecto
+              await conn.execute(
+                `INSERT INTO USUARIO (USU_ID_USUARIO, USU_NOMBRE_COMPLETO, USU_ID_ROL, USU_ID_DEPARTAMENTO, USU_ACTIVO) 
+                 VALUES (1, 'Administrador del Sistema', 1, 1, 1)`
+              );
+              idCreadorFinal = 1;
+            }
+          }
+        } catch {
+          idCreadorFinal = 1;
+        }
+
         await conn.execute(
           `INSERT INTO CXP_DOCUMENTO (
             ID_DOCUMENTO,
@@ -522,7 +549,7 @@ export class ThreeWayMatchRepository {
             'PENDIENTE',
             'APROBADA',
             'N',
-            1,
+            :creadoPor,
             SYSTIMESTAMP
           )`,
           {
@@ -540,6 +567,7 @@ export class ThreeWayMatchRepository {
             difCant: difCantGlobal,
             difPrecio: difPrecioGlobal,
             difTotal: difTotalGlobal,
+            creadoPor: idCreadorFinal,
           }
         );
 

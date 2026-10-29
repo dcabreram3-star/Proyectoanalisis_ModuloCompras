@@ -69,7 +69,19 @@ function ModulosErp() {
       case 'dashboard':
         return <DashboardView />;
       case 'compras':
-        return <ComprasView />;
+        return (
+          <ComprasView
+            activeTab={activeTab}
+            onTabChange={(tabId) => {
+              setActiveTab(tabId);
+              setSearchParams(
+                tabId && tabId !== 'hub'
+                  ? { modulo: 'compras', tab: tabId }
+                  : { modulo: 'compras' }
+              );
+            }}
+          />
+        );
       case 'productos':
       case 'articulos':
       case 'catalogo':
@@ -142,6 +154,7 @@ const router = createBrowserRouter([
   { path: '/catalogo', element: <ProtectedRoute><Navigate to="/modulos?modulo=productos" replace /></ProtectedRoute> },
   { path: '/inventario', element: <ProtectedRoute><Navigate to="/modulos?modulo=inventario" replace /></ProtectedRoute> },
   { path: '/compras', element: <ProtectedRoute><Navigate to="/modulos?modulo=compras" replace /></ProtectedRoute> },
+  { path: '/compras/historial', element: <ProtectedRoute><Navigate to="/modulos?modulo=compras&tab=historial" replace /></ProtectedRoute> },
   ...routes.map((r) => ({ ...r, element: <ProtectedRoute>{r.element}</ProtectedRoute> })),
   {
     path: '*',

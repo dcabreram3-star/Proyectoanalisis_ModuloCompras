@@ -68,8 +68,8 @@ export class OrdenCompraService {
     if (!dto.noDocumento || dto.noDocumento.trim() === '') {
       throw new Error('El número de solicitud es requerido para registrar el rechazo de presupuesto.');
     }
-    if (!dto.motivoRechazo || dto.motivoRechazo.trim() === '') {
-      throw new Error('Debe especificar el motivo o justificación del rechazo/ajuste presupuestario.');
+    if (!dto.motivoRechazo || dto.motivoRechazo.trim().length < 10) {
+      throw new Error('Debe especificar un motivo o justificación de al menos 10 caracteres para el rechazo presupuestario.');
     }
 
     const res = await OrdenCompraRepository.rechazarPresupuesto(dto);

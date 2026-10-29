@@ -346,8 +346,24 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
                         <input 
                           type="number" 
                           min="1"
+                          step="1"
                           value={detalle.cantidad}
-                          onChange={(e) => handleChangeDetalle(index, 'cantidad', parseInt(e.target.value) || 1)}
+                          onKeyDown={(e) => {
+                            if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const text = e.clipboardData.getData('text');
+                            if (!/^\d+$/.test(text)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const clean = e.target.value.replace(/\D/g, '');
+                            const parsed = parseInt(clean, 10);
+                            handleChangeDetalle(index, 'cantidad', isNaN(parsed) ? 1 : Math.max(1, parsed));
+                          }}
                           className="w-full h-10 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 text-center focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                           required
                         />

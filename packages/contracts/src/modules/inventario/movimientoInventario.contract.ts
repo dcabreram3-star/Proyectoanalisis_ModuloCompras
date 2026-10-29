@@ -21,3 +21,14 @@ export interface IMovimientoInventarioResponseDTO {
   noMovimiento: string;
   advertenciaConcurrencia?: string;
 }
+
+export interface IAgregarExistenciasDTO {
+  codigoArticulo: string;
+  idBodega: number;
+  cantidad: number;
+  costoUnitario?: number;
+  idUbicacion?: number;
+  idLote?: number;
+  notas?: string;
+  idUsuario?: number;
+}

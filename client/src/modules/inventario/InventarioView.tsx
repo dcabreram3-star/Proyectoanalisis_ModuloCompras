@@ -11,6 +11,7 @@ import {
   Boxes,
   Activity,
   FolderTree,
+  PackagePlus,
 } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { BodegasCatalogView } from './components/BodegasCatalogView';
@@ -19,6 +20,9 @@ import { LotesCatalogView } from './components/LotesCatalogView';
 import { MovimientoCreacionView } from './components/MovimientoCreacionView';
 import { TiposMovimientoCatalogView } from './components/TiposMovimientoCatalogView';
 import { AuditoriaView } from './components/AuditoriaView';
+import { AgregarExistenciasModal } from './components/AgregarExistenciasModal';
+import { ModuleTutorialMenu } from '../../shared/tutoriales';
+import { INVENTARIO_TUTORIALS } from './tutoriales/inventarioTutorialsData';
 
 export type InventarioSection =
   | 'hub'
@@ -38,6 +42,9 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
   activeTab: propTab,
   onTabChange,
 }) => {
+  // Estado para el modal rápido de añadir existencias
+  const [isAgregarStockOpen, setIsAgregarStockOpen] = useState<boolean>(false);
+
   // Estado de navegación interna: si no se especifica o es 'hub', muestra el Hub
   const [currentSection, setCurrentSection] = useState<InventarioSection>(() => {
     if (propTab && propTab !== 'hub' && propTab !== 'bodegas') {
@@ -76,8 +83,18 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
             </p>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="primary"
+              size="sm"
+              icon={PackagePlus}
+              onClick={() => setIsAgregarStockOpen(true)}
+              className="text-xs font-bold shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+            >
+              Añadir Existencias
+            </Button>
+            <ModuleTutorialMenu module="inventario" tutorials={INVENTARIO_TUTORIALS} />
+            <div className="hidden lg:flex w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-center text-blue-600 shadow-xs">
               <Boxes size={32} className="text-blue-600" />
             </div>
           </div>
@@ -106,12 +123,48 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
               </div>
 
               <span className="hidden sm:inline-flex px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">
-                3 Operaciones
+                4 Operaciones
               </span>
             </div>
 
             {/* Grid de Sub-Tarjetas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Card 1: Añadir Existencias (Acción Rápida de Entrada) */}
+              <button
+                type="button"
+                onClick={() => setIsAgregarStockOpen(true)}
+                className="group relative bg-white rounded-xl p-6 border-2 border-emerald-500/70 hover:border-emerald-600 hover:shadow-xl transition-all duration-200 text-left flex flex-col justify-between overflow-hidden cursor-pointer bg-gradient-to-br from-white via-white to-emerald-50/40"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-sm">
+                      <PackagePlus size={24} />
+                    </div>
+                    <span className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 group-hover:bg-emerald-100 transition-colors">
+                      <ChevronRight size={18} className="transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide mb-1.5">
+                      Acción Rápida
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                      Añadir Existencias
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Incremento directo de existencias a productos con asiento en Kardex.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-bold text-emerald-600 group-hover:underline">
+                    Añadir stock
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-semibold">AJU_ENTRADA</span>
+                </div>
+              </button>
               {/* Card 1: Movimientos / Kardex */}
               <button
                 type="button"
@@ -347,6 +400,12 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Modal para Añadir Existencias Directas */}
+        <AgregarExistenciasModal
+          isOpen={isAgregarStockOpen}
+          onClose={() => setIsAgregarStockOpen(false)}
+        />
       </div>
     );
   }
@@ -430,8 +489,10 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
           </div>
         </div>
 
-        {/* Acceso Rápido Entre Secciones */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        {/* Acceso Rápido Entre Secciones y Tutoriales */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <ModuleTutorialMenu module="inventario" tutorials={INVENTARIO_TUTORIALS} />
+          <div className="h-4 w-px bg-slate-200 hidden sm:block shrink-0" />
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mr-1 shrink-0">
             Ir a:
           </span>
@@ -463,6 +524,15 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
               );
             }
           )}
+          <button
+            type="button"
+            onClick={() => setIsAgregarStockOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+            title="Añadir existencias a productos"
+          >
+            <PackagePlus size={13} />
+            <span>Añadir Stock</span>
+          </button>
         </div>
       </div>
 
@@ -479,6 +549,12 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
         />
       )}
       {currentSection === 'auditoria' && <AuditoriaView />}
+
+      {/* Modal para Añadir Existencias Directas */}
+      <AgregarExistenciasModal
+        isOpen={isAgregarStockOpen}
+        onClose={() => setIsAgregarStockOpen(false)}
+      />
     </div>
   );
 };

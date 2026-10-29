@@ -206,8 +206,8 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
   // Rechazar Solicitud
   const handleConfirmRechazo = async () => {
-    if (!motivoRechazo || motivoRechazo.trim() === '') {
-      setRejectError('Debe ingresar un motivo para el rechazo o denegación.');
+    if (!motivoRechazo || motivoRechazo.trim().length < 10) {
+      setRejectError('Debe ingresar un motivo justificado de al menos 10 caracteres explicativos.');
       return;
     }
 
@@ -234,7 +234,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
+    <div data-testid="panel-aprobacion" className="space-y-6 w-full pb-16 animate-fadeIn min-w-0">
       {/* Barra de Navegación Superior Estándar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
@@ -377,7 +377,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
       </div>
 
       {/* Tabla de Artículos de la Requisición */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div data-testid="tabla-articulos-aprobacion" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -467,6 +467,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                         {isPendiente ? (
                           <div className="flex items-center justify-center">
                             <input
+                              data-testid="input-cantidad-aprobada"
                               type="number"
                               step="1"
                               min={0}
@@ -541,7 +542,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
       </div>
 
       {/* Dictamen y Observaciones con Ancho Proporcional */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
+      <div data-testid="dictamen-aprobador" className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
           <span className="w-1 h-4 bg-indigo-600 rounded-full inline-block" />
           Dictamen y Notas del Aprobador
@@ -597,6 +598,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
           <div className="flex items-center gap-3">
             {/* Rechazar */}
             <Button
+              data-testid="btn-rechazar-solicitud"
               variant="danger"
               size="sm"
               icon={Ban}
@@ -613,6 +615,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
             {/* Guardar Ajustes */}
             <Button
+              data-testid="btn-guardar-ajustes"
               variant="secondary"
               size="sm"
               icon={Save}
@@ -625,6 +628,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
 
             {/* Aprobar */}
             <Button
+              data-testid="btn-aprobar-solicitud"
               variant="success"
               size="sm"
               icon={CheckCircle2}
@@ -693,8 +697,10 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
                   className="w-full text-xs"
                 />
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Mínimo requerido para auditoría</span>
-                  <span>{motivoRechazo.length}/300 caracteres</span>
+                  <span>Mínimo 10 caracteres requeridos para auditoría</span>
+                  <span className={motivoRechazo.trim().length > 0 && motivoRechazo.trim().length < 10 ? 'text-amber-600 font-bold' : ''}>
+                    {motivoRechazo.length}/300 caracteres
+                  </span>
                 </div>
                 {rejectError && (
                   <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">

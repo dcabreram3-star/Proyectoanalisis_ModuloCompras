@@ -241,16 +241,18 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
             autoFocus
           />
 
-          <TextInput
-            label="NIT / DPI (IDENTIFICACIÓN TRIBUTARIA O PERSONAL)"
-            required
-            placeholder="Ej. 12345678 (8 a 13 dígitos)"
-            value={nit}
-            onChange={(e) => handleNitChange(e.target.value)}
-            error={nitError || undefined}
-            helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9). Los NITs no pueden iniciar con 0 (permitido para DPI de 13 dígitos)."
-            maxLength={PROVEEDOR_NIT_MAX_LENGTH}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NIT / DPI (IDENTIFICACIÓN)"
+              required
+              placeholder="Ej. 12345678 (8 a 13 dígitos)"
+              value={nit}
+              onChange={(e) => handleNitChange(e.target.value)}
+              error={nitError || undefined}
+              helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9)."
+              maxLength={PROVEEDOR_NIT_MAX_LENGTH}
+            />
+          </div>
 
           <div className="pt-1">
             <Checkbox

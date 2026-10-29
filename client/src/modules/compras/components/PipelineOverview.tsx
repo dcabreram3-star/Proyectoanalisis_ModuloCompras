@@ -53,6 +53,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
 
   return (
     <section
+      data-testid="pipeline-overview"
       className={`bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5 ${className}`}
       aria-label={title}
     >
@@ -79,7 +80,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
             <button
               type="button"
               onClick={() => onStageClick('TODAS')}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-100"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 hover:bg-blue-100 cursor-pointer"
             >
               <RotateCcw size={12} />
               <span>Limpiar filtro</span>
@@ -104,6 +105,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
             return (
               <div
                 key={stage.key}
+                data-testid={stage.key === 'aprobacion' ? 'pipeline-stage-solicitud' : `pipeline-stage-container-${stage.key}`}
                 className="flex-1 min-w-[120px] flex-shrink-0 flex flex-col items-center relative px-1"
               >
                 {/* Línea conectora entre nodos */}
@@ -119,6 +121,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
                 {/* Botón nodo interactivo */}
                 <button
                   type="button"
+                  data-testid={`pipeline-stage-${stage.key}`}
                   onClick={() => {
                     if (clickable && onStageClick) {
                       onStageClick(isSelected ? 'TODAS' : stage.key);

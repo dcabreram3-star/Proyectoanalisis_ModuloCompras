@@ -7,6 +7,8 @@ import {
   IUpdateSolicitudCompraDTO,
   IAprobarSolicitudDTO,
   IRechazarSolicitudDTO,
+  IEmpleadoResponsableOption,
+  IDepartamentoOption,
 } from '@erp/contracts';
 
 import { ComprasMailerService } from './comprasMailer.service.js';
@@ -98,12 +100,11 @@ export class SolicitudCompraService {
       throw new Error(`No se puede aprobar la solicitud ${noDocumento} porque ya cuenta con Orden de Compra emitida.`);
     }
     if (
-      estadoUpper.includes('PRESUPUESTO') ||
-      estadoUpper.includes('APROBADA') ||
-      estadoUpper.includes('VALIDACIÓN DE PRESUPUESTO') ||
-      estadoUpper.includes('VALIDACION DE PRESUPUESTO')
+      estadoUpper === 'APROBADA' ||
+      estadoUpper.startsWith('APROBAD') ||
+      existing.solIdEstado === 2
     ) {
-      throw new Error(`La solicitud ${noDocumento} ya fue aprobada y se encuentra en etapa de presupuesto.`);
+      throw new Error(`La solicitud ${noDocumento} ya fue aprobada y se encuentra en etapa de cotización.`);
     }
 
     // 2. Validación de Existencia y Pertenencia de Detalles (COMP-006)
@@ -154,18 +155,29 @@ export class SolicitudCompraService {
     noDocumento: string,
     dto: IRechazarSolicitudDTO
   ): Promise<ISolicitudCompraCompleta> {
+    if (!noDocumento || noDocumento.trim() === '') {
+      throw new Error('El número de documento de solicitud es requerido.');
+    }
+
+    if (!dto.motivoRechazo || dto.motivoRechazo.trim().length < 10) {
+      throw new Error('El motivo de rechazo debe contener al menos 10 caracteres explicativos para fines de auditoría.');
+    }
+
     const existing = await this.obtenerSolicitudPorNoDocumento(noDocumento);
     if (!existing) {
       throw new Error(`La solicitud de compra ${noDocumento} no existe.`);
     }
 
     const estadoUpper = (existing.solNombreEstado || '').toUpperCase();
+    if (
+      estadoUpper.includes('RECHAZAD') ||
+      estadoUpper.includes('DENEGAD') ||
+      existing.solIdEstado === 6
+    ) {
+      throw new Error(`La solicitud ${noDocumento} ya se encuentra formalmente RECHAZADA.`);
+    }
     if (estadoUpper.includes('FINALIZADA') || existing.solIdEstado === 5) {
       throw new Error(`No se puede rechazar la solicitud ${noDocumento} porque ya fue FINALIZADA.`);
-    }
-
-    if (!dto.motivoRechazo || dto.motivoRechazo.trim() === '') {
-      throw new Error('Debe proporcionar un motivo de rechazo o denegación.');
     }
 
     const rechazada = await SolicitudCompraRepository.rechazar(noDocumento.trim(), dto);
@@ -206,6 +218,14 @@ export class SolicitudCompraService {
     }
     
     return solicitudCreada;
+  }
+
+  static async obtenerEmpleados(): Promise<IEmpleadoResponsableOption[]> {
+    return await SolicitudCompraRepository.getEmpleados();
+  }
+
+  static async obtenerDepartamentos(): Promise<IDepartamentoOption[]> {
+    return await SolicitudCompraRepository.getDepartamentos();
   }
 }
 
