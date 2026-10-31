@@ -19,6 +19,7 @@ import {
   Calendar,
   Barcode,
   Check,
+  HelpCircle,
 } from 'lucide-react';
 import { Button, StatCard, DataTable, TextInput, Select, ConfirmDialog } from '../../../components/ui';
 import { SolicitudOriginalCard, SolicitudOriginalInfo } from './SolicitudOriginalCard';
@@ -37,6 +38,7 @@ export interface ThreeWayMatchViewProps {
   onBack?: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageKey: string) => void;
+  onStartTutorial?: () => void;
 }
 
 export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
@@ -44,6 +46,7 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
   onBack,
   onSuccess,
   onNavigateToStage,
+  onStartTutorial,
 }) => {
   const { usuario } = useAuth();
   // Estado para Solicitud individual
@@ -560,6 +563,17 @@ export const ThreeWayMatchView: React.FC<ThreeWayMatchViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onStartTutorial && (
+              <button
+                type="button"
+                onClick={onStartTutorial}
+                className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+                title="Iniciar tutorial guiado de Conciliación 3-Way Match"
+              >
+                <HelpCircle size={14} className="text-blue-600" />
+                <span>Tutorial</span>
+              </button>
+            )}
             <Button
               variant="secondary"
               size="sm"

@@ -21,6 +21,7 @@ import { BodegaClientService } from '../services/bodegaClientService';
 import { UbicacionClientService } from '../services/ubicacionClientService';
 import { LoteClientService } from '../services/loteClientService';
 import { MovimientoInventarioClientService } from '../services/movimientoInventarioClientService';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface AgregarExistenciasModalProps {
   isOpen: boolean;
@@ -82,16 +83,37 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
         setArticulos(artsData || []);
         setBodegas(bodsData || []);
 
-        if (initialArticuloCodigo) {
-          setCodigoArticulo(initialArticuloCodigo);
-        } else if (artsData && artsData.length > 0 && !codigoArticulo) {
-          setCodigoArticulo(artsData[0].ART_CODIGO_ARTICULO);
-        }
+        // Recuperar borrador si el usuario recargó la página (F5)
+        const draft = draftStorage.get<{
+          codigoArticulo?: string;
+          idBodega?: number | '';
+          idUbicacion?: number | '';
+          idLote?: number | '';
+          cantidad?: string;
+          costoUnitario?: string;
+          notas?: string;
+        }>('erp_draft_inventario_agregar_existencias');
 
-        if (initialBodegaId) {
-          setIdBodega(initialBodegaId);
-        } else if (bodsData && bodsData.length > 0 && !idBodega) {
-          setIdBodega(bodsData[0].bodIdBodega);
+        if (draft && draft.cantidad) {
+          if (draft.codigoArticulo) setCodigoArticulo(draft.codigoArticulo);
+          if (draft.idBodega) setIdBodega(draft.idBodega);
+          if (draft.idUbicacion) setIdUbicacion(draft.idUbicacion);
+          if (draft.idLote) setIdLote(draft.idLote);
+          if (draft.cantidad) setCantidad(String(draft.cantidad).replace(/\D/g, ''));
+          if (draft.costoUnitario) setCostoUnitario(draft.costoUnitario);
+          if (draft.notas) setNotas(draft.notas);
+        } else {
+          if (initialArticuloCodigo) {
+            setCodigoArticulo(initialArticuloCodigo);
+          } else if (artsData && artsData.length > 0 && !codigoArticulo) {
+            setCodigoArticulo(artsData[0].ART_CODIGO_ARTICULO);
+          }
+
+          if (initialBodegaId) {
+            setIdBodega(initialBodegaId);
+          } else if (bodsData && bodsData.length > 0 && !idBodega) {
+            setIdBodega(bodsData[0].bodIdBodega);
+          }
         }
       } catch (err: any) {
         console.error('[AgregarExistenciasModal] Error al cargar catálogos:', err);
@@ -109,6 +131,22 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
       isMounted = false;
     };
   }, [isOpen, initialArticuloCodigo, initialBodegaId]);
+
+  // Autoguardado de borrador en localStorage
+  useEffect(() => {
+    if (!isOpen || isLoadingCatalogs) return;
+    if (cantidad.trim() || costoUnitario.trim() || notas.trim() || idUbicacion || idLote) {
+      draftStorage.set('erp_draft_inventario_agregar_existencias', {
+        codigoArticulo,
+        idBodega,
+        idUbicacion,
+        idLote,
+        cantidad,
+        costoUnitario,
+        notas,
+      });
+    }
+  }, [codigoArticulo, idBodega, idUbicacion, idLote, cantidad, costoUnitario, notas, isOpen, isLoadingCatalogs]);
 
   // Sincronizar selección inicial cuando cambien props
   useEffect(() => {
@@ -215,8 +253,11 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
   }, [articulos, articleSearchQuery]);
 
   // Validación de formulario
-  const numCantidad = parseFloat(cantidad);
-  const isCantidadValid = !isNaN(numCantidad) && isFinite(numCantidad) && numCantidad > 0;
+  // Restricción estricta: Únicamente números enteros positivos (>= 1), sin signos, notación científica ni decimales
+  const cleanCantidad = cantidad.trim();
+  const isCantidadFormatValid = /^\d+$/.test(cleanCantidad);
+  const numCantidad = isCantidadFormatValid ? parseInt(cleanCantidad, 10) : NaN;
+  const isCantidadValid = isCantidadFormatValid && !isNaN(numCantidad) && Number.isInteger(numCantidad) && numCantidad >= 1;
   const numCosto = costoUnitario.trim() ? parseFloat(costoUnitario) : 0;
   const isCostoValid = !costoUnitario.trim() || (!isNaN(numCosto) && isFinite(numCosto) && numCosto >= 0);
   const isBodegaValid = Boolean(idBodega && Number(idBodega) > 0);
@@ -227,7 +268,7 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
   const blockers: Record<string, string | undefined> = {};
   if (!isArticuloValid) blockers['articulo'] = 'Debe seleccionar un artículo.';
   if (!isBodegaValid) blockers['bodega'] = 'Debe seleccionar la bodega destino.';
-  if (!isCantidadValid) blockers['cantidad'] = 'La cantidad debe ser un número positivo mayor a 0.';
+  if (!isCantidadValid) blockers['cantidad'] = 'La cantidad a añadir debe ser un número entero positivo (≥ 1).';
   if (!isCostoValid) blockers['costo'] = 'El costo unitario no puede ser negativo.';
 
   // Stock Proyectado
@@ -254,6 +295,9 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
       };
 
       const resultado = await MovimientoInventarioClientService.agregarExistencias(payload);
+
+      // Limpiar borrador temporal al procesar exitosamente
+      draftStorage.remove('erp_draft_inventario_agregar_existencias');
 
       setSuccessMsg(
         `¡Existencias añadidas con éxito! Movimiento generado: ${resultado.noMovimiento || 'OK'}.`
@@ -458,27 +502,44 @@ export const AgregarExistenciasModal: React.FC<AgregarExistenciasModalProps> = (
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                 Cantidad a Añadir <span className="text-rose-500">*</span>
               </label>
-              <div className="relative max-w-xs">
+              <div className="relative max-w-[160px]">
                 <input
                   type="number"
-                  step="any"
-                  min="0.01"
+                  step="1"
+                  min="1"
                   placeholder="Ej: 10"
                   value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Bloquear signos (+, -), notación científica (e, E) y separadores decimales (., ,)
+                    if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const pasteData = e.clipboardData.getData('text');
+                    // Solo permitir pegar números enteros positivos
+                    if (!/^\d+$/.test(pasteData.trim())) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    // Sanitizar el valor eliminando cualquier caracter no numérico
+                    const sanitized = e.target.value.replace(/\D/g, '');
+                    setCantidad(sanitized);
+                  }}
                   disabled={isSubmitting}
                   className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 font-mono font-medium focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
                   required
                 />
               </div>
-              <span className="text-[11px] text-slate-400">Número positivo (entero o decimal).</span>
+              <span className="text-[11px] text-slate-400">Únicamente números enteros positivos (≥ 1).</span>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                 Costo Unitario (Q) <span className="text-slate-400 font-normal">(Opcional)</span>
               </label>
-              <div className="relative max-w-xs">
+              <div className="relative max-w-[160px]">
                 <input
                   type="number"
                   step="any"

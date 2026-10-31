@@ -7,6 +7,7 @@ import { MarcaClientService } from '../services/marcaClientService';
 import { UnidadMedidaClientService } from '../services/unidadMedidaClientService';
 import { sanitizeStrictCode, sanitizeNominalText } from '../../../utils/sanitizers';
 import { FormActionButtons } from '../../../shared/components/FormActionButtons';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 import { articuloService } from '../services/articulo.service';
 
@@ -103,18 +104,55 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
       setManejaLote(articulo.ART_MANEJA_LOTE === 1);
       setActivo(articulo.ART_ACTIVO === 1);
     } else {
-      setDescripcion('');
-      setIdCategoria(1);
-      setIdMarca(1);
-      setIdUnidadCompra(1);
-      setIdUnidadVenta(1);
-      setManejaLote(false);
-      setActivo(true);
+      // Recuperar borrador si el usuario recargó la página (F5)
+      const draft = draftStorage.get<{
+        descripcion?: string;
+        idCategoria?: number;
+        idMarca?: number;
+        idUnidadCompra?: number;
+        idUnidadVenta?: number;
+        manejaLote?: boolean;
+        activo?: boolean;
+      }>('erp_draft_articulo_nuevo');
+
+      if (draft && isOpen) {
+        if (draft.descripcion !== undefined) setDescripcion(draft.descripcion);
+        if (draft.idCategoria !== undefined) setIdCategoria(draft.idCategoria);
+        if (draft.idMarca !== undefined) setIdMarca(draft.idMarca);
+        if (draft.idUnidadCompra !== undefined) setIdUnidadCompra(draft.idUnidadCompra);
+        if (draft.idUnidadVenta !== undefined) setIdUnidadVenta(draft.idUnidadVenta);
+        if (draft.manejaLote !== undefined) setManejaLote(draft.manejaLote);
+        if (draft.activo !== undefined) setActivo(draft.activo);
+      } else {
+        setDescripcion('');
+        setIdCategoria(1);
+        setIdMarca(1);
+        setIdUnidadCompra(1);
+        setIdUnidadVenta(1);
+        setManejaLote(false);
+        setActivo(true);
+      }
     }
     setError(null);
     setCodigoError(null);
     setDescripcionError(null);
   }, [articulo, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (descripcion.trim() || idCategoria !== 1 || idMarca !== 1 || manejaLote) {
+      draftStorage.set('erp_draft_articulo_nuevo', {
+        descripcion,
+        idCategoria,
+        idMarca,
+        idUnidadCompra,
+        idUnidadVenta,
+        manejaLote,
+        activo,
+      });
+    }
+  }, [descripcion, idCategoria, idMarca, idUnidadCompra, idUnidadVenta, manejaLote, activo, isOpen, isEditing]);
 
   const handleCodigoChange = (val: string) => {
     const { sanitized, error: codeErr } = sanitizeStrictCode(val);
@@ -187,6 +225,7 @@ export const ArticuloModal: React.FC<ArticuloModalProps> = ({
         };
         await onSave(payload);
       }
+      draftStorage.remove('erp_draft_articulo_nuevo');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar el artículo.');

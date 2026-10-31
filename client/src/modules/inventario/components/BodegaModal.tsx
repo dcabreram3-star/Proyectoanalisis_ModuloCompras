@@ -3,6 +3,7 @@ import { X, Warehouse, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IBodega, ICreateBodegaDTO, IUpdateBodegaDTO } from '@erp/contracts';
 import { sanitizeStrictCode, sanitizeNominalText, sanitizeAddress } from '../../../utils/sanitizers';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface BodegaModalProps {
   isOpen: boolean;
@@ -37,17 +38,34 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
       setPermiteVentas(bodega.bodPermiteVentas === 1);
       setActivo(bodega.bodActivo === 1);
     } else {
-      setCodigo('');
-      setNombre('');
-      setDireccion('');
-      setPermiteVentas(true);
-      setActivo(true);
+      const draft = draftStorage.get<{ codigo?: string; nombre?: string; direccion?: string; permiteVentas?: boolean; activo?: boolean }>('erp_draft_bodega_nueva');
+      if (draft && isOpen) {
+        setCodigo(draft.codigo || '');
+        setNombre(draft.nombre || '');
+        setDireccion(draft.direccion || '');
+        setPermiteVentas(draft.permiteVentas !== undefined ? draft.permiteVentas : true);
+        setActivo(draft.activo !== undefined ? draft.activo : true);
+      } else {
+        setCodigo('');
+        setNombre('');
+        setDireccion('');
+        setPermiteVentas(true);
+        setActivo(true);
+      }
     }
     setError(null);
     setCodigoError(null);
     setNombreError(null);
     setDireccionError(null);
   }, [bodega, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (codigo.trim() || nombre.trim() || direccion.trim()) {
+      draftStorage.set('erp_draft_bodega_nueva', { codigo, nombre, direccion, permiteVentas, activo });
+    }
+  }, [codigo, nombre, direccion, permiteVentas, activo, isOpen, isEditing]);
 
   if (!isOpen) return null;
 
@@ -134,6 +152,7 @@ export const BodegaModal: React.FC<BodegaModalProps> = ({
           bodActivo: activo ? 1 : 0,
         });
       }
+      draftStorage.remove('erp_draft_bodega_nueva');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar la bodega.');

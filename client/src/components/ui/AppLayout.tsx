@@ -49,6 +49,7 @@ export interface AppLayoutProps {
   onSearchChange?: (query: string) => void;
   tabs?: TabItem[];
   user?: UserProfile;
+  hideNavbar?: boolean;
   children: React.ReactNode;
 }
 
@@ -225,6 +226,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     role: 'Administrador de Sistema',
     initials: 'UE'
   },
+  hideNavbar = false,
   children
 }) => {
   React.useEffect(() => {
@@ -234,6 +236,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     }
   }, [activeModule, activeTab]);
 
+  const shouldHideNavbar =
+    hideNavbar ||
+    ['compras', 'inventario', 'productos'].includes(activeModule || '');
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50">
       <Sidebar
@@ -242,13 +248,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         user={user}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          searchQuery={searchQuery}
-          onSearchChange={onSearchChange}
-          tabs={tabs}
-        />
+        {!shouldHideNavbar && (
+          <Navbar
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            tabs={tabs}
+          />
+        )}
         <main
           id="main-scroll-container"
           className="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-slate-50 min-w-0 scroll-smooth"

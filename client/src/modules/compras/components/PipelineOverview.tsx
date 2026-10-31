@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, RotateCcw, Ban } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Ban, HelpCircle } from 'lucide-react';
 import {
   PIPELINE_STAGES,
   PipelineStageId,
@@ -20,6 +20,7 @@ export interface PipelineOverviewProps {
   /** Etapa actualmente activa como filtro — resalta el nodo en la barra. */
   activeStage?: string | null;
   className?: string;
+  onStartTutorial?: (stageKey?: PipelineStageId) => void;
 }
 
 // ─── Componente PipelineOverview (6 Etapas Formales) ──────────────────────────
@@ -31,6 +32,7 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
   onStageClick,
   activeStage = null,
   className = '',
+  onStartTutorial,
 }) => {
   const total = registros.length;
 
@@ -76,6 +78,17 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
         </div>
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
+          {onStartTutorial && (
+            <button
+              type="button"
+              onClick={() => onStartTutorial()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 hover:border-blue-300 shadow-2xs transition-all cursor-pointer"
+              title="Iniciar tutorial guiado del flujo de compras"
+            >
+              <HelpCircle size={13} className="text-blue-600" />
+              <span>Tutorial</span>
+            </button>
+          )}
           {onStageClick && isFiltering && (
             <button
               type="button"
@@ -174,6 +187,19 @@ export const PipelineOverview: React.FC<PipelineOverviewProps> = ({
                 >
                   {count} {count === 1 ? 'registro' : 'registros'}
                 </span>
+                {onStartTutorial && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartTutorial(stage.key);
+                    }}
+                    className="mt-1 inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    title={`Ver tutorial guiado de ${stage.label}`}
+                  >
+                    <span>Tutorial</span>
+                  </button>
+                )}
               </div>
             );
           })}

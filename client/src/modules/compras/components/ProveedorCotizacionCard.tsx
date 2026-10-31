@@ -181,13 +181,12 @@ const ArticuloSelector: React.FC<ArticuloSelectorProps> = ({
     <div className="relative w-full" ref={wrapperRef}>
       <div
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
-        className={`w-full min-h-[34px] px-2.5 py-1 rounded-lg border flex items-center justify-between transition-all ${
-          isDisabled
+        className={`w-full min-h-[34px] px-2.5 py-1 rounded-lg border flex items-center justify-between transition-all ${isDisabled
             ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
             : isOpen
-            ? 'bg-white border-blue-500 ring-2 ring-blue-100 shadow-2xs cursor-pointer'
-            : 'bg-slate-50/80 hover:bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
-        }`}
+              ? 'bg-white border-blue-500 ring-2 ring-blue-100 shadow-2xs cursor-pointer'
+              : 'bg-slate-50/80 hover:bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
+          }`}
       >
         <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
           <Tag size={13} className="text-blue-600 shrink-0" />
@@ -248,9 +247,8 @@ const ArticuloSelector: React.FC<ArticuloSelectorProps> = ({
                       onSelectCatalogo(art.ART_CODIGO_ARTICULO, art.ART_DESCRIPCION);
                       setIsOpen(false);
                     }}
-                    className={`px-3.5 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                      isSelected ? 'bg-blue-50/80 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
+                    className={`px-3.5 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/80 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
                   >
                     <div className="min-w-0 pr-2">
                       <div className="flex items-center gap-2">
@@ -549,9 +547,9 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
 
   const isFilled = Boolean(
     data.idProveedor ||
-      data.nombreProveedor.trim() ||
-      data.precioTotal !== '' ||
-      data.idCotizacion !== undefined
+    data.nombreProveedor.trim() ||
+    data.precioTotal !== '' ||
+    data.idCotizacion !== undefined
   );
 
   const proveedorOptions = proveedoresCatalogo.map((prov) => ({
@@ -569,13 +567,12 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
   return (
     <div
       data-testid={`proveedor-cotizacion-card proveedor-cotizacion-card-${index}`}
-      className={`bg-white rounded-xl border p-3.5 sm:p-4 shadow-2xs space-y-3.5 transition-all duration-200 ${
-        isDisabled
+      className={`bg-white rounded-xl border p-3.5 sm:p-4 shadow-2xs space-y-3.5 transition-all duration-200 ${isDisabled
           ? 'opacity-40 bg-slate-50/70 select-none pointer-events-none border-slate-200'
           : isProveedorUnico
-          ? 'border-amber-300 ring-1 ring-amber-200/60 shadow-xs hover:border-amber-400'
-          : 'border-slate-200 hover:border-slate-300'
-      }`}
+            ? 'border-amber-300 ring-1 ring-amber-200/60 shadow-xs hover:border-amber-400'
+            : 'border-slate-200 hover:border-slate-300'
+        }`}
     >
       {/* ProductoSustitutoModal */}
       <ProductoSustitutoModal
@@ -590,11 +587,10 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <span
-            className={`w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center border shadow-2xs ${
-              isProveedorUnico
+            className={`w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center border shadow-2xs ${isProveedorUnico
                 ? 'bg-amber-100 text-amber-900 border-amber-300'
                 : 'bg-blue-50 text-blue-700 border-blue-200'
-            }`}
+              }`}
           >
             {isProveedorUnico ? '★' : index}
           </span>
@@ -642,10 +638,10 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
         </div>
       </div>
 
-      {/* 1. Datos Generales de la Cotización (Proveedor, Tiempos, Plazos, PDF) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 items-start">
+      {/* 1. Datos Generales de la Cotización (Proveedor, Tiempos, Plazos, PDF) - Retícula Proporcional y Equilibrada */}
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 sm:gap-4 items-start">
         {/* Selector Dinámico de Proveedor */}
-        <div className="md:col-span-5">
+        <div className="col-span-1 sm:col-span-6 lg:col-span-5">
           <Select
             label="PROVEEDOR"
             required
@@ -658,23 +654,23 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
           />
         </div>
 
-        {/* Tiempo de Entrega */}
-        <div className="md:col-span-2 flex flex-col">
-          <div className="flex items-center gap-1 mb-1">
+        {/* Tiempo de Entrega (Input numérico compacto + interpretación 0 como Inmediata) */}
+        <div className="col-span-1 sm:col-span-3 lg:col-span-2 flex flex-col">
+          <div className="flex items-center gap-1 mb-1.5">
             <label className="text-xs font-semibold text-slate-700 flex items-center whitespace-nowrap">
               ENTREGA (DÍAS)
             </label>
-            <span title="Días calendario estimados para la entrega" className="text-slate-400">
+            <span title="Días calendario estimados para la entrega (0 = Entrega inmediata)" className="text-slate-400">
               <HelpCircle size={12} />
             </span>
           </div>
-          <div className="w-20 sm:w-24">
+          <div className="flex items-center gap-1.5 h-10 w-full">
             <input
               type="number"
               min={0}
               step="1"
-              placeholder="Ej. 7"
-              value={data.tiempoEntregaDias}
+              placeholder="1"
+              value={data.tiempoEntregaDias !== '' && data.tiempoEntregaDias !== undefined ? data.tiempoEntregaDias : 1}
               onKeyDown={(e) => {
                 if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
                   e.preventDefault();
@@ -688,34 +684,38 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
               }}
               onChange={(e) => {
                 const clean = e.target.value.replace(/\D/g, '');
-                handleFieldChange('tiempoEntregaDias', clean === '' ? '' : Math.max(0, parseInt(clean, 10)));
+                const val = clean === '' ? '' : Math.max(0, parseInt(clean, 10));
+                handleFieldChange('tiempoEntregaDias', val);
               }}
               disabled={isDisabled}
               readOnly={isDisabled}
-              className={`w-20 sm:w-24 h-10 px-2.5 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${
-                isDisabled
+              className={`w-16 sm:w-20 h-10 px-2 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all shrink-0 ${isDisabled
                   ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-not-allowed font-medium'
                   : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-              }`}
+                }`}
+              title="Días de entrega (0 para entrega inmediata)"
             />
+            {Number(data.tiempoEntregaDias) === 0 ? (
+              <span className="inline-flex items-center px-1.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs whitespace-nowrap animate-in fade-in">
+                Inmediata
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
+                {Number(data.tiempoEntregaDias) === 1 ? 'día' : 'días'}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Plazo de Pago */}
-        <div className="md:col-span-2">
-          <div className="flex items-center gap-1 mb-1">
-            <label className="text-xs font-semibold text-slate-700 flex items-center">
-              CONDICIÓN PAGO
-            </label>
-            <span title="Condición de crédito o pago" className="text-slate-400">
-              <HelpCircle size={12} />
-            </span>
-          </div>
+        {/* Condición de Pago (Compacta y proporcionada al campo de Entrega) */}
+        <div className="col-span-1 sm:col-span-3 lg:col-span-2 flex flex-col">
           <Select
+            label="CONDICIÓN PAGO"
             placeholder="Seleccionar..."
             value={data.plazoPago}
             onChange={(e) => handleFieldChange('plazoPago', e.target.value)}
             isReadOnly={isDisabled}
+            className="max-w-[145px] sm:max-w-[155px]"
             options={[
               { value: 'Contado', label: 'Contado' },
               { value: '15 días', label: '15 días' },
@@ -725,10 +725,10 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
           />
         </div>
 
-        {/* Cotización PDF upload button */}
-        <div className="md:col-span-3">
-          <div className="flex items-center gap-1 mb-1">
-            <label className="text-xs font-semibold text-slate-700 flex items-center">
+        {/* Cotización PDF Adjunta */}
+        <div className="col-span-1 sm:col-span-12 lg:col-span-3 flex flex-col">
+          <div className="flex items-center gap-1 mb-1.5">
+            <label className="text-xs font-semibold text-slate-700 flex items-center whitespace-nowrap">
               COTIZACIÓN PDF ADJUNTA
             </label>
             <span title="Documento escaneado o digital de la cotización" className="text-slate-400">
@@ -736,35 +736,40 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
             </span>
           </div>
 
-          <div className="relative">
+          <div className="relative w-full">
             <input
               type="file"
               accept="application/pdf"
               onChange={handlePdfUpload}
               disabled={isDisabled}
               className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+              title={data.archivoPdfNombre ? 'Cambiar archivo PDF adjunto' : 'Seleccionar archivo PDF'}
             />
-            <button
-              type="button"
-              disabled={isDisabled}
-              className={`w-full h-10 px-3 rounded-lg border border-dashed text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5 shadow-2xs ${
-                data.archivoPdfNombre
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                  : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'
-              }`}
+            <div
+              className={`w-full h-10 px-3 rounded-lg border text-xs font-semibold transition-all duration-150 flex items-center justify-between gap-1.5 shadow-2xs select-none ${data.archivoPdfNombre
+                  ? 'bg-emerald-50/80 border-emerald-300 text-emerald-800'
+                  : 'bg-white border-dashed border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400'
+                }`}
             >
               {data.archivoPdfNombre ? (
                 <>
-                  <CheckCircle size={14} className="text-emerald-600 shrink-0" />
-                  <span className="truncate max-w-[140px] font-mono">{data.archivoPdfNombre}</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                    <span className="truncate text-xs font-mono text-emerald-900" title={data.archivoPdfNombre}>
+                      {data.archivoPdfNombre}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded shrink-0">
+                    PDF
+                  </span>
                 </>
               ) : (
-                <>
+                <div className="flex items-center justify-center w-full gap-1.5 text-slate-500">
                   <Paperclip size={13} className="text-slate-400 shrink-0" />
-                  <span>Adjuntar PDF</span>
-                </>
+                  <span className="text-xs font-medium">Adjuntar PDF</span>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -836,20 +841,19 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                   return (
                     <div
                       key={lIdx}
-                      className={`p-2.5 sm:p-3 rounded-lg border transition-all text-xs space-y-2 ${
-                        isSinStock
+                      className={`p-2.5 sm:p-3 rounded-lg border transition-all text-xs space-y-2 ${isSinStock
                           ? 'bg-slate-100/90 border-slate-300 opacity-80'
                           : isSust
-                          ? 'bg-amber-50/70 border-amber-300 shadow-2xs ring-1 ring-amber-200/60'
-                          : 'bg-white border-slate-200 shadow-2xs hover:border-slate-300'
-                      }`}
+                            ? 'bg-amber-50/70 border-amber-300 shadow-2xs ring-1 ring-amber-200/60'
+                            : 'bg-white border-slate-200 shadow-2xs hover:border-slate-300'
+                        }`}
                     >
-                      {/* Fila Principal de Controles */}
-                      <div className="flex flex-wrap lg:flex-nowrap items-end gap-2 sm:gap-2.5">
+                      {/* Fila Principal de Controles (Retícula Uniforme y Proporcionada sin Espacios Muertos) */}
+                      <div className="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3 items-end w-full">
                         {/* Selector de Artículo */}
-                        <div className="flex-1 min-w-[260px]">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                            {isSust ? 'Producto Sustituto Propuesto' : 'Artículo / Producto Cotizado'}
+                        <div className="col-span-2 sm:col-span-5 w-full">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                            {isSust ? 'Producto Sustituto' : 'Artículo Cotizado'}
                           </label>
                           <ArticuloSelector
                             codigo={line.codigoArticulo}
@@ -862,12 +866,12 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               const updated = currentDetalles.map((d, idx) =>
                                 idx === lIdx
                                   ? {
-                                      ...d,
-                                      codigoArticulo: nuevoCodigo,
-                                      descripcionArticulo: nuevaDesc,
-                                      esSustituto: false,
-                                      observaciones: d.observaciones?.includes('sustituto') ? '' : d.observaciones,
-                                    }
+                                    ...d,
+                                    codigoArticulo: nuevoCodigo,
+                                    descripcionArticulo: nuevaDesc,
+                                    esSustituto: false,
+                                    observaciones: d.observaciones?.includes('sustituto') ? '' : d.observaciones,
+                                  }
                                   : d
                               );
                               updateDetallesAndTotal(updated);
@@ -876,10 +880,10 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                           />
                         </div>
 
-                        {/* Cantidad */}
-                        <div className="w-20 shrink-0 flex flex-col">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5 text-center">
-                            Cantidad
+                        {/* Cantidad (Input numérico compacto) */}
+                        <div className="col-span-1 sm:col-span-1 w-full flex flex-col">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 text-center">
+                            CANT.
                           </label>
                           <input
                             type="number"
@@ -904,19 +908,18 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               handleDetailChange(lIdx, 'cantidadCotizada', isNaN(parsed) ? 1 : Math.max(1, parsed));
                             }}
                             disabled={isDisabled || isSinStock}
-                            className={`w-20 h-[34px] px-2 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${
-                              isSinStock
+                            className={`w-full h-[34px] px-1 text-xs text-center font-bold font-mono rounded-lg outline-none border transition-all ${isSinStock
                                 ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
                                 : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-200'
-                            }`}
+                              }`}
                             title="Cantidad cotizada"
                           />
                         </div>
 
                         {/* Precio Unitario */}
-                        <div className="w-28 sm:w-32 shrink-0">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                            Precio Unit. (Q)
+                        <div className="col-span-1 sm:col-span-2 w-full flex flex-col">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 text-right">
+                            PRECIO UNIT.
                           </label>
                           <input
                             type="number"
@@ -949,23 +952,22 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               }
                             }}
                             disabled={isDisabled || isSinStock}
-                            className={`w-full h-[34px] px-2.5 text-xs text-right font-bold font-mono rounded-lg outline-none transition-all border ${
-                              isSinStock
+                            className={`w-full h-[34px] px-2 text-xs text-right font-bold font-mono rounded-lg outline-none transition-all border ${isSinStock
                                 ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
                                 : isSust
-                                ? 'bg-amber-50 border-amber-300 text-amber-950 focus:bg-white focus:ring-2 focus:ring-amber-200'
-                                : 'bg-blue-50/50 border-blue-300 text-blue-950 focus:bg-white focus:ring-2 focus:ring-blue-200'
-                            }`}
+                                  ? 'bg-amber-50 border-amber-300 text-amber-950 focus:bg-white focus:ring-2 focus:ring-amber-200'
+                                  : 'bg-blue-50/50 border-blue-300 text-blue-950 focus:bg-white focus:ring-2 focus:ring-blue-200'
+                              }`}
                             title={isSinStock ? 'Artículo sin existencias (Precio Q0.00)' : 'Ingresa el precio unitario ofertado'}
                           />
                         </div>
 
                         {/* Subtotal Línea Calculado */}
-                        <div className="w-28 sm:w-32 shrink-0">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5 text-right">
-                            Subtotal
+                        <div className="col-span-1 sm:col-span-2 w-full flex flex-col">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 text-right">
+                            SUBTOTAL
                           </label>
-                          <div className="h-[34px] flex items-center justify-end px-2.5 rounded-lg bg-slate-50 border border-slate-200 font-mono font-bold text-xs">
+                          <div className="w-full h-[34px] flex items-center justify-end px-2.5 rounded-lg bg-slate-50 border border-slate-200 font-mono font-bold text-xs">
                             {isSinStock ? (
                               <span className="text-slate-400 line-through">Q 0.00</span>
                             ) : (
@@ -975,51 +977,54 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                         </div>
 
                         {/* Botones de acción alineados */}
-                        <div className="flex items-center gap-1 pb-0.5 shrink-0">
-                          {!isDisabled && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleSinExistencias(lIdx)}
-                                className={`h-[34px] px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${
-                                  isSinStock
-                                    ? 'text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-rose-600'
-                                    : 'text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 active:bg-rose-100 border border-slate-300 hover:border-rose-300'
-                                }`}
-                                title={isSinStock ? 'Reactivar artículo (Proveedor tiene stock)' : 'Marcar Sin Stock / No Disponible'}
-                              >
-                                <Ban size={13} className={isSinStock ? 'text-white' : 'text-rose-600'} />
-                                <span className="hidden sm:inline text-[11px]">
-                                  {isSinStock ? 'Sin Stock' : 'Agotado'}
-                                </span>
-                              </button>
+                        <div className="col-span-1 sm:col-span-2 w-full flex flex-col">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 text-center sm:text-right">
+                            ACCIONES
+                          </label>
+                          <div className="flex items-center justify-center sm:justify-end gap-1.5 h-[34px] w-full">
+                            {!isDisabled && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSinExistencias(lIdx)}
+                                  className={`h-[34px] px-2 sm:px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${isSinStock
+                                      ? 'text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 border border-rose-600'
+                                      : 'text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 active:bg-rose-100 border border-slate-300 hover:border-rose-300'
+                                    }`}
+                                  title={isSinStock ? 'Reactivar artículo (Proveedor tiene stock)' : 'Marcar Sin Stock / No Disponible'}
+                                >
+                                  <Ban size={13} className={isSinStock ? 'text-white' : 'text-rose-600'} />
+                                  <span className="hidden xl:inline text-[11px]">
+                                    {isSinStock ? 'Sin Stock' : 'Agotado'}
+                                  </span>
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleToggleSustituto(lIdx)}
-                                className={`h-[34px] px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${
-                                  isSust
-                                    ? 'text-amber-950 bg-amber-200 hover:bg-amber-300 active:bg-amber-400 border border-amber-400'
-                                    : 'text-slate-600 hover:text-amber-800 bg-white hover:bg-amber-50 active:bg-amber-100 border border-slate-300 hover:border-amber-300'
-                                }`}
-                                title={isSust ? 'Editar datos del sustituto' : 'Convertir en Producto Sustituto'}
-                              >
-                                <Repeat size={13} className={isSust ? 'text-amber-900' : 'text-amber-600'} />
-                                <span className="hidden sm:inline text-[11px]">
-                                  {isSust ? 'Sustituto' : 'Sustituto'}
-                                </span>
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSustituto(lIdx)}
+                                  className={`h-[34px] px-2 sm:px-2.5 rounded-lg transition-all text-xs flex items-center gap-1.5 font-semibold shadow-2xs ${isSust
+                                      ? 'text-amber-950 bg-amber-200 hover:bg-amber-300 active:bg-amber-400 border border-amber-400'
+                                      : 'text-slate-600 hover:text-amber-800 bg-white hover:bg-amber-50 active:bg-amber-100 border border-slate-300 hover:border-amber-300'
+                                    }`}
+                                  title={isSust ? 'Editar datos del sustituto' : 'Convertir en Producto Sustituto'}
+                                >
+                                  <Repeat size={13} className={isSust ? 'text-amber-900' : 'text-amber-600'} />
+                                  <span className="hidden xl:inline text-[11px]">
+                                    {isSust ? 'Sustituto' : 'Sustituir'}
+                                  </span>
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveDetailLine(lIdx)}
-                                className="h-[34px] w-[34px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-rose-600 active:bg-rose-700 rounded-lg transition-all border border-slate-200 hover:border-rose-600 shadow-2xs"
-                                title="Eliminar línea de cotización"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </>
-                          )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDetailLine(lIdx)}
+                                  className="h-[34px] w-[34px] shrink-0 flex items-center justify-center text-slate-400 hover:text-white hover:bg-rose-600 active:bg-rose-700 rounded-lg transition-all border border-slate-200 hover:border-rose-600 shadow-2xs"
+                                  title="Eliminar línea de cotización"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1051,19 +1056,18 @@ export const ProveedorCotizacionCard: React.FC<ProveedorCotizacionCardProps> = (
                               isSust
                                 ? 'Especificaciones técnicas o notas del producto sustituto...'
                                 : isSinStock
-                                ? 'Observación sobre desabastecimiento o fecha estimada...'
-                                : 'Observación, garantía o nota del artículo (opcional)...'
+                                  ? 'Observación sobre desabastecimiento o fecha estimada...'
+                                  : 'Observación, garantía o nota del artículo (opcional)...'
                             }
                             value={line.observaciones || ''}
                             onChange={(e) => handleDetailChange(lIdx, 'observaciones', e.target.value)}
                             disabled={isDisabled}
-                            className={`w-full h-[30px] px-2.5 py-1 text-xs rounded-lg border outline-none transition-all ${
-                              isSust
+                            className={`w-full h-[30px] px-2.5 py-1 text-xs rounded-lg border outline-none transition-all ${isSust
                                 ? 'bg-amber-50/80 border-amber-300 text-amber-950 placeholder:text-amber-600/60 focus:bg-white focus:ring-1 focus:ring-amber-300'
                                 : isSinStock
-                                ? 'bg-rose-50/50 border-rose-200 text-rose-950 placeholder:text-rose-400 focus:bg-white'
-                                : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:border-blue-400'
-                            }`}
+                                  ? 'bg-rose-50/50 border-rose-200 text-rose-950 placeholder:text-rose-400 focus:bg-white'
+                                  : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400 focus:border-blue-400'
+                              }`}
                           />
                         </div>
                       </div>

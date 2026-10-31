@@ -87,7 +87,7 @@ const MATRIZ_CACHE: Record<string, IMatrizCotizacionState> = {
       {
         nombreProveedor: '',
         precioTotal: '',
-        tiempoEntregaDias: '',
+        tiempoEntregaDias: 1,
         plazoPago: '',
         archivoPdfBase64: null,
         archivoPdfNombre: null,
@@ -95,7 +95,7 @@ const MATRIZ_CACHE: Record<string, IMatrizCotizacionState> = {
       {
         nombreProveedor: '',
         precioTotal: '',
-        tiempoEntregaDias: '',
+        tiempoEntregaDias: 1,
         plazoPago: '',
         archivoPdfBase64: null,
         archivoPdfNombre: null,
@@ -129,9 +129,9 @@ export class CotizacionMatrizService {
     return {
       solicitud: sol,
       cotizaciones: [
-        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: '', plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
-        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: '', plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
-        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: '', plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
+        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: 1, plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
+        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: 1, plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
+        { nombreProveedor: '', precioTotal: '', tiempoEntregaDias: 1, plazoPago: '', archivoPdfBase64: null, archivoPdfNombre: null },
       ],
       esExcepcionUnico: false,
       justificacionExcepcion: '',

@@ -132,6 +132,7 @@ function ModulosErp() {
       tabs={[]}
       searchQuery={searchQuery}
       onSearchChange={(query: string) => setSearchQuery(query)}
+      hideNavbar={['compras', 'inventario', 'productos'].includes(activeModule)}
     >
       {renderModuleView()}
     </AppLayout>

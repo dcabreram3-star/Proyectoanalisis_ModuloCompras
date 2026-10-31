@@ -3,6 +3,7 @@ import { X, Scale, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IUnidadMedida, ICreateUnidadMedidaDTO, IUpdateUnidadMedidaDTO } from '@erp/contracts';
 import { sanitizeNominalText, sanitizeAbreviatura } from '../../../utils/sanitizers';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface UnidadMedidaModalProps {
   isOpen: boolean;
@@ -32,14 +33,29 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
       setAbreviatura(unidadMedida.umeAbreviatura);
       setActivo(unidadMedida.umeActivo === 1);
     } else {
-      setNombre('');
-      setAbreviatura('');
-      setActivo(true);
+      const draft = draftStorage.get<{ nombre?: string; abreviatura?: string; activo?: boolean }>('erp_draft_unidad_medida_nueva');
+      if (draft && isOpen) {
+        setNombre(draft.nombre || '');
+        setAbreviatura(draft.abreviatura || '');
+        setActivo(draft.activo !== undefined ? draft.activo : true);
+      } else {
+        setNombre('');
+        setAbreviatura('');
+        setActivo(true);
+      }
     }
     setError(null);
     setNombreError(null);
     setAbreviaturaError(null);
   }, [unidadMedida, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (nombre.trim() || abreviatura.trim()) {
+      draftStorage.set('erp_draft_unidad_medida_nueva', { nombre, abreviatura, activo });
+    }
+  }, [nombre, abreviatura, activo, isOpen, isEditing]);
 
   if (!isOpen) return null;
 
@@ -109,6 +125,7 @@ export const UnidadMedidaModal: React.FC<UnidadMedidaModalProps> = ({
           umeActivo: activo ? 1 : 0,
         });
       }
+      draftStorage.remove('erp_draft_unidad_medida_nueva');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar la unidad de medida.');

@@ -8,6 +8,7 @@ import { CategoriaClientService } from '../../inventario/services/categoriaClien
 import { MarcaClientService } from '../../inventario/services/marcaClientService';
 import { UnidadMedidaClientService } from '../../inventario/services/unidadMedidaClientService';
 import { InlineValidationCard } from './InlineValidationCard';
+import { useFormDraft } from '../../../shared/hooks/useFormDraft';
 
 interface SolicitudCreacionViewProps {
   onSuccess?: () => void;
@@ -177,6 +178,33 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
   const [detalles, setDetalles] = useState<ISolicitudCompraDetalleCreateDTO[]>([
     { cantidadPedida: 1, isNuevo: false, codigoArticulo: '', idCategoria: 1, idMarca: 1, idUnidadMedida: 1 }
   ]);
+
+  // Persistencia de borrador ante recarga accidental (F5)
+  const { clearDraft } = useFormDraft<{
+    notas?: string;
+    idUsuarioResponsable?: number | '';
+    detalles?: ISolicitudCompraDetalleCreateDTO[];
+  }>({
+    key: 'erp_draft_solicitud_compra',
+    data: { notas, idUsuarioResponsable, detalles },
+    shouldSave: (d) =>
+      Boolean(
+        d.notas?.trim() ||
+          (d.detalles &&
+            d.detalles.some(
+              (item) => item.codigoArticulo || item.nombreArticuloNuevo || (item.cantidadPedida && Number(item.cantidadPedida) > 1)
+            ))
+      ),
+    onRestore: (saved) => {
+      if (saved.notas !== undefined) setNotas(saved.notas);
+      if (saved.idUsuarioResponsable !== undefined && saved.idUsuarioResponsable !== '') {
+        setIdUsuarioResponsable(saved.idUsuarioResponsable);
+      }
+      if (saved.detalles && saved.detalles.length > 0) {
+        setDetalles(saved.detalles);
+      }
+    },
+  });
 
   // Cargar Catálogo de Artículos Activos y Siguiente Código desde DB
   const loadArticulos = useCallback(async (silent = false) => {
@@ -411,6 +439,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
           idUnidadMedida: unidades[0]?.value || 1,
         },
       ]);
+      clearDraft();
 
       if (onSuccess) {
         onSuccess();
@@ -657,9 +686,9 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                     )}
                   </div>
 
-                  {/* Cantidad */}
-                  <div className="w-24 sm:w-28 shrink-0 space-y-1">
-                    <label className="text-xs font-semibold text-slate-700 block">
+                  {/* Cantidad (Input numérico compacto) */}
+                  <div className="w-16 sm:w-20 shrink-0 space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 block text-center">
                       Cantidad <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -677,7 +706,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         const parsed = parseInt(e.target.value, 10);
                         handleChangeDetalle(index, 'cantidadPedida', isNaN(parsed) ? 1 : Math.max(1, parsed));
                       }}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-800 text-center font-bold focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-800 text-center font-bold font-mono focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
                       required
                     />
                   </div>

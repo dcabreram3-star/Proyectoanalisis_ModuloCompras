@@ -80,28 +80,17 @@ export const ModuleTutorialMenu: React.FC<ModuleTutorialMenuProps> = ({
 
   return (
     <>
-      <div className={`inline-flex items-center gap-2 ${className}`}>
-        {/* Botón contextual rápido: Tutorial de la pantalla activa */}
-        <button
-          type="button"
-          onClick={() => handleStart(currentTabTutorial)}
-          title={`Tutorial paso a paso: ${currentTabTutorial.title}`}
-          aria-label={`Iniciar tutorial interactivo de ${currentTabTutorial.title}`}
-          className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-        >
-          <HelpCircle size={15} className="text-blue-600" aria-hidden="true" />
-          <span>Tutorial</span>
-        </button>
-
-        {/* Botón para ver el catálogo completo de tutoriales del módulo */}
+      <div className={`inline-flex items-center ${className}`}>
+        {/* Botón unificado de tutoriales: abre el centro de aprendizaje con la lista completa de guías y tours */}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          title="Ver todos los tutoriales del módulo"
-          aria-label="Abrir centro de tutoriales guiados"
-          className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+          title={`Ver catálogo de tutoriales de ${moduloLabel}`}
+          aria-label={`Abrir centro de tutoriales guiados de ${moduloLabel}`}
+          className="h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
         >
-          <Sparkles size={15} className="text-amber-500" aria-hidden="true" />
+          <HelpCircle size={15} className="text-blue-600" aria-hidden="true" />
+          <span>Tutorial</span>
         </button>
       </div>
 

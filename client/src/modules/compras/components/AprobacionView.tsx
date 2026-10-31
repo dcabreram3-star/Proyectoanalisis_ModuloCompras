@@ -15,6 +15,7 @@ import {
   Check,
   RotateCcw,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 import { Button, StatusBadge, TextArea } from '../../../components/ui';
 import { SolicitudOriginalCard, SolicitudOriginalInfo } from './SolicitudOriginalCard';
@@ -27,6 +28,7 @@ export interface AprobacionViewProps {
   onBack: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
+  onStartTutorial?: () => void;
 }
 
 interface EditableDetalleItem {
@@ -42,6 +44,7 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
   solicitud,
   onBack,
   onSuccess,
+  onStartTutorial,
 }) => {
   const [solicitudData, setSolicitudData] = useState<ISolicitudCompraCompleta | null>(null);
   const [items, setItems] = useState<EditableDetalleItem[]>([]);
@@ -259,6 +262,17 @@ export const AprobacionView: React.FC<AprobacionViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {onStartTutorial && (
+            <button
+              type="button"
+              onClick={onStartTutorial}
+              className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+              title="Iniciar tutorial guiado de Aprobación"
+            >
+              <HelpCircle size={14} className="text-blue-600" />
+              <span>Tutorial</span>
+            </button>
+          )}
           <Button
             variant="primary"
             size="sm"

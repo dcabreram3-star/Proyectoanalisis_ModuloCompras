@@ -3,6 +3,7 @@ import { X, FolderPlus, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { ICategoria, ICreateCategoriaDTO, IUpdateCategoriaDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface CategoriaModalProps {
   isOpen: boolean;
@@ -29,12 +30,26 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
       setNombre(categoria.catNombreCategoria);
       setActivo(categoria.catActivo === 1);
     } else {
-      setNombre('');
-      setActivo(true);
+      const draft = draftStorage.get<{ nombre?: string; activo?: boolean }>('erp_draft_categoria_nueva');
+      if (draft && isOpen) {
+        setNombre(draft.nombre || '');
+        setActivo(draft.activo !== undefined ? draft.activo : true);
+      } else {
+        setNombre('');
+        setActivo(true);
+      }
     }
     setError(null);
     setNombreError(null);
   }, [categoria, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (nombre.trim()) {
+      draftStorage.set('erp_draft_categoria_nueva', { nombre, activo });
+    }
+  }, [nombre, activo, isOpen, isEditing]);
 
   if (!isOpen) return null;
 
@@ -82,6 +97,7 @@ export const CategoriaModal: React.FC<CategoriaModalProps> = ({
           catActivo: activo ? 1 : 0,
         });
       }
+      draftStorage.remove('erp_draft_categoria_nueva');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar la categoría.');

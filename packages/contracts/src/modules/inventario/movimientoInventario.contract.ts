@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export interface IMovimientoInventarioDetalleCreateDTO {
   codigoArticulo: string;
   cantidad: number;
@@ -22,13 +24,19 @@ export interface IMovimientoInventarioResponseDTO {
   advertenciaConcurrencia?: string;
 }
 
-export interface IAgregarExistenciasDTO {
-  codigoArticulo: string;
-  idBodega: number;
-  cantidad: number;
-  costoUnitario?: number;
-  idUbicacion?: number;
-  idLote?: number;
-  notas?: string;
-  idUsuario?: number;
-}
+export const agregarExistenciasSchema = z.object({
+  codigoArticulo: z.string().trim().min(1, 'Debe especificar un código de artículo válido.'),
+  idBodega: z.coerce.number().int().positive('Debe seleccionar una bodega válida.'),
+  cantidad: z.coerce
+    .number({ message: 'La cantidad a añadir debe ser un número válido.' })
+    .int({ message: 'La cantidad a añadir debe ser un número entero (sin decimales).' })
+    .positive({ message: 'La cantidad a añadir debe ser un entero positivo mayor o igual a 1.' }),
+  costoUnitario: z.coerce.number({ message: 'El costo unitario debe ser un valor numérico.' }).min(0, 'El costo unitario debe ser mayor o igual a 0.').optional().nullable(),
+  idUbicacion: z.coerce.number().int().positive().optional().nullable(),
+  idLote: z.coerce.number().int().positive().optional().nullable(),
+  notas: z.string().trim().optional().nullable(),
+  idUsuario: z.coerce.number().int().positive().optional().nullable(),
+});
+
+export type IAgregarExistenciasDTO = z.infer<typeof agregarExistenciasSchema>;
+

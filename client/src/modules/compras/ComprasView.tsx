@@ -54,7 +54,17 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import { scrollToTop } from '../../utils/scroll';
 import { UnifiedStatusBadge } from '../../shared/components/UnifiedStatusBadge';
 import { ModuleTutorialMenu, TutorialTour, markCompleted, type Tutorial } from '../../shared/tutoriales';
-import { COMPRAS_TUTORIALS } from './tutoriales/comprasTutorialsData';
+import { COMPRAS_TUTORIALS, getComprasTutorial } from './tutoriales/comprasTutorialsData';
+
+const STAGE_TUTORIAL_MAP: Record<PipelineStageId, string> = {
+  aprobacion: 'compras-aprobacion',
+  matriz: 'compras-cotizaciones-matriz',
+  seleccion: 'compras-cotizaciones-matriz',
+  presupuesto: 'compras-orden-compra',
+  bodega: 'compras-recepcion-bodega',
+  '3way': 'compras-three-way-match',
+  rechazada: 'compras-aprobacion',
+};
 
 export type ComprasSection =
   | 'hub'
@@ -408,6 +418,11 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
     const solInfo = getSolicitudInfoForMatriz(activeStageView.solicitud);
     let stageViewContent: React.ReactNode = null;
 
+    const startStageTutorial = () => {
+      const tutId = STAGE_TUTORIAL_MAP[activeStageView.stage] || 'compras-pipeline-overview';
+      handleSelectTutorial(getComprasTutorial(tutId));
+    };
+
     switch (activeStageView.stage) {
       case 'aprobacion':
         stageViewContent = (
@@ -415,6 +430,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Solicitud aprobada exitosamente! Enviada a la bandeja de Cotizaciones.');
@@ -428,6 +444,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Cotizaciones guardadas exitosamente! La solicitud ha avanzado a la etapa de Selección de Cotización.');
@@ -441,6 +458,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Cotización adjudicada exitosamente! Enviada a la bandeja de Presupuesto.');
@@ -454,6 +472,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Presupuesto validado y Orden de Compra emitida exitosamente! Enviada a la bandeja de Bodega.');
@@ -467,6 +486,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Recepción en Bodega registrada exitosamente! Mercancía ingresada a inventario y enviada a la bandeja de 3-Way Match.');
@@ -480,6 +500,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡3-Way Match conciliado y liquidado con éxito! Ciclo de compras finalizado y factura enviada a Cuentas por Pagar (CXP).');
@@ -493,6 +514,7 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             solicitud={solInfo}
             onBack={handleCloseStageView}
             onNavigateToStage={handleNavigateToStage}
+            onStartTutorial={startStageTutorial}
             onSuccess={() => {
               handleCloseStageView();
               setSuccessNotification('¡Proceso completado exitosamente y enviado a la bandeja correspondiente!');
@@ -1075,6 +1097,13 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
               setFilterEtapa(stg);
               setCurrentPage(1);
             }}
+            onStartTutorial={(stageKey) => {
+              if (stageKey && STAGE_TUTORIAL_MAP[stageKey]) {
+                handleSelectTutorial(getComprasTutorial(STAGE_TUTORIAL_MAP[stageKey]));
+              } else {
+                handleSelectTutorial(getComprasTutorial('compras-pipeline-overview'));
+              }
+            }}
           />
 
           {/* Toolbar Search & Filters */}
@@ -1188,29 +1217,34 @@ export const ComprasView: React.FC<ComprasViewProps> = ({
             </div>
           )}
 
-          {/* Modal para Creación de Solicitud de Compra */}
-          <SolicitudCreacionModal
-            isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
-            onReload={loadData}
-            onSuccess={() => {
-              setIsCreateModalOpen(false);
-              loadData();
-            }}
-          />
-
-          {/* Modal de Resumen Integral y Auditoría de Compra */}
-          <SolicitudResumenModal
-            isOpen={Boolean(selectedSolicitudForResumen)}
-            onClose={() => setSelectedSolicitudForResumen(null)}
-            solicitud={selectedSolicitudForResumen}
-            onNavigateToStage={(stageKey, sol) => {
-              setSelectedSolicitudForResumen(null);
-              setActiveStageView({ stage: stageKey, solicitud: sol });
-            }}
-          />
         </div>
       )}
+
+      {/* Modal para Creación de Solicitud de Compra (accesible globalmente en Compras) */}
+      <SolicitudCreacionModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onReload={loadData}
+        onSuccess={() => {
+          setIsCreateModalOpen(false);
+          loadData();
+        }}
+        onStartTutorial={() => {
+          handleSelectTutorial(getComprasTutorial('compras-solicitud-creacion'));
+        }}
+      />
+
+      {/* Modal de Resumen Integral y Auditoría de Compra (abre inmediatamente desde Historial o cualquier vista) */}
+      <SolicitudResumenModal
+        isOpen={Boolean(selectedSolicitudForResumen)}
+        onClose={() => setSelectedSolicitudForResumen(null)}
+        solicitud={selectedSolicitudForResumen}
+        onNavigateToStage={(stageKey, sol) => {
+          setSelectedSolicitudForResumen(null);
+          handleNavigate('registros');
+          setActiveStageView({ stage: stageKey, solicitud: sol });
+        }}
+      />
 
       {/* Tour interactivo activo si está en ejecución en vistas principales o modales */}
       {runningTutorial && (

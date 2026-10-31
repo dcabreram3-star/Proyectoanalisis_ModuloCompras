@@ -3,6 +3,7 @@ import {
   IMovimientoInventarioCreateDTO,
   IMovimientoInventarioResponseDTO,
   IAgregarExistenciasDTO,
+  agregarExistenciasSchema,
 } from '@erp/contracts';
 import { InventarioCriterios } from '../utils/inventarioCriterios.js';
 
@@ -80,47 +81,36 @@ export class MovimientoInventarioService {
   /**
    * Registra un incremento directo de existencias a un artículo existente en una bodega específica.
    * Actualiza atómicamente CMP_INVENTARIO y registra el movimiento de kardex como 'AJU_ENTRADA'.
+   * Valida estrictamente que la cantidad sea un número entero positivo (>= 1).
    */
   static async agregarExistencias(
     data: IAgregarExistenciasDTO,
     idUsuarioSesion?: number
   ): Promise<IMovimientoInventarioResponseDTO> {
-    if (!data.codigoArticulo || typeof data.codigoArticulo !== 'string' || data.codigoArticulo.trim() === '') {
-      throw new Error('Debe especificar un código de artículo válido.');
-    }
-    const idBodega = Number(data.idBodega);
-    if (isNaN(idBodega) || idBodega <= 0) {
-      throw new Error('Debe seleccionar una bodega válida.');
-    }
-    const cantidad = Number(data.cantidad);
-    if (isNaN(cantidad) || !isFinite(cantidad) || cantidad <= 0) {
-      throw new Error('La cantidad a añadir debe ser un número positivo mayor a 0 (entero o decimal).');
+    // 1. Validación estricta mediante esquema Zod (rechaza decimales, ceros o negativos)
+    const validated = agregarExistenciasSchema.parse(data);
+
+    // 2. Validación explícita de seguridad: entero positivo >= 1
+    if (!Number.isInteger(validated.cantidad) || validated.cantidad < 1) {
+      throw new Error('La cantidad a añadir debe ser un número entero positivo mayor o igual a 1.');
     }
 
-    let costoUnitario: number | undefined = undefined;
-    if (data.costoUnitario !== undefined && data.costoUnitario !== null && data.costoUnitario !== ('' as any)) {
-      const parsedCosto = Number(data.costoUnitario);
-      if (isNaN(parsedCosto) || !isFinite(parsedCosto) || parsedCosto < 0) {
-        throw new Error('El costo unitario debe ser un valor numérico mayor o igual a 0.');
-      }
-      costoUnitario = parsedCosto;
-    }
-
-    const idUsuarioFinal = data.idUsuario ? Number(data.idUsuario) : (idUsuarioSesion || 1);
-    const codArticuloClean = data.codigoArticulo.trim().toUpperCase();
+    const codArticuloClean = validated.codigoArticulo.trim().toUpperCase();
+    const idUsuarioFinal = validated.idUsuario ? Number(validated.idUsuario) : (idUsuarioSesion || 1);
+    const costoUnitario = validated.costoUnitario !== undefined && validated.costoUnitario !== null ? Number(validated.costoUnitario) : undefined;
 
     const payload: IMovimientoInventarioCreateDTO = {
       tipoMovimiento: 'AJU_ENTRADA',
-      idBodegaOrigen: idBodega,
+      idBodegaOrigen: validated.idBodega,
       idUsuario: idUsuarioFinal,
-      observaciones: data.notas?.trim() || `Ajuste manual de entrada / Añadir existencias a ${codArticuloClean}`,
+      observaciones: validated.notas?.trim() || `Ajuste manual de entrada / Añadir existencias a ${codArticuloClean}`,
       detalles: [
         {
           codigoArticulo: codArticuloClean,
-          cantidad,
+          cantidad: validated.cantidad,
           costoUnitario: costoUnitario !== undefined ? costoUnitario : 0,
-          idUbicacion: data.idUbicacion ? Number(data.idUbicacion) : undefined,
-          idLote: data.idLote ? Number(data.idLote) : undefined,
+          idUbicacion: validated.idUbicacion ? Number(validated.idUbicacion) : undefined,
+          idLote: validated.idLote ? Number(validated.idLote) : undefined,
         },
       ],
     };

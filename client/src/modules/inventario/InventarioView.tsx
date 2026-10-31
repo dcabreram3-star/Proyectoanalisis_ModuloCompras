@@ -84,15 +84,6 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={PackagePlus}
-              onClick={() => setIsAgregarStockOpen(true)}
-              className="text-xs font-bold shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
-            >
-              Añadir Existencias
-            </Button>
             <ModuleTutorialMenu module="inventario" tutorials={INVENTARIO_TUTORIALS} />
             <div className="hidden lg:flex w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-center text-blue-600 shadow-xs">
               <Boxes size={32} className="text-blue-600" />

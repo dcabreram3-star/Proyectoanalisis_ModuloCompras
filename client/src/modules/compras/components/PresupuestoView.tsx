@@ -23,6 +23,7 @@ import {
   Calendar,
   Printer,
   Download,
+  HelpCircle,
 } from 'lucide-react';
 import {
   Button,
@@ -48,12 +49,14 @@ import {
 import { getStageForSolicitud } from './PipelineProgress';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { generarOrdenCompraPdf } from '../utils/ordenCompraPdfGenerator';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface PresupuestoViewProps {
   solicitud?: SolicitudOriginalInfo | null;
   onBack?: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
+  onStartTutorial?: () => void;
 }
 
 export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
@@ -61,6 +64,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
   onBack,
   onSuccess,
   onNavigateToStage,
+  onStartTutorial,
 }) => {
   // Estado para la vista de Solicitud Individual (Etapa 4 de Pipeline)
   const [cotizacionGanadora, setCotizacionGanadora] = useState<ICotizacion | null>(null);
@@ -113,6 +117,12 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
 
       setCotizacionGanadora(ganadora || (cots.length > 0 ? cots[0] : null));
       setOrdenCompraExistente(existingPo);
+
+      // Recuperar borrador de notas presupuestarias si el usuario recargó (F5)
+      const draftNotes = draftStorage.get<string>(`erp_draft_presupuesto_${noDoc}`);
+      if (draftNotes) {
+        setNotasPresupuesto(draftNotes);
+      }
     } catch (err: any) {
       console.error('[PresupuestoView]: Error al cargar datos de presupuesto:', err);
       setErrorMsg(err.message || 'Error al obtener la información presupuestaria de la base de datos.');
@@ -120,6 +130,15 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
       setIsLoadingDetalles(false);
     }
   };
+
+  // Autoguardado de notas presupuestarias
+  useEffect(() => {
+    if (!currentSolicitud?.noDocumento) return;
+    const draftKey = `erp_draft_presupuesto_${currentSolicitud.noDocumento}`;
+    if (notasPresupuesto.trim()) {
+      draftStorage.set(draftKey, notasPresupuesto);
+    }
+  }, [notasPresupuesto, currentSolicitud?.noDocumento]);
 
   // Cargar datos de la vista general
   const loadGeneralData = async () => {
@@ -198,6 +217,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         total: finanzas.total,
       });
 
+      draftStorage.remove(`erp_draft_presupuesto_${currentSolicitud.noDocumento}`);
+
       setSuccessMsg(
         `¡Presupuesto Autorizado exitosamente! Se ha generado la Orden de Compra ${poResult.ocoNoPo}.`
       );
@@ -235,6 +256,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         noDocumento: currentSolicitud.noDocumento,
         motivoRechazo: cleanMotivo,
       });
+
+      draftStorage.remove(`erp_draft_presupuesto_${currentSolicitud.noDocumento}`);
 
       setSuccessMsg('Se ha registrado el rechazo presupuestario exitosamente.');
       setIsRejectModalOpen(false);
@@ -340,6 +363,17 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onStartTutorial && (
+              <button
+                type="button"
+                onClick={onStartTutorial}
+                className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+                title="Iniciar tutorial guiado de Presupuesto y PO"
+              >
+                <HelpCircle size={14} className="text-blue-600" />
+                <span>Tutorial</span>
+              </button>
+            )}
             {isPoEmitida && onNavigateToStage && (
               <Button
                 variant="primary"
@@ -567,7 +601,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                       <span className="font-semibold text-slate-800">
                         {cotizacionGanadora.cotTiempoEntregaDias
                           ? `${cotizacionGanadora.cotTiempoEntregaDias} días hábiles`
-                          : 'Inmediato'}
+                          : 'Inmediata'}
                       </span>
                     </div>
                     <div>

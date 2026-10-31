@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ShoppingCart } from 'lucide-react';
+import { X, ShoppingCart, HelpCircle } from 'lucide-react';
 import { SolicitudCreacionView } from './SolicitudCreacionView';
 
 export interface SolicitudCreacionModalProps {
@@ -7,6 +7,7 @@ export interface SolicitudCreacionModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   onReload?: () => void;
+  onStartTutorial?: () => void;
 }
 
 export const SolicitudCreacionModal: React.FC<SolicitudCreacionModalProps> = ({
@@ -14,6 +15,7 @@ export const SolicitudCreacionModal: React.FC<SolicitudCreacionModalProps> = ({
   onClose,
   onSuccess,
   onReload,
+  onStartTutorial,
 }) => {
   if (!isOpen) return null;
 
@@ -35,14 +37,27 @@ export const SolicitudCreacionModal: React.FC<SolicitudCreacionModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors"
-            title="Cerrar modal"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onStartTutorial && (
+              <button
+                type="button"
+                onClick={onStartTutorial}
+                className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+                title="Iniciar tutorial de creación de solicitud"
+              >
+                <HelpCircle size={14} className="text-blue-600" />
+                <span>Tutorial</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors"
+              title="Cerrar modal"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
