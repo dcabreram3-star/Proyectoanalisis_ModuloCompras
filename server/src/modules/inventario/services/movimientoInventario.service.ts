@@ -1,11 +1,33 @@
+import { z } from 'zod';
 import { MovimientoInventarioRepository } from '../repositories/movimientoInventario.repository.js';
 import {
   IMovimientoInventarioCreateDTO,
   IMovimientoInventarioResponseDTO,
   IAgregarExistenciasDTO,
-  agregarExistenciasSchema,
+  agregarExistenciasSchema as contractsAgregarExistenciasSchema,
 } from '@erp/contracts';
 import { InventarioCriterios } from '../utils/inventarioCriterios.js';
+
+// Esquema de validación Zod garantizado en runtime contra referencias undefined
+export const fallbackAgregarExistenciasSchema = z.object({
+  codigoArticulo: z.string().trim().min(1, 'Debe especificar un código de artículo válido.'),
+  idBodega: z.coerce.number().int().positive('Debe seleccionar una bodega válida.'),
+  cantidad: z.coerce
+    .number({ message: 'La cantidad a añadir debe ser un número válido.' })
+    .int({ message: 'La cantidad a añadir debe ser un número entero (sin decimales).' })
+    .positive({ message: 'La cantidad a añadir debe ser un entero positivo mayor o igual a 1.' }),
+  costoUnitario: z.coerce
+    .number({ message: 'El costo unitario debe ser un valor numérico.' })
+    .min(0, 'El costo unitario debe ser mayor o igual a 0.')
+    .optional()
+    .nullable(),
+  idUbicacion: z.coerce.number().int().positive().optional().nullable(),
+  idLote: z.coerce.number().int().positive().optional().nullable(),
+  notas: z.string().trim().optional().nullable(),
+  idUsuario: z.coerce.number().int().positive().optional().nullable(),
+});
+
+export const agregarExistenciasSchema = contractsAgregarExistenciasSchema ?? fallbackAgregarExistenciasSchema;
 
 export class MovimientoInventarioService {
   static async crearMovimiento(data: IMovimientoInventarioCreateDTO): Promise<IMovimientoInventarioResponseDTO> {
