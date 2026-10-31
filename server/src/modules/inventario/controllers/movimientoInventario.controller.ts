@@ -10,12 +10,12 @@ export class MovimientoInventarioController {
       
       res.status(201).json(resultado);
     } catch (error: any) {
-      if (error instanceof ZodError) {
+      if (error instanceof ZodError || error?.name === 'ZodError') {
         const firstMessage = error.issues[0]?.message || 'Datos de movimiento inválidos';
         res.status(400).json({
           success: false,
           message: firstMessage,
-          details: error.issues.map((i) => ({ campo: i.path.join('.'), mensaje: i.message })),
+          details: (error.issues || []).map((i: any) => ({ campo: Array.isArray(i.path) ? i.path.join('.') : String(i.path || ''), mensaje: i.message })),
         });
         return;
       }
@@ -35,12 +35,12 @@ export class MovimientoInventarioController {
 
       res.status(201).json(resultado);
     } catch (error: any) {
-      if (error instanceof ZodError) {
+      if (error instanceof ZodError || error?.name === 'ZodError') {
         const firstMessage = error.issues[0]?.message || 'Datos de existencias inválidos';
         res.status(400).json({
           success: false,
           message: firstMessage,
-          details: error.issues.map((i) => ({ campo: i.path.join('.'), mensaje: i.message })),
+          details: (error.issues || []).map((i: any) => ({ campo: Array.isArray(i.path) ? i.path.join('.') : String(i.path || ''), mensaje: i.message })),
         });
         return;
       }

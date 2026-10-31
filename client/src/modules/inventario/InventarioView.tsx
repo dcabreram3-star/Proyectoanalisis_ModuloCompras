@@ -3,7 +3,7 @@ import {
   Warehouse,
   MapPin,
   Barcode,
-  ArrowLeftRight,
+
   SlidersHorizontal,
   ShieldCheck,
   ChevronRight,
@@ -17,7 +17,7 @@ import { Button } from '../../components/ui';
 import { BodegasCatalogView } from './components/BodegasCatalogView';
 import { UbicacionesCatalogView } from './components/UbicacionesCatalogView';
 import { LotesCatalogView } from './components/LotesCatalogView';
-import { MovimientoCreacionView } from './components/MovimientoCreacionView';
+
 import { TiposMovimientoCatalogView } from './components/TiposMovimientoCatalogView';
 import { AuditoriaView } from './components/AuditoriaView';
 import { AgregarExistenciasModal } from './components/AgregarExistenciasModal';
@@ -29,7 +29,7 @@ export type InventarioSection =
   | 'bodegas'
   | 'ubicaciones'
   | 'lotes'
-  | 'movimientos'
+
   | 'tipos-movimiento'
   | 'auditoria';
 
@@ -47,7 +47,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
 
   // Estado de navegación interna: si no se especifica o es 'hub', muestra el Hub
   const [currentSection, setCurrentSection] = useState<InventarioSection>(() => {
-    if (propTab && propTab !== 'hub' && propTab !== 'bodegas') {
+    if (propTab && propTab !== 'hub' && propTab !== 'bodegas' && propTab !== 'movimientos') {
       return propTab as InventarioSection;
     }
     return 'hub';
@@ -79,7 +79,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
             </h1>
 
             <p className="text-sm text-slate-600 leading-relaxed">
-              Centro de administración para la infraestructura física de almacenamiento, catálogo de ubicaciones, control de lotes con fechas de vencimiento y registro de movimientos kardex en tiempo real.
+              Centro de administración para la infraestructura física de almacenamiento, catálogo de ubicaciones, control de lotes con fechas de vencimiento y gestión de existencias en tiempo real.
             </p>
           </div>
 
@@ -105,21 +105,21 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                    Movimientos y Operaciones
+                    Operaciones de Inventario
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Consulta transacciones, kardex, trazabilidad y auditoría de stock.
+                    Añade existencias directas, gestiona reglas y consulta la bitácora de auditoría.
                   </p>
                 </div>
               </div>
 
               <span className="hidden sm:inline-flex px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-100">
-                4 Operaciones
+                3 Operaciones
               </span>
             </div>
 
             {/* Grid de Sub-Tarjetas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* Card 1: Añadir Existencias (Acción Rápida de Entrada) */}
               <button
                 type="button"
@@ -154,39 +154,6 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
                     Añadir stock
                   </span>
                   <span className="text-[11px] text-emerald-700 font-semibold">AJU_ENTRADA</span>
-                </div>
-              </button>
-              {/* Card 1: Movimientos / Kardex */}
-              <button
-                type="button"
-                onClick={() => handleNavigate('movimientos')}
-                className="group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-emerald-500 hover:shadow-lg transition-all duration-200 text-left flex flex-col justify-between overflow-hidden cursor-pointer"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200 shadow-2xs">
-                      <ArrowLeftRight size={24} />
-                    </div>
-                    <span className="p-1.5 rounded-lg text-slate-400 group-hover:text-emerald-600 group-hover:bg-emerald-50 transition-colors">
-                      <ChevronRight size={18} className="transition-transform group-hover:translate-x-1" />
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                      Movimientos / Kardex
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      Entradas, salidas y transferencias.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold text-emerald-600 group-hover:underline">
-                    Gestionar kardex
-                  </span>
-                  <span className="text-[11px] text-slate-400">Transacciones</span>
                 </div>
               </button>
 
@@ -423,11 +390,6 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
       category: 'Catálogos de Inventario',
       icon: <Barcode size={18} className="text-amber-600" />,
     },
-    movimientos: {
-      title: 'Movimientos de Inventario y Kardex',
-      category: 'Movimientos y Operaciones',
-      icon: <ArrowLeftRight size={18} className="text-emerald-600" />,
-    },
     'tipos-movimiento': {
       title: 'Tipos de Movimiento',
       category: 'Movimientos y Operaciones',
@@ -487,14 +449,13 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mr-1 shrink-0">
             Ir a:
           </span>
-          {(['bodegas', 'ubicaciones', 'lotes', 'movimientos', 'tipos-movimiento', 'auditoria'] as InventarioSection[]).map(
+          {(['bodegas', 'ubicaciones', 'lotes', 'tipos-movimiento', 'auditoria'] as InventarioSection[]).map(
             (sec) => {
               const isCurrent = currentSection === sec;
               const labels: Record<string, string> = {
                 bodegas: 'Bodegas',
                 ubicaciones: 'Ubicaciones',
                 lotes: 'Lotes',
-                movimientos: 'Kardex',
                 'tipos-movimiento': 'Tipos Mov.',
                 auditoria: 'Auditoría',
               };
@@ -532,13 +493,6 @@ export const InventarioView: React.FC<InventarioViewProps> = ({
       {currentSection === 'ubicaciones' && <UbicacionesCatalogView />}
       {currentSection === 'lotes' && <LotesCatalogView />}
       {currentSection === 'tipos-movimiento' && <TiposMovimientoCatalogView />}
-      {currentSection === 'movimientos' && (
-        <MovimientoCreacionView
-          onSuccess={() => {
-            if (onTabChange) onTabChange('movimientos');
-          }}
-        />
-      )}
       {currentSection === 'auditoria' && <AuditoriaView />}
 
       {/* Modal para Añadir Existencias Directas */}

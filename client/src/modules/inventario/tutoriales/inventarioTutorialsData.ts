@@ -37,36 +37,6 @@ export const INVENTARIO_TUTORIALS: Tutorial[] = [
     ],
   },
   {
-    id: 'inventario-movimientos',
-    title: 'Movimientos de Inventario',
-    summary: 'Registra entradas, salidas y transferencias entre bodegas con validación estricta.',
-    modulo: 'inventario',
-    group: 'movimientos',
-    tab: 'movimientos',
-    steps: [
-      {
-        title: 'Registro de Movimientos',
-        body: 'Gestiona entradas, salidas o traslados de mercancía entre bodegas para mantener el stock físico conciliado.',
-        target: 'header',
-      },
-      {
-        title: 'Tipo de Movimiento y Bodegas',
-        body: 'Selecciona el tipo de operación autorizada. En transferencias, las bodegas de origen y destino deben ser distintas obligatoriamente.',
-        target: 'filters',
-      },
-      {
-        title: 'Validación de Cantidades y Costos',
-        body: 'Regla de integridad: La cantidad debe ser un número entero estrictamente positivo (> 0). Se bloquean caracteres inválidos y números negativos.',
-        target: 'table',
-      },
-      {
-        title: 'Generación de Folio MOV',
-        body: 'Al procesar la transacción, se genera un número de movimiento oficial con formato MOV-YYYY-XXXXX con estado APLICADO.',
-        target: 'action',
-      },
-    ],
-  },
-  {
     id: 'inventario-toma-fisica',
     title: 'Toma Física y Ajuste Automático',
     summary: 'Apertura auditorías físicas, registra conteos reales y sincroniza diferencias.',
