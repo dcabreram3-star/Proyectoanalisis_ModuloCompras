@@ -170,35 +170,39 @@ export const UbicacionModal: React.FC<UbicacionModalProps> = ({
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              BODEGA ASIGNADA
-            </label>
-            <select
-              value={idBodega}
-              onChange={(e) => setIdBodega(Number(e.target.value))}
-              className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-emerald-600 font-medium"
-            >
-              {bodegas.map((b) => (
-                <option key={b.bodIdBodega} value={b.bodIdBodega}>
-                  {b.bodNombre} ({b.bodCodigo})
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                BODEGA ASIGNADA
+              </label>
+              <select
+                value={idBodega}
+                onChange={(e) => setIdBodega(Number(e.target.value))}
+                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-emerald-600 font-medium"
+              >
+                {bodegas.map((b) => (
+                  <option key={b.bodIdBodega} value={b.bodIdBodega}>
+                    {b.bodNombre} ({b.bodCodigo})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <TextInput
+                label="CÓDIGO DE UBICACIÓN"
+                required
+                placeholder="Ej. A-01-R2, PAS-1-N3..."
+                value={codigo}
+                onChange={(e) => handleCodigoChange(e.target.value)}
+                maxLength={30}
+                autoFocus
+                error={codigoError || undefined}
+              />
+            </div>
           </div>
 
-          <TextInput
-            label="CÓDIGO DE UBICACIÓN"
-            required
-            placeholder="Ej. A-01-R2, PAS-1-N3..."
-            value={codigo}
-            onChange={(e) => handleCodigoChange(e.target.value)}
-            maxLength={30}
-            autoFocus
-            error={codigoError || undefined}
-          />
-
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5 max-w-xs">
             <TextInput
               label="PASILLO"
               placeholder="Ej. P1"

@@ -1,4 +1,5 @@
 import { execute, withTransaction } from '../../../config/database.js';
+import { BitacoraRepository } from './bitacora.repository.js';
 import {
   ICotizacion,
   ICreateCotizacionDTO,
@@ -6,6 +7,7 @@ import {
   ICotizacionFilterParams,
   IProveedor,
   ISaveMatrizCotizacionesDTO,
+  IDetalleCotizacion,
 } from '@erp/contracts';
 
 /**
@@ -111,7 +113,8 @@ export class CotizacionRepository {
   }
 
   /**
-   * Consulta todas las cotizaciones con filtros dinámicos y JOIN a PROVEEDOR.
+   * Consulta todas las cotizaciones con filtros dinámicos, JOIN a PROVEEDOR,
+   * paginación eficiente y eliminación de consultas N+1 (COMP-012).
    */
   static async findAll(filters: ICotizacionFilterParams = {}): Promise<ICotizacion[]> {
     let sql = `
@@ -150,12 +153,82 @@ export class CotizacionRepository {
 
     sql += ` ORDER BY c.COT_ID_COTIZACION DESC`;
 
+    // Soporte de paginación opcional (COMP-012)
+    const page = (filters as any).page ? Math.max(1, Number((filters as any).page)) : 1;
+    const limit = (filters as any).limit || (filters as any).pageSize
+      ? Number((filters as any).limit || (filters as any).pageSize)
+      : null;
+
+    if (limit && limit > 0) {
+      const offset = (page - 1) * limit;
+      sql += ` OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+      binds.offset = offset;
+      binds.limit = limit;
+    }
+
     const result = await execute<ICotizacionDbRow>(sql, binds);
     const cotizaciones = (result.rows || []).map((r) => mapRowToCotizacion(r));
 
-    // Cargar detalles de líneas de cada cotización
-    for (const cot of cotizaciones) {
-      cot.detalles = await this.findDetalles(cot.cotIdCotizacion);
+    if (cotizaciones.length === 0) {
+      return [];
+    }
+
+    // Solución eficiente a Consulta N+1 (COMP-012): Agrupación en una única consulta batch
+    const cotIds = cotizaciones.map((c) => c.cotIdCotizacion);
+    const inBinds: Record<string, any> = {};
+    const inPlaceholders = cotIds.map((id, index) => {
+      const key = `cid${index}`;
+      inBinds[key] = id;
+      return `:${key}`;
+    });
+
+    const detSql = `
+      SELECT 
+        d.DCO_ID_DETALLE_COTIZACION,
+        d.DCO_ID_COTIZACION,
+        d.DCO_CODIGO_ARTICULO,
+        a.ART_DESCRIPCION,
+        d.DCO_CANTIDAD_COTIZADA,
+        d.DCO_PRECIO_UNITARIO,
+        d.DCO_SUBTOTAL_LINEA,
+        d.DCO_OBSERVACIONES,
+        d.DCO_ES_SUSTITUTO
+      FROM CMP_DETALLE_COTIZACION d
+      LEFT JOIN CMP_ARTICULO a ON d.DCO_CODIGO_ARTICULO = a.ART_CODIGO_ARTICULO
+      WHERE d.DCO_ID_COTIZACION IN (${inPlaceholders.join(', ')})
+      ORDER BY d.DCO_ID_COTIZACION ASC, d.DCO_ID_DETALLE_COTIZACION ASC
+    `;
+
+    try {
+      const detRes = await execute<any>(detSql, inBinds);
+      const mapDetalles = new Map<number, IDetalleCotizacion[]>();
+
+      for (const r of detRes.rows || []) {
+        const idCot = Number(r.DCO_ID_COTIZACION);
+        if (!mapDetalles.has(idCot)) {
+          mapDetalles.set(idCot, []);
+        }
+        mapDetalles.get(idCot)!.push({
+          dcoIdDetalleCotizacion: Number(r.DCO_ID_DETALLE_COTIZACION),
+          dcoIdCotizacion: idCot,
+          dcoCodigoArticulo: String(r.DCO_CODIGO_ARTICULO),
+          artDescripcion: r.ART_DESCRIPCION ? String(r.ART_DESCRIPCION) : null,
+          dcoCantidadCotizada: Number(r.DCO_CANTIDAD_COTIZADA),
+          dcoPrecioUnitario: Number(r.DCO_PRECIO_UNITARIO),
+          dcoSubtotalLinea: Number(r.DCO_SUBTOTAL_LINEA),
+          dcoObservaciones: r.DCO_OBSERVACIONES ? String(r.DCO_OBSERVACIONES) : null,
+          dcoEsSustituto: Number(r.DCO_ES_SUSTITUTO || 0),
+        });
+      }
+
+      for (const cot of cotizaciones) {
+        cot.detalles = mapDetalles.get(cot.cotIdCotizacion) || [];
+      }
+    } catch (errDet) {
+      console.warn('[CotizacionRepository.findAll] Error cargando detalles en batch:', errDet);
+      for (const cot of cotizaciones) {
+        cot.detalles = [];
+      }
     }
 
     return cotizaciones;
@@ -854,6 +927,41 @@ export class CotizacionRepository {
    */
   static async adjudicar(idCotizacion: number, noSolicitud: string, justificacion?: string): Promise<ICotizacion> {
     return await withTransaction(async (conn) => {
+      // Verificación de pertenencia y etapa dentro de la transacción atómica (COMP-004)
+      const chkCot = await conn.execute<any>(
+        `SELECT COT_ID_COTIZACION, COT_NO_DOCUMENTO_SOLICITUD, COT_ID_PROVEEDOR, COT_PRECIO_TOTAL, COT_ESTADO_ADJUDICACION 
+         FROM CMP_COTIZACION 
+         WHERE COT_ID_COTIZACION = :idCotizacion`,
+        { idCotizacion }
+      );
+      if (!chkCot.rows || chkCot.rows.length === 0) {
+        throw new Error(`La cotización #${idCotizacion} no existe.`);
+      }
+      const cotFila = chkCot.rows[0];
+      if (String(cotFila.COT_NO_DOCUMENTO_SOLICITUD).trim() !== noSolicitud.trim()) {
+        throw new Error(
+          `La cotización #${idCotizacion} pertenece a la solicitud '${cotFila.COT_NO_DOCUMENTO_SOLICITUD}', no a '${noSolicitud}'. Operación denegada.`
+        );
+      }
+
+      const chkSol = await conn.execute<any>(
+        `SELECT SOL_NO_DOCUMENTO, SOL_ID_ESTADO, SOL_NOTAS FROM CMP_SOLICITUD_COMPRA WHERE SOL_NO_DOCUMENTO = :noSolicitud`,
+        { noSolicitud }
+      );
+      if (!chkSol.rows || chkSol.rows.length === 0) {
+        throw new Error(`La solicitud de compra '${noSolicitud}' no existe.`);
+      }
+      const solFila = chkSol.rows[0];
+      const solNotas = String(solFila.SOL_NOTAS || '').toUpperCase();
+      const solEstId = Number(solFila.SOL_ID_ESTADO || 0);
+
+      if (solEstId === 6 || solNotas.includes('[RECHAZADA]')) {
+        throw new Error(`No se puede adjudicar una cotización para una solicitud RECHAZADA (${noSolicitud}).`);
+      }
+      if (solEstId === 5) {
+        throw new Error(`No se puede adjudicar una cotización para una solicitud FINALIZADA o CERRADA (${noSolicitud}).`);
+      }
+
       // 0. Creación Diferida en CMP_ARTICULO para productos sustitutos o códigos no registrados
       try {
         const detGanRes = await conn.execute<any>(
@@ -879,7 +987,6 @@ export class CotizacionRepository {
             );
 
             if (existArt.rows && existArt.rows.length > 0) {
-              // Si el artículo ya existía (ej. insertado como INACTIVO 0 al cotizar sustituto), activarlo formalmente
               await conn.execute(
                 `UPDATE CMP_ARTICULO 
                  SET ART_ACTIVO = 1 
@@ -976,7 +1083,28 @@ export class CotizacionRepository {
         { nota, idCotizacion, noSolicitud }
       );
 
-      // 4. Retornar la cotización actualizada
+      // 4. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          accion: 'ADJUDICACION_COTIZACION',
+          valoresPrevios: {
+            noSolicitud,
+            idCotizacion,
+            estadoAdjudicacionPrevio: cotFila.COT_ESTADO_ADJUDICACION || 'PENDIENTE',
+          },
+          valoresPosteriores: {
+            noSolicitud,
+            idCotizacion,
+            estadoAdjudicacion: 'GANADORA',
+            precioTotal: cotFila.COT_PRECIO_TOTAL,
+            justificacion: dictamenTexto,
+            fecha: new Date().toISOString(),
+          },
+        },
+        conn
+      );
+
+      // 5. Retornar la cotización actualizada
       const res = await conn.execute<ICotizacionDbRow>(
         `SELECT 
           c.COT_ID_COTIZACION,

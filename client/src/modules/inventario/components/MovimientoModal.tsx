@@ -3,6 +3,7 @@ import { X, ArrowRightLeft, Plus, Trash2, Printer, AlertCircle, ChevronDown, Sea
 import { Button } from '../../../components/ui';
 import type { IMovimientoInventarioCreateDTO, IMovimientoInventarioDetalleCreateDTO } from '@erp/contracts';
 import { MovimientoInventarioClientService } from '../services/movimientoInventarioClientService';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface MovimientoModalProps {
   isOpen: boolean;
@@ -128,20 +129,52 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
-      if (bodegas.length >= 2) {
-        setIdBodegaOrigen(bodegas[0].id);
-        setIdBodegaDestino(bodegas[1].id);
-      } else if (bodegas.length === 1) {
-        setIdBodegaOrigen(bodegas[0].id);
-        setIdBodegaDestino('');
+
+      // Recuperar borrador si el usuario recargó la página (F5)
+      const draft = draftStorage.get<{
+        idBodegaOrigen?: number | '';
+        idBodegaDestino?: number | '';
+        idUsuario?: number | '';
+        observaciones?: string;
+        detalles?: IMovimientoInventarioDetalleCreateDTO[];
+      }>('erp_draft_inventario_traslado');
+
+      if (draft && draft.detalles && draft.detalles.length > 0) {
+        if (draft.idBodegaOrigen) setIdBodegaOrigen(draft.idBodegaOrigen);
+        if (draft.idBodegaDestino) setIdBodegaDestino(draft.idBodegaDestino);
+        if (draft.idUsuario) setIdUsuario(draft.idUsuario);
+        if (draft.observaciones !== undefined) setObservaciones(draft.observaciones);
+        setDetalles(draft.detalles);
+      } else {
+        if (bodegas.length >= 2) {
+          setIdBodegaOrigen(bodegas[0].id);
+          setIdBodegaDestino(bodegas[1].id);
+        } else if (bodegas.length === 1) {
+          setIdBodegaOrigen(bodegas[0].id);
+          setIdBodegaDestino('');
+        }
+        if (usuarios.length > 0) {
+          setIdUsuario(usuarios[0].id);
+        }
+        setObservaciones('');
+        setDetalles([{ codigoArticulo: articulos[0]?.codigo || '', cantidad: 1 }]);
       }
-      if (usuarios.length > 0) {
-        setIdUsuario(usuarios[0].id);
-      }
-      setObservaciones('');
-      setDetalles([{ codigoArticulo: articulos[0]?.codigo || '', cantidad: 1 }]);
     }
   }, [isOpen, bodegas, usuarios, articulos]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen) return;
+    if (observaciones.trim() || (detalles && detalles.some((d) => d.codigoArticulo || d.cantidad > 1))) {
+      draftStorage.set('erp_draft_inventario_traslado', {
+        idBodegaOrigen,
+        idBodegaDestino,
+        idUsuario,
+        observaciones,
+        detalles,
+      });
+    }
+  }, [idBodegaOrigen, idBodegaDestino, idUsuario, observaciones, detalles, isOpen]);
 
   if (!isOpen) return null;
 
@@ -205,6 +238,7 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
       };
 
       const res = await MovimientoInventarioClientService.crearMovimiento(payload);
+      draftStorage.remove('erp_draft_inventario_traslado');
       onSuccess(res, payload);
       onClose();
     } catch (error: any) {
@@ -346,8 +380,24 @@ export const MovimientoModal: React.FC<MovimientoModalProps> = ({
                         <input 
                           type="number" 
                           min="1"
+                          step="1"
                           value={detalle.cantidad}
-                          onChange={(e) => handleChangeDetalle(index, 'cantidad', parseInt(e.target.value) || 1)}
+                          onKeyDown={(e) => {
+                            if (['e', 'E', '.', ',', '-', '+'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            const text = e.clipboardData.getData('text');
+                            if (!/^\d+$/.test(text)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const clean = e.target.value.replace(/\D/g, '');
+                            const parsed = parseInt(clean, 10);
+                            handleChangeDetalle(index, 'cantidad', isNaN(parsed) ? 1 : Math.max(1, parsed));
+                          }}
                           className="w-full h-10 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 text-center focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                           required
                         />

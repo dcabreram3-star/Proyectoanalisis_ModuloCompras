@@ -33,6 +33,12 @@ export class RecepcionBodegaService {
       throw new Error('Debe seleccionar la bodega de destino para el ingreso físico.');
     }
 
+    // Inmutabilidad transaccional: Validar si la PO ya tiene una recepción total consolidada
+    const existingRec = await RecepcionBodegaRepository.findByNoPo(dto.noPo.trim());
+    if (existingRec && existingRec.rboTipoRecepcion === 'TOTAL') {
+      throw new Error(`La Orden de Compra ${dto.noPo} ya cuenta con una recepción total consolidada (${existingRec.rboNoRecepcion}). Las operaciones de almacén concluidas son inmutables.`);
+    }
+
     // Validación estricta de control de horario de recepción (08:00 a 20:00 hrs)
     if (dto.fechaLlegada) {
       const fechaVal = String(dto.fechaLlegada);

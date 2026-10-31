@@ -20,6 +20,7 @@ import {
   ArrowRight,
   Download,
   Package,
+  HelpCircle,
 } from 'lucide-react';
 import { Button, StatusBadge } from '../../../components/ui';
 import { SolicitudOriginalCard, SolicitudOriginalInfo } from './SolicitudOriginalCard';
@@ -35,6 +36,7 @@ export interface SeleccionCotizacionViewProps {
   onBack: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
+  onStartTutorial?: () => void;
 }
 
 export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = ({
@@ -42,6 +44,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
   onBack,
   onSuccess,
   onNavigateToStage,
+  onStartTutorial,
 }) => {
   const [cotizaciones, setCotizaciones] = useState<ICotizacion[]>([]);
   const [detallesSolicitud, setDetallesSolicitud] = useState<ISolicitudCompraDetalle[]>([]);
@@ -100,10 +103,10 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
     return Math.min(...cotizaciones.map((c) => c.cotPrecioTotal));
   }, [cotizaciones]);
 
-  // Mejor tiempo de entrega
+  // Mejor tiempo de entrega (0 días = Entrega inmediata)
   const mejorTiempoEntrega = useMemo(() => {
     const conTiempo = cotizaciones.filter(
-      (c) => c.cotTiempoEntregaDias !== null && c.cotTiempoEntregaDias !== undefined && c.cotTiempoEntregaDias > 0
+      (c) => c.cotTiempoEntregaDias !== null && c.cotTiempoEntregaDias !== undefined && c.cotTiempoEntregaDias >= 0
     );
     if (conTiempo.length === 0) return null;
     return Math.min(...conTiempo.map((c) => c.cotTiempoEntregaDias!));
@@ -202,6 +205,17 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
         </div>
 
         <div className="flex items-center gap-2">
+          {onStartTutorial && (
+            <button
+              type="button"
+              onClick={onStartTutorial}
+              className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+              title="Iniciar tutorial guiado de Selección de Cotizaciones"
+            >
+              <HelpCircle size={14} className="text-blue-600" />
+              <span>Tutorial</span>
+            </button>
+          )}
           <Button
             variant="primary"
             size="sm"
@@ -295,7 +309,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {mejorTiempoEntrega !== null ? `${mejorTiempoEntrega} días` : 'N/A'}
+              {mejorTiempoEntrega !== null ? (mejorTiempoEntrega === 0 ? 'Inmediata' : `${mejorTiempoEntrega} días`) : 'N/A'}
             </div>
             <div className="text-xs text-slate-400 mt-1 font-medium">Entrega más expedita</div>
           </div>
@@ -477,7 +491,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                         Entrega
                       </span>
                       <span className="font-bold text-slate-800">
-                        {cot.cotTiempoEntregaDias ? `${cot.cotTiempoEntregaDias} días hábiles` : 'Inmediata'}
+                        {cot.cotTiempoEntregaDias === 0 ? 'Inmediata' : (cot.cotTiempoEntregaDias ? `${cot.cotTiempoEntregaDias} días hábiles` : 'Inmediata')}
                       </span>
                     </div>
                     <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg space-y-0.5">
@@ -580,6 +594,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                         Ver Artículos
                       </Button>
                       <Button
+                        data-testid="btn-adjudicar-cotizacion"
                         variant="primary"
                         icon={Award}
                         size="sm"
@@ -686,7 +701,7 @@ export const SeleccionCotizacionView: React.FC<SeleccionCotizacionViewProps> = (
                 </h4>
                 <div className="flex items-center gap-4 text-slate-600 text-[11px]">
                   <span>NIT: <strong>{adjudicarTarget.cotNitProveedor || 'N/D'}</strong></span>
-                  <span>Entrega: <strong>{adjudicarTarget.cotTiempoEntregaDias || 0} días</strong></span>
+                  <span>Entrega: <strong>{adjudicarTarget.cotTiempoEntregaDias === 0 ? 'Inmediata' : `${adjudicarTarget.cotTiempoEntregaDias || 0} días`}</strong></span>
                   <span>Pago: <strong>{adjudicarTarget.cotCondicionPagoDias || 0} días</strong></span>
                 </div>
               </div>

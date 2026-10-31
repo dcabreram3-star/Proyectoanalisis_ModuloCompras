@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "create-user": "tsx scripts/crear-usuario.ts"
+    "create-user": "tsx scripts/crear-usuario.ts",
+    "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
     "@erp/contracts": "workspace:*",

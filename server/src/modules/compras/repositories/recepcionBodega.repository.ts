@@ -711,7 +711,7 @@ export class RecepcionBodegaRepository {
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
          SET SOL_ID_ESTADO = 4,
-             SOL_NOTAS = CASE WHEN SOL_NOTAS IS NULL THEN :nota ELSE SUBSTR(SOL_NOTAS || ' | ' || :nota, 1, 500) END
+             SOL_NOTAS = CASE WHEN SOL_NOTAS IS NULL THEN SUBSTRB(:nota, 1, 480) ELSE SUBSTRB(SOL_NOTAS || ' | ' || :nota, 1, 480) END
          WHERE SOL_NO_DOCUMENTO = :noSol
             OR SOL_NO_DOCUMENTO IN (
               SELECT c.COT_NO_DOCUMENTO_SOLICITUD

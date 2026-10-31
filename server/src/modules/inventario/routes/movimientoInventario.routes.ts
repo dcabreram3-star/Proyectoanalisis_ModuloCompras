@@ -3,6 +3,7 @@ import { MovimientoInventarioController } from '../controllers/movimientoInventa
 
 const router = Router();
 
+router.post('/agregar-existencias', MovimientoInventarioController.agregarExistencias);
 router.post('/', MovimientoInventarioController.crear);
 
 export default router;

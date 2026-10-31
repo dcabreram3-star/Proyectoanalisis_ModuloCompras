@@ -24,6 +24,12 @@ export class ThreeWayMatchService {
       throw new Error('Datos incompletos para liquidar el 3-Way Match (se requiere PO, Recepción, Factura y Proveedor).');
     }
 
+    // Inmutabilidad transaccional: Una orden ya liquidada ante CXP es definitiva e inmutable
+    const matchData = await this.obtenerDatosThreeWayMatch(dto.noPo.trim());
+    if (matchData && (matchData.ordenCompra?.ocoIdEstado === 5 || matchData.ordenCompra?.estNombreEstado?.toUpperCase().includes('LIQUID'))) {
+      throw new Error(`La Orden de Compra ${dto.noPo} ya fue liquidada formalmente ante Cuentas por Pagar. La transacción es definitiva e inmutable.`);
+    }
+
     if (Number(dto.totalFactura) <= 0) {
       throw new Error('El monto total de la factura debe ser mayor a Q 0.00');
     }

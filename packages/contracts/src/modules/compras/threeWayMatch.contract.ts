@@ -82,6 +82,7 @@ export interface ILiquidarThreeWayMatchDTO {
   rutaArchivoPdf?: string;
   notasLiquidacion?: string;
   toleranciaAceptada?: boolean;
+  idUsuarioCreador?: number;
   items?: IItemThreeWayComparison[];
 }
 

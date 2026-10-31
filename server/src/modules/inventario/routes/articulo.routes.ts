@@ -1,8 +1,18 @@
 // server/src/modules/inventario/routes/articulo.routes.ts
 import { Router } from 'express';
 import { ArticuloController } from '../controllers/articulo.controller.js';
+import { MovimientoInventarioController } from '../controllers/movimientoInventario.controller.js';
 
 const router = Router();
+
+// Endpoint para añadir existencias a productos
+router.post('/agregar-existencias', MovimientoInventarioController.agregarExistencias);
+router.post('/:codigo/existencias', (req, _res, next) => {
+  if (req.params.codigo && !req.body.codigoArticulo) {
+    req.body.codigoArticulo = req.params.codigo;
+  }
+  next();
+}, MovimientoInventarioController.agregarExistencias);
 
 // Endpoint para listar todos los artículos
 router.get('/', ArticuloController.obtenerTodos);

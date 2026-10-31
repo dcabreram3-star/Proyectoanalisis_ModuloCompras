@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { RecepcionBodegaController } from '../controllers/recepcionBodega.controller.js';
+import { multerPdfFilter, MAX_FILE_SIZE_BYTES } from '../utils/fileValidator.js';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  fileFilter: multerPdfFilter,
+});
 
 // Endpoints de Recepción en Bodega e Inventario Kardex
 router.get('/', RecepcionBodegaController.listar);

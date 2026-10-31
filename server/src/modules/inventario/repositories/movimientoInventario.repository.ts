@@ -1,25 +1,88 @@
-import { execute, withTransaction, getConnection } from '../../../config/database.js';
+import { withTransaction } from '../../../config/database.js';
 import { IMovimientoInventarioCreateDTO } from '@erp/contracts';
+import { InventarioCriterios } from '../utils/inventarioCriterios.js';
 
 export class MovimientoInventarioRepository {
-  static async create(data: IMovimientoInventarioCreateDTO, noMovimiento: string): Promise<string> {
+  static async create(
+    data: IMovimientoInventarioCreateDTO,
+    noMovimiento: string
+  ): Promise<{ noMovimiento: string; advertenciaConcurrencia?: string }> {
     try {
       return await withTransaction(async (connection) => {
-        // 1. Obtener ID del tipo de movimiento
-        const sqlTipoMov = `SELECT TMI_ID_TIPO_MOVIMIENTO FROM CMP_TIPO_MOVIMIENTO_INV WHERE TMI_CODIGO = :codigo`;
-        const resTipoMov = await connection.execute<{ TMI_ID_TIPO_MOVIMIENTO: number }>(sqlTipoMov, { codigo: data.tipoMovimiento });
-        
-        let idTipoMovimiento = 1; // Fallback
-        if (resTipoMov.rows && resTipoMov.rows.length > 0) {
-          idTipoMovimiento = resTipoMov.rows[0].TMI_ID_TIPO_MOVIMIENTO;
+        // 1. Validar reglas del tipo de movimiento (INV-002)
+        const reglaTipo = InventarioCriterios.validarTipoMovimiento(data.tipoMovimiento);
+
+        // 2. Validar que la bodega de origen exista y esté activa
+        const sqlBodegaOrigen = `SELECT BOD_ID_BODEGA, BOD_ACTIVO FROM CMP_BODEGA WHERE BOD_ID_BODEGA = :idBodega`;
+        const resBodegaOrigen = await connection.execute<any>(sqlBodegaOrigen, { idBodega: data.idBodegaOrigen });
+        if (!resBodegaOrigen.rows || resBodegaOrigen.rows.length === 0) {
+          throw new Error(`La bodega de origen #${data.idBodegaOrigen} no existe en el catálogo.`);
+        }
+        if (Number(resBodegaOrigen.rows[0].BOD_ACTIVO || resBodegaOrigen.rows[0][1]) !== 1) {
+          throw new Error(`La bodega de origen #${data.idBodegaOrigen} está inactiva.`);
         }
 
-        // Obtener siguiente ID manual para Cabecera (Evitar ORA-00001 por secuencias desincronizadas)
-        const sqlMaxId = `SELECT COALESCE(MAX(MIN_ID_MOVIMIENTO), 0) + 1 AS NEXT_ID FROM CMP_MOVIMIENTO_INVENTARIO`;
-        const resMaxId = await connection.execute<{ NEXT_ID: number }>(sqlMaxId);
-        const nextIdMovimiento = resMaxId.rows ? resMaxId.rows[0].NEXT_ID : 1;
+        // Si es transferencia, validar bodega destino
+        if (reglaTipo.requiereDestino && data.idBodegaDestino) {
+          const sqlBodegaDestino = `SELECT BOD_ID_BODEGA, BOD_ACTIVO FROM CMP_BODEGA WHERE BOD_ID_BODEGA = :idBodega`;
+          const resBodegaDestino = await connection.execute<any>(sqlBodegaDestino, { idBodega: data.idBodegaDestino });
+          if (!resBodegaDestino.rows || resBodegaDestino.rows.length === 0) {
+            throw new Error(`La bodega de destino #${data.idBodegaDestino} no existe en el catálogo.`);
+          }
+          if (Number(resBodegaDestino.rows[0].BOD_ACTIVO || resBodegaDestino.rows[0][1]) !== 1) {
+            throw new Error(`La bodega de destino #${data.idBodegaDestino} está inactiva.`);
+          }
+        }
 
-        // 2. Insertar Cabecera
+        // 3. Validar existencia y estado activo de cada artículo (INV-002)
+        for (const det of data.detalles) {
+          const sqlArt = `
+            SELECT ART_CODIGO_ARTICULO, ART_DESCRIPCION, ART_ACTIVO 
+            FROM CMP_ARTICULO 
+            WHERE UPPER(TRIM(ART_CODIGO_ARTICULO)) = UPPER(TRIM(:codigo))
+          `;
+          const resArt = await connection.execute<any>(sqlArt, { codigo: det.codigoArticulo });
+          if (!resArt.rows || resArt.rows.length === 0) {
+            throw new Error(`El artículo con código "${det.codigoArticulo}" no existe en el catálogo.`);
+          }
+          const artActivo = Number(resArt.rows[0].ART_ACTIVO || resArt.rows[0][2] || 0);
+          if (artActivo !== 1) {
+            throw new Error(`El artículo "${det.codigoArticulo}" se encuentra inactivo y no puede registrar movimientos.`);
+          }
+        }
+
+        // 4. Control de concurrencia: verificar si hay toma física activa en bodega origen o destino (INV-012)
+        let advertenciaConcurrencia: string | undefined;
+        let prefijoConcurrencia = '';
+        const tomaOrigen = await InventarioCriterios.verificarTomaFisicaActiva(connection, data.idBodegaOrigen);
+        if (tomaOrigen.tieneTomaActiva) {
+          advertenciaConcurrencia = `Advertencia: Se aplicó un movimiento en la bodega #${data.idBodegaOrigen} mientras tiene una Toma Física activa (${tomaOrigen.numeroToma}). Requiere conciliación de conteo.`;
+          prefijoConcurrencia += `[CONCURRENCIA: Toma Física activa ${tomaOrigen.numeroToma} en Bodega #${data.idBodegaOrigen}] `;
+        }
+
+        if (reglaTipo.requiereDestino && data.idBodegaDestino) {
+          const tomaDestino = await InventarioCriterios.verificarTomaFisicaActiva(connection, data.idBodegaDestino);
+          if (tomaDestino.tieneTomaActiva) {
+            const adv = `Advertencia: Se aplicó un movimiento con destino en bodega #${data.idBodegaDestino} con Toma Física activa (${tomaDestino.numeroToma}).`;
+            advertenciaConcurrencia = advertenciaConcurrencia ? `${advertenciaConcurrencia} | ${adv}` : adv;
+            prefijoConcurrencia += `[CONCURRENCIA: Toma Física activa ${tomaDestino.numeroToma} en Bodega #${data.idBodegaDestino}] `;
+          }
+        }
+
+        // 5. Obtener ID del tipo de movimiento en base de datos
+        const sqlTipoMov = `SELECT TMI_ID_TIPO_MOVIMIENTO FROM CMP_TIPO_MOVIMIENTO_INV WHERE TMI_CODIGO = :codigo`;
+        const resTipoMov = await connection.execute<any>(sqlTipoMov, { codigo: reglaTipo.codigo });
+        let idTipoMovimiento = 1;
+        if (resTipoMov.rows && resTipoMov.rows.length > 0) {
+          idTipoMovimiento = Number(resTipoMov.rows[0].TMI_ID_TIPO_MOVIMIENTO || resTipoMov.rows[0][0]);
+        }
+
+        // Obtener siguiente ID para Cabecera
+        const sqlMaxId = `SELECT COALESCE(MAX(MIN_ID_MOVIMIENTO), 0) + 1 AS NEXT_ID FROM CMP_MOVIMIENTO_INVENTARIO`;
+        const resMaxId = await connection.execute<any>(sqlMaxId);
+        const nextIdMovimiento = Number(resMaxId.rows?.[0]?.NEXT_ID || resMaxId.rows?.[0]?.[0] || 1);
+
+        // 6. Insertar Cabecera de Movimiento
         const sqlCabecera = `
           INSERT INTO CMP_MOVIMIENTO_INVENTARIO (
             MIN_ID_MOVIMIENTO,
@@ -41,103 +104,111 @@ export class MovimientoInventarioRepository {
             :observaciones
           )
         `;
-        
-        const bindsCabecera = {
+
+        const obsFinal = `${prefijoConcurrencia}${data.observaciones || ''}`.trim() || null;
+
+        await connection.execute(sqlCabecera, {
           idMov: nextIdMovimiento,
           numero: noMovimiento,
           tipo: idTipoMovimiento,
           bodegaOrigen: data.idBodegaOrigen,
           bodegaDestino: data.idBodegaDestino || null,
           usuario: data.idUsuario,
-          observaciones: data.observaciones || null
-        };
-
-        await connection.execute(sqlCabecera, bindsCabecera);
+          observaciones: obsFinal,
+        });
 
         // Obtener siguiente ID base para detalles
         const sqlMaxDet = `SELECT COALESCE(MAX(DMI_ID_DETALLE), 0) AS MAX_ID FROM CMP_DETALLE_MOVIMIENTO_INV`;
-        const resMaxDet = await connection.execute<{ MAX_ID: number }>(sqlMaxDet);
-        let currentDetId = resMaxDet.rows ? resMaxDet.rows[0].MAX_ID : 0;
+        const resMaxDet = await connection.execute<any>(sqlMaxDet);
+        let currentDetId = Number(resMaxDet.rows?.[0]?.MAX_ID || resMaxDet.rows?.[0]?.[0] || 0);
 
-        // 3. Procesar Detalles y Actualizar Inventario
+        // 7. Procesar cada detalle con criterios unificados (INV-010)
         for (const det of data.detalles) {
-          // Función auxiliar para actualizar stock de una bodega
-          const actualizarStock = async (idBodega: number, codigoArticulo: string, cantidad: number, factor: 1 | -1) => {
-            const sqlInv = `SELECT INV_EXISTENCIA_ACTUAL FROM CMP_INVENTARIO WHERE INV_CODIGO_ARTICULO = :codigo AND INV_ID_BODEGA = :bodega FOR UPDATE`;
-            const resInv = await connection.execute<{ INV_EXISTENCIA_ACTUAL: number }>(sqlInv, { codigo: codigoArticulo, bodega: idBodega });
-            
-            let existenciaPrevia = 0;
-            let existenciaPosterior = 0;
-
-            if (resInv.rows && resInv.rows.length > 0) {
-              existenciaPrevia = resInv.rows[0].INV_EXISTENCIA_ACTUAL;
-              existenciaPosterior = existenciaPrevia + (cantidad * factor);
-              
-              if (existenciaPosterior < 0 && factor === -1) {
-                throw new Error(`Stock insuficiente para el artículo ${codigoArticulo} en la bodega seleccionada. Actualmente hay ${existenciaPrevia} unidades y se intentó descontar ${cantidad}.`);
-              }
-
-              const sqlUpdate = `UPDATE CMP_INVENTARIO SET INV_EXISTENCIA_ACTUAL = :nueva, INV_STOCK_DISPONIBLE = :nueva WHERE INV_CODIGO_ARTICULO = :codigo AND INV_ID_BODEGA = :bodega`;
-              await connection.execute(sqlUpdate, { nueva: existenciaPosterior, codigo: codigoArticulo, bodega: idBodega });
-            } else {
-              if (factor === -1) {
-                throw new Error(`El artículo ${codigoArticulo} no existe en la bodega de origen para realizar la salida.`);
-              }
-              // Si es entrada y no existe, insertarlo en CMP_INVENTARIO
-              existenciaPrevia = 0;
-              existenciaPosterior = cantidad;
-              
-              // Obtener siguiente ID para Inventario (Evitar ORA-00001)
-              const sqlMaxInv = `SELECT COALESCE(MAX(INV_ID_INVENTARIO), 0) + 1 AS NEXT_INV_ID FROM CMP_INVENTARIO`;
-              const resMaxInv = await connection.execute<{ NEXT_INV_ID: number }>(sqlMaxInv);
-              const nextInvId = resMaxInv.rows ? resMaxInv.rows[0].NEXT_INV_ID : 1;
-
-              const sqlInsertInv = `
-                INSERT INTO CMP_INVENTARIO (INV_ID_INVENTARIO, INV_ID_BODEGA, INV_CODIGO_ARTICULO, INV_EXISTENCIA_ACTUAL, INV_STOCK_DISPONIBLE, INV_COSTO_PROMEDIO_LOCAL)
-                VALUES (:idInv, :bodega, :codigo, :cantidad, :cantidad, :costo)
-              `;
-              await connection.execute(sqlInsertInv, { 
-                idInv: nextInvId,
-                bodega: idBodega, 
-                codigo: codigoArticulo, 
-                cantidad: existenciaPosterior,
-                costo: det.costoUnitario || 0
-              });
-            }
-
-            return { existenciaPrevia, existenciaPosterior };
-          };
-
           let prev = 0;
           let post = 0;
+          let costoUnitario = det.costoUnitario || 0;
+          let ubiAplicada: number | null = null;
+          let loteAplicado: number | null = null;
 
-          // Naturaleza del movimiento (+ o -)
-          if (data.tipoMovimiento === 'AJU_ENTRADA' || data.tipoMovimiento === 'TRF_ENTRADA') {
-            const res = await actualizarStock(data.idBodegaOrigen, det.codigoArticulo, det.cantidad, 1);
-            prev = res.existenciaPrevia; post = res.existenciaPosterior;
-          } else if (data.tipoMovimiento === 'AJU_SALIDA') {
-            const res = await actualizarStock(data.idBodegaOrigen, det.codigoArticulo, det.cantidad, -1);
-            prev = res.existenciaPrevia; post = res.existenciaPosterior;
-          } else if (data.tipoMovimiento === 'TRF_SALIDA') {
-            // Si es transferencia, descontamos de origen y sumamos en destino
-            if (!data.idBodegaDestino) throw new Error('Para transferencia se requiere bodega destino.');
-            
+          if (reglaTipo.codigo === 'AJU_ENTRADA' || reglaTipo.codigo === 'TRF_ENTRADA') {
+            const res = await InventarioCriterios.aplicarStockConCriterios({
+              conn: connection,
+              idBodega: data.idBodegaOrigen,
+              codigoArticulo: det.codigoArticulo,
+              cantidad: det.cantidad,
+              factor: 1,
+              costoUnitario: det.costoUnitario || 0,
+              idUbicacion: det.idUbicacion,
+              idLote: det.idLote,
+              afectaCosto: reglaTipo.afectaCosto,
+            });
+            prev = res.existenciaPrevia;
+            post = res.existenciaPosterior;
+            costoUnitario = res.costoUnitarioAplicado;
+            ubiAplicada = res.idUbicacionValida;
+            loteAplicado = res.idLoteValido;
+          } else if (reglaTipo.codigo === 'AJU_SALIDA') {
+            const res = await InventarioCriterios.aplicarStockConCriterios({
+              conn: connection,
+              idBodega: data.idBodegaOrigen,
+              codigoArticulo: det.codigoArticulo,
+              cantidad: det.cantidad,
+              factor: -1,
+              costoUnitario: det.costoUnitario,
+              idUbicacion: det.idUbicacion,
+              idLote: det.idLote,
+              afectaCosto: false,
+            });
+            prev = res.existenciaPrevia;
+            post = res.existenciaPosterior;
+            costoUnitario = res.costoUnitarioAplicado;
+            ubiAplicada = res.idUbicacionValida;
+            loteAplicado = res.idLoteValido;
+          } else if (reglaTipo.codigo === 'TRF_SALIDA') {
+            if (!data.idBodegaDestino) throw new Error('Para transferencias se requiere bodega destino.');
+
             // Descontar origen
-            const resOrigen = await actualizarStock(data.idBodegaOrigen, det.codigoArticulo, det.cantidad, -1);
-            prev = resOrigen.existenciaPrevia; post = resOrigen.existenciaPosterior; // Registramos en el detalle los datos de origen
+            const resOrigen = await InventarioCriterios.aplicarStockConCriterios({
+              conn: connection,
+              idBodega: data.idBodegaOrigen,
+              codigoArticulo: det.codigoArticulo,
+              cantidad: det.cantidad,
+              factor: -1,
+              costoUnitario: det.costoUnitario,
+              idUbicacion: det.idUbicacion,
+              idLote: det.idLote,
+              afectaCosto: false,
+            });
+            prev = resOrigen.existenciaPrevia;
+            post = resOrigen.existenciaPosterior;
+            costoUnitario = resOrigen.costoUnitarioAplicado;
+            ubiAplicada = resOrigen.idUbicacionValida;
+            loteAplicado = resOrigen.idLoteValido;
 
             // Aumentar destino
-            await actualizarStock(data.idBodegaDestino, det.codigoArticulo, det.cantidad, 1);
+            await InventarioCriterios.aplicarStockConCriterios({
+              conn: connection,
+              idBodega: data.idBodegaDestino,
+              codigoArticulo: det.codigoArticulo,
+              cantidad: det.cantidad,
+              factor: 1,
+              costoUnitario: costoUnitario,
+              idUbicacion: null, // Destino usará ubicación por defecto
+              idLote: loteAplicado,
+              afectaCosto: false,
+            });
           }
 
           currentDetId++;
 
-          // Insertar línea de detalle
+          // Insertar detalle del movimiento con lotes y ubicaciones unificados (INV-010)
           const sqlDetalle = `
             INSERT INTO CMP_DETALLE_MOVIMIENTO_INV (
               DMI_ID_DETALLE,
               DMI_ID_MOVIMIENTO,
               DMI_CODIGO_ARTICULO,
+              DMI_ID_LOTE,
+              DMI_ID_UBICACION,
               DMI_CANTIDAD,
               DMI_COSTO_UNITARIO,
               DMI_COSTO_TOTAL,
@@ -147,6 +218,8 @@ export class MovimientoInventarioRepository {
               :idDet,
               :idMov,
               :codigoArticulo,
+              :idLote,
+              :idUbi,
               :cantidad,
               :costoUnitario,
               :costoTotal,
@@ -154,21 +227,22 @@ export class MovimientoInventarioRepository {
               :post
             )
           `;
-          
-          const costoUnitario = det.costoUnitario || 0;
+
           await connection.execute(sqlDetalle, {
             idDet: currentDetId,
             idMov: nextIdMovimiento,
             codigoArticulo: det.codigoArticulo,
+            idLote: loteAplicado,
+            idUbi: ubiAplicada,
             cantidad: det.cantidad,
             costoUnitario: costoUnitario,
-            costoTotal: costoUnitario * det.cantidad,
-            prev: prev,
-            post: post
+            costoTotal: +(costoUnitario * det.cantidad).toFixed(2),
+            prev,
+            post,
           });
         }
 
-        return noMovimiento;
+        return { noMovimiento, advertenciaConcurrencia };
       });
     } catch (error: any) {
       if (error.message && error.message.includes('ORA-00001')) {

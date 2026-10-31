@@ -3,6 +3,7 @@ import { X, Tag, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import { IMarca, ICreateMarcaDTO, IUpdateMarcaDTO } from '@erp/contracts';
 import { sanitizeNominalText } from '../../../utils/sanitizers';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface MarcaModalProps {
   isOpen: boolean;
@@ -29,12 +30,26 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
       setNombre(marca.marNombreMarca);
       setActivo(marca.marActivo === 1);
     } else {
-      setNombre('');
-      setActivo(true);
+      const draft = draftStorage.get<{ nombre?: string; activo?: boolean }>('erp_draft_marca_nueva');
+      if (draft && isOpen) {
+        setNombre(draft.nombre || '');
+        setActivo(draft.activo !== undefined ? draft.activo : true);
+      } else {
+        setNombre('');
+        setActivo(true);
+      }
     }
     setError(null);
     setNombreError(null);
   }, [marca, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (nombre.trim()) {
+      draftStorage.set('erp_draft_marca_nueva', { nombre, activo });
+    }
+  }, [nombre, activo, isOpen, isEditing]);
 
   if (!isOpen) return null;
 
@@ -82,6 +97,7 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
           marActivo: activo ? 1 : 0,
         });
       }
+      draftStorage.remove('erp_draft_marca_nueva');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar la marca.');
@@ -125,16 +141,18 @@ export const MarcaModal: React.FC<MarcaModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DE LA MARCA"
-            required
-            placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            autoFocus
-            maxLength={100}
-            error={nombreError || undefined}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NOMBRE DE LA MARCA"
+              required
+              placeholder="Ej. HP, Dell, Herman Miller, Genérica..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              autoFocus
+              maxLength={100}
+              error={nombreError || undefined}
+            />
+          </div>
 
           <div className="pt-1">
             <Checkbox

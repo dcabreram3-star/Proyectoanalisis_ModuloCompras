@@ -1,4 +1,5 @@
 import { execute, withTransaction } from '../../../config/database.js';
+import { BitacoraRepository } from './bitacora.repository.js';
 import {
   ISolicitudCompra,
   ISolicitudCompraFilterParams,
@@ -7,6 +8,8 @@ import {
   IUpdateSolicitudCompraDTO,
   IAprobarSolicitudDTO,
   IRechazarSolicitudDTO,
+  IEmpleadoResponsableOption,
+  IDepartamentoOption,
 } from '@erp/contracts';
 
 /**
@@ -60,8 +63,14 @@ function mapRowToSolicitud(row: ISolicitudCompraDbRow): ISolicitudCompra {
     nombreEstado = '3WAY_MATCH';
   } else if (estadoId === 4 || tienePo) {
     nombreEstado = 'RECIBIDA';
-  } else if (estadoId === 3 && (tieneCotGanadora || notasUpper.includes('ADJUDICAD') || notasUpper.includes('PRESUPUESTO'))) {
-    nombreEstado = 'PRESUPUESTO';
+  } else if (estadoId === 2 || estadoUpper === 'APROBADA' || estadoUpper.startsWith('APROBAD')) {
+    nombreEstado = 'APROBADA';
+  } else if (
+    estadoUpper.includes('PRESUPUESTO') ||
+    estadoUpper.includes('PENDIENTE DE VALIDACI') ||
+    (estadoId === 3 && (tieneCotGanadora || notasUpper.includes('ADJUDICAD') || notasUpper.includes('PRESUPUESTO')))
+  ) {
+    nombreEstado = rawEstado || 'Pendiente de Validación de Presupuesto';
   }
 
   return {
@@ -178,6 +187,30 @@ export class SolicitudCompraRepository {
     if (filters.idEstado) {
       sql += ` AND S.SOL_ID_ESTADO = :idEstado`;
       binds.idEstado = filters.idEstado;
+    }
+
+    if (filters.soloActivas) {
+      sql += `
+        AND S.SOL_ID_ESTADO NOT IN (5, 6)
+        AND UPPER(NVL(E.EST_NOMBRE_ESTADO, '')) NOT IN ('FINALIZADA', 'CERRADA', 'RECHAZADA')
+        AND (S.SOL_NOTAS IS NULL OR (
+          UPPER(S.SOL_NOTAS) NOT LIKE '%[RECHAZADA]%' 
+          AND UPPER(S.SOL_NOTAS) NOT LIKE '%[3-WAY MATCH LIQUIDADO]%'
+        ))
+      `;
+    }
+
+    if (filters.soloHistorial) {
+      sql += `
+        AND (
+          S.SOL_ID_ESTADO IN (5, 6)
+          OR UPPER(NVL(E.EST_NOMBRE_ESTADO, '')) IN ('FINALIZADA', 'CERRADA', 'RECHAZADA')
+          OR (S.SOL_NOTAS IS NOT NULL AND (
+            UPPER(S.SOL_NOTAS) LIKE '%[RECHAZADA]%' 
+            OR UPPER(S.SOL_NOTAS) LIKE '%[3-WAY MATCH LIQUIDADO]%'
+          ))
+        )
+      `;
     }
 
     sql += ` ORDER BY S.SOL_FECHA DESC, S.SOL_NO_DOCUMENTO DESC`;
@@ -319,9 +352,11 @@ export class SolicitudCompraRepository {
    */
   static async aprobar(noDocumento: string, dto: IAprobarSolicitudDTO): Promise<ISolicitudCompraCompleta> {
     await withTransaction(async (conn) => {
-      // 1. Obtener ID del estado APROBADA (generalmente 2)
+      // 1. Asignar estrictamente el ID del estado APROBADA (ID 2 según CMP_ESTADO)
       const estRes = await conn.execute<any>(
-        `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(EST_NOMBRE_ESTADO) = 'APROBADA' AND ROWNUM = 1`
+        `SELECT EST_ID_ESTADO FROM CMP_ESTADO 
+         WHERE EST_ID_ESTADO = 2 OR UPPER(TRIM(EST_NOMBRE_ESTADO)) = 'APROBADA'
+         ORDER BY CASE WHEN EST_ID_ESTADO = 2 THEN 1 ELSE 2 END`
       );
       const estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : 2;
 
@@ -351,10 +386,13 @@ export class SolicitudCompraRepository {
         );
       }
 
-      // 3. Actualizar estado y dictamen en notas
-      const notaAprobacion = dto.notasAprobacion
-        ? `[APROBADA]: ${dto.notasAprobacion}`
-        : `[APROBADA]: Autorizada para cotización`;
+      // 3. Registrar formalmente la transición, actor responsable, fecha exacta y dictamen (COMP-003)
+      const fechaExacta = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const actorId = (dto as any).usuarioAprobador || (dto as any).idUsuario || 'Gerencia / Compras';
+      const dictamen = dto.notasAprobacion && dto.notasAprobacion.trim()
+        ? dto.notasAprobacion.trim()
+        : 'Autorizada para cotización';
+      const notaAprobacion = `[APROBADA] [${fechaExacta}] [Actor: ${actorId}]: ${dictamen}`;
 
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
@@ -367,6 +405,25 @@ export class SolicitudCompraRepository {
           noDocumento,
         }
       );
+
+      // 4. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          idUsuario: typeof actorId === 'number' ? actorId : null,
+          accion: 'APROBACION_SOLICITUD',
+          valoresPrevios: { noDocumento, etapaPrevia: 'PENDIENTE' },
+          valoresPosteriores: {
+            noDocumento,
+            nuevoEstado: 'APROBADA',
+            estadoId: estId,
+            fechaExacta,
+            actor: String(actorId),
+            dictamen,
+            detallesAprobados: dto.detalles,
+          },
+        },
+        conn
+      );
     });
 
     const updated = await this.findByNoDocumentoCompleto(noDocumento);
@@ -375,27 +432,23 @@ export class SolicitudCompraRepository {
   }
 
   /**
-   * Rechaza o niega la solicitud, estableciendo el estado RECHAZADA,
+   * Rechaza o niega la solicitud, estableciendo el estado RECHAZADA (ID 6),
    * fijando cantidades aprobadas en 0 y cerrando el ciclo de compras de forma detenida.
    */
   static async rechazar(noDocumento: string, dto: IRechazarSolicitudDTO): Promise<ISolicitudCompraCompleta> {
     await withTransaction(async (conn) => {
-      // 1. Obtener o registrar ID del estado RECHAZADA en CMP_ESTADO
+      // 1. Obtener o registrar ID del estado RECHAZADA en CMP_ESTADO (estrictamente ID 6)
       const estRes = await conn.execute<any>(
-        `SELECT EST_ID_ESTADO FROM CMP_ESTADO WHERE UPPER(TRIM(EST_NOMBRE_ESTADO)) LIKE '%RECHAZAD%' AND ROWNUM = 1`
+        `SELECT EST_ID_ESTADO FROM CMP_ESTADO 
+         WHERE EST_ID_ESTADO = 6 OR UPPER(TRIM(EST_NOMBRE_ESTADO)) = 'RECHAZADA'
+         ORDER BY CASE WHEN EST_ID_ESTADO = 6 THEN 1 ELSE 2 END`
       );
-      let estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : null;
-      if (!estId) {
-        // Si no existe el estado RECHAZADA en el catálogo, insertarlo dinámicamente con el siguiente ID disponible
-        const maxRes = await conn.execute<any>(
-          `SELECT NVL(MAX(EST_ID_ESTADO), 0) + 1 AS NEXT_ID FROM CMP_ESTADO`
-        );
-        const nextId = Number(maxRes.rows?.[0]?.NEXT_ID || 6);
+      let estId = estRes.rows?.[0]?.EST_ID_ESTADO ? Number(estRes.rows[0].EST_ID_ESTADO) : 6;
+      if (!estRes.rows || estRes.rows.length === 0) {
         await conn.execute(
-          `INSERT INTO CMP_ESTADO (EST_ID_ESTADO, EST_NOMBRE_ESTADO) VALUES (:nextId, 'RECHAZADA')`,
-          { nextId }
+          `INSERT INTO CMP_ESTADO (EST_ID_ESTADO, EST_NOMBRE_ESTADO) VALUES (6, 'RECHAZADA')`
         );
-        estId = nextId;
+        estId = 6;
       }
 
       // 2. Establecer cantidades aprobadas en 0
@@ -406,8 +459,10 @@ export class SolicitudCompraRepository {
         { noDocumento }
       );
 
-      // 3. Actualizar estado y registrar motivo de rechazo
-      const notaRechazo = `[RECHAZADA]: ${dto.motivoRechazo.trim()}`;
+      // 3. Registrar formalmente el rechazo, timestamp y actor (COMP-003)
+      const fechaExacta = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const actorId = (dto as any).usuarioRechazo || (dto as any).idUsuario || 'Gerencia / Compras';
+      const notaRechazo = `[RECHAZADA] [${fechaExacta}] [Actor: ${actorId}]: ${dto.motivoRechazo.trim()}`;
 
       await conn.execute(
         `UPDATE CMP_SOLICITUD_COMPRA 
@@ -419,6 +474,24 @@ export class SolicitudCompraRepository {
           nota: notaRechazo,
           noDocumento,
         }
+      );
+
+      // 4. Registro inalterable en bitácora de auditoría (COMP-009)
+      await BitacoraRepository.registrar(
+        {
+          idUsuario: typeof actorId === 'number' ? actorId : null,
+          accion: 'RECHAZO_SOLICITUD',
+          valoresPrevios: { noDocumento, etapaPrevia: 'PENDIENTE' },
+          valoresPosteriores: {
+            noDocumento,
+            nuevoEstado: 'RECHAZADA',
+            estadoId: estId,
+            fechaExacta,
+            actor: String(actorId),
+            motivoRechazo: dto.motivoRechazo.trim(),
+          },
+        },
+        conn
       );
     });
 
@@ -469,14 +542,28 @@ export class SolicitudCompraRepository {
   }
 
   /**
-   * Crea una nueva solicitud de compra con sus detalles usando una transacción
+   * Crea una nueva solicitud de compra con sus detalles usando una transacción atómica.
+   * Si no se suministra noDocumento, genera de forma atómica y consecutiva el folio 'SOL-YYYY-XXXX'.
    */
-  static async create(solicitudData: import('@erp/contracts').ISolicitudCompraCreateDTO, noDocumento: string): Promise<string> {
+  static async create(solicitudData: import('@erp/contracts').ISolicitudCompraCreateDTO, noDocParam?: string): Promise<string> {
     return withTransaction(async (connection) => {
       // 1. Obtener y validar el estado inicial dinámicamente en CMP_ESTADO
       const idEstadoInicial = await this.obtenerEstadoInicial(connection);
 
-      // 2. Insertar cabecera
+      // 2. Generación atómica y consecutiva del folio si no se especificó
+      let noDocumento = noDocParam;
+      if (!noDocumento || noDocumento.trim() === '') {
+        const year = new Date().getFullYear();
+        const nextCodeRes = await connection.execute<any>(`
+          SELECT NVL(MAX(TO_NUMBER(REGEXP_SUBSTR(SOL_NO_DOCUMENTO, '[0-9]+$'))), 0) + 1 AS NEXT_NUM 
+          FROM CMP_SOLICITUD_COMPRA 
+          WHERE REGEXP_LIKE(SOL_NO_DOCUMENTO, '^SOL-[0-9]{4}-[0-9]+$')
+        `);
+        const nextNum = Number(nextCodeRes.rows?.[0]?.NEXT_NUM || 1);
+        noDocumento = `SOL-${year}-${String(nextNum).padStart(4, '0')}`;
+      }
+
+      // 3. Insertar cabecera
       const sqlCabecera = `
         INSERT INTO CMP_SOLICITUD_COMPRA (
           SOL_NO_DOCUMENTO,
@@ -597,5 +684,66 @@ export class SolicitudCompraRepository {
 
       return noDocumento;
     });
+  }
+
+  /**
+   * Obtiene la lista de empleados activos desde la base de datos Oracle.
+   * Ejecuta: SELECT ID_EMPLEADO, CODIGO_EMPLEADO, NOMBRE, APELLIDO, PUESTO, EMAIL, ESTADO FROM EMPLEADO WHERE ESTADO = 'A'
+   */
+  static async getEmpleados(): Promise<IEmpleadoResponsableOption[]> {
+    try {
+      const sql = `
+        SELECT 
+          ID_EMPLEADO,
+          CODIGO_EMPLEADO,
+          NOMBRE,
+          APELLIDO,
+          TRIM(NOMBRE || ' ' || NVL(APELLIDO, '')) AS NOMBRE_COMPLETO,
+          PUESTO,
+          EMAIL,
+          ESTADO
+        FROM EMPLEADO
+        WHERE ESTADO = 'A'
+        ORDER BY NOMBRE ASC, APELLIDO ASC
+      `;
+      const result = await execute<any>(sql);
+      return (result.rows || []).map((r: any) => ({
+        idEmpleado: Number(r.ID_EMPLEADO),
+        codigoEmpleado: r.CODIGO_EMPLEADO ? String(r.CODIGO_EMPLEADO).trim() : null,
+        nombre: String(r.NOMBRE || '').trim(),
+        apellido: r.APELLIDO ? String(r.APELLIDO).trim() : null,
+        nombreCompleto: String(r.NOMBRE_COMPLETO || r.NOMBRE || `Empleado #${r.ID_EMPLEADO}`).trim(),
+        puesto: r.PUESTO ? String(r.PUESTO).trim() : null,
+        email: r.EMAIL ? String(r.EMAIL).trim() : null,
+        estado: r.ESTADO ? String(r.ESTADO).trim() : 'A',
+      }));
+    } catch (error: any) {
+      console.error('[SolicitudCompraRepository.getEmpleados Error]:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene la lista de departamentos activos desde la base de datos Oracle.
+   */
+  static async getDepartamentos(): Promise<IDepartamentoOption[]> {
+    try {
+      const sql = `
+        SELECT 
+          DEP_ID_DEPARTAMENTO,
+          DEP_NOMBRE_DEPARTAMENTO
+        FROM DEPARTAMENTO
+        WHERE DEP_ACTIVO = 1
+        ORDER BY DEP_NOMBRE_DEPARTAMENTO ASC
+      `;
+      const result = await execute<any>(sql);
+      return (result.rows || []).map((r: any) => ({
+        idDepartamento: Number(r.DEP_ID_DEPARTAMENTO),
+        nombreDepartamento: String(r.DEP_NOMBRE_DEPARTAMENTO).trim(),
+      }));
+    } catch (error: any) {
+      console.error('[SolicitudCompraRepository.getDepartamentos Error]:', error.message);
+      throw error;
+    }
   }
 }

@@ -208,6 +208,8 @@ export interface ISolicitudCompraFilterParams {
   noDocumento?: string;
   idDepartamento?: number;
   idEstado?: number;
+  soloActivas?: boolean;
+  soloHistorial?: boolean;
 }
 
 export interface ISolicitudCompraDetalleCreateDTO {
@@ -260,5 +262,21 @@ export interface IAprobarSolicitudDTO {
 
 export interface IRechazarSolicitudDTO {
   motivoRechazo: string;
+}
+
+export interface IEmpleadoResponsableOption {
+  idEmpleado: number;
+  codigoEmpleado?: string | null;
+  nombre: string;
+  apellido?: string | null;
+  nombreCompleto: string;
+  puesto?: string | null;
+  email?: string | null;
+  estado?: string | null;
+}
+
+export interface IDepartamentoOption {
+  idDepartamento: number;
+  nombreDepartamento: string;
 }
 

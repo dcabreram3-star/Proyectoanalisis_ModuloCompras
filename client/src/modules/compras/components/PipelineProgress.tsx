@@ -102,7 +102,6 @@ export const PIPELINE_STAGE_OPTIONS: PipelineStageOption[] = [
   { value: 'presupuesto', label: '4. Validación Presupuestaria', stageKey: 'presupuesto' },
   { value: 'bodega', label: '5. Recepción en Bodega', stageKey: 'bodega' },
   { value: '3way', label: '6. 3-Way Match / Liquidación', stageKey: '3way' },
-  { value: 'rechazada', label: '🚫 Solicitudes Rechazadas', stageKey: 'rechazada' },
 ];
 
 // ─── Normalization & Status Helpers ─────────────────────────────────────────

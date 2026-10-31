@@ -11,12 +11,14 @@ import {
 } from '../services/cotizacionClientService';
 import { SolicitudCompraClientService } from '../services/solicitudCompraClientService';
 import { articuloService } from '../../inventario/services/articulo.service';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface MatrizCotizacionesViewProps {
   solicitud?: SolicitudOriginalInfo;
   onBack?: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
+  onStartTutorial?: () => void;
 }
 
 const DEFAULT_SOLICITUD: SolicitudOriginalInfo = {
@@ -33,7 +35,7 @@ const EMPTY_PROVEEDOR_INPUT = (): ICotizacionMatrizProveedorInput => ({
   nombreProveedor: '',
   idProveedor: undefined,
   precioTotal: '',
-  tiempoEntregaDias: '',
+  tiempoEntregaDias: 1,
   plazoPago: '',
   archivoPdfBase64: null,
   archivoPdfNombre: null,
@@ -43,6 +45,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
   solicitud = DEFAULT_SOLICITUD,
   onBack,
   onSuccess,
+  onStartTutorial,
 }) => {
   const [proveedores, setProveedores] = useState<
     [ICotizacionMatrizProveedorInput, ICotizacionMatrizProveedorInput, ICotizacionMatrizProveedorInput]
@@ -141,7 +144,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
                 nombreProveedor: item.cotNombreProveedor || `Proveedor #${item.cotIdProveedor}`,
                 idProveedor: item.cotIdProveedor,
                 precioTotal: item.cotPrecioTotal,
-                tiempoEntregaDias: item.cotTiempoEntregaDias ?? '',
+                tiempoEntregaDias: item.cotTiempoEntregaDias !== undefined && item.cotTiempoEntregaDias !== null ? item.cotTiempoEntregaDias : 1,
                 plazoPago: item.cotCondicionPagoDias ? `${item.cotCondicionPagoDias} días` : '',
                 archivoPdfBase64: item.cotRutaArchivoPdf || (item.cotArchivoPdf ? String(item.cotArchivoPdf) : null),
                 archivoPdfNombre: item.cotRutaArchivoPdf || (item.cotArchivoPdf ? `cotizacion_${item.cotIdCotizacion}.pdf` : null),
@@ -151,9 +154,27 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
           });
         }
 
-        setProveedores(updated);
-        if (isExcepcion) {
-          setEsExcepcionUnico(true);
+        // Restauración de borrador local si el usuario recargó la página (F5)
+        const draftKey = `erp_draft_matriz_${solicitud?.noDocumento}`;
+        const savedDraft = draftStorage.get<{
+          proveedores: [ICotizacionMatrizProveedorInput, ICotizacionMatrizProveedorInput, ICotizacionMatrizProveedorInput];
+          esExcepcionUnico?: boolean;
+          justificacionExcepcion?: string;
+        }>(draftKey);
+
+        if (savedDraft && savedDraft.proveedores) {
+          setProveedores(savedDraft.proveedores);
+          if (savedDraft.esExcepcionUnico !== undefined) {
+            setEsExcepcionUnico(savedDraft.esExcepcionUnico);
+          }
+          if (savedDraft.justificacionExcepcion !== undefined) {
+            setJustificacionExcepcion(savedDraft.justificacionExcepcion);
+          }
+        } else {
+          setProveedores(updated);
+          if (isExcepcion) {
+            setEsExcepcionUnico(true);
+          }
         }
       } finally {
         if (isMounted) setIsLoadingData(false);
@@ -166,6 +187,20 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
       isMounted = false;
     };
   }, [solicitud?.noDocumento]);
+
+  // Autoguardado de borrador en localStorage conforme el usuario escribe o interactúa
+  const draftKey = `erp_draft_matriz_${solicitud?.noDocumento}`;
+  useEffect(() => {
+    if (isLoadingData || !solicitud?.noDocumento) return;
+    const hasActiveData = proveedores.some((p) => p.idProveedor || p.precioTotal !== '' || (p.detalles && p.detalles.some((d) => d.precioUnitario !== ''))) || Boolean(justificacionExcepcion?.trim());
+    if (hasActiveData) {
+      draftStorage.set(draftKey, {
+        proveedores,
+        esExcepcionUnico,
+        justificacionExcepcion,
+      });
+    }
+  }, [proveedores, esExcepcionUnico, justificacionExcepcion, isLoadingData, solicitud?.noDocumento, draftKey]);
 
   const handleProveedorChange = (index: number, updated: ICotizacionMatrizProveedorInput) => {
     setProveedores((prev) => {
@@ -233,6 +268,9 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
         justificacionExcepcion,
         deletedCotizacionIds
       );
+      // Limpiar borrador temporal al guardar exitosamente
+      draftStorage.remove(draftKey);
+
       setSuccessMsg(
         esExcepcionUnico
           ? '¡Cotización de Proveedor Único registrada exitosamente! Avanzando a la etapa de Selección...'
@@ -254,7 +292,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 w-full pb-12 min-w-0">
+    <div data-testid="matriz-cotizaciones-panel" className="space-y-6 w-full pb-12 min-w-0">
       {/* Top Breadcrumb & Document ID */}
       <div className="flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-3">
@@ -272,7 +310,20 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             Etapa 2 de 6
           </span>
         </div>
-        <span className="font-semibold text-slate-400">{solicitud.noDocumento}</span>
+        <div className="flex items-center gap-3">
+          {onStartTutorial && (
+            <button
+              type="button"
+              onClick={onStartTutorial}
+              className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+              title="Iniciar tutorial guiado de Matriz de Cotizaciones"
+            >
+              <HelpCircle size={13} className="text-blue-600" />
+              <span>Tutorial</span>
+            </button>
+          )}
+          <span className="font-semibold text-slate-400">{solicitud.noDocumento}</span>
+        </div>
       </div>
 
       {/* Solicitud Original Header Card */}
@@ -324,6 +375,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             title="Activar para registrar únicamente 1 proveedor con justificación técnica o comercial"
           >
             <input
+              data-testid="check-excepcion-unico"
               type="checkbox"
               id="chk-proveedor-unico"
               checked={esExcepcionUnico}
@@ -428,6 +480,7 @@ export const MatrizCotizacionesView: React.FC<MatrizCotizacionesViewProps> = ({
             Cancelar
           </Button>
           <Button
+            data-testid="btn-enviar-seleccion"
             variant="primary"
             icon={Send}
             disabled={isSubmitting}

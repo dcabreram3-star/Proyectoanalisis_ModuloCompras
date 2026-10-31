@@ -201,29 +201,33 @@ export const VehiculoModal: React.FC<VehiculoModalProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextInput
-              label="PLACA VEHICULAR"
-              required
-              placeholder="Ej. P-123ABC, C-456XYZ"
-              value={placa}
-              onChange={(e) => handlePlacaChange(e.target.value)}
-              autoFocus
-              maxLength={20}
-              error={placaError || undefined}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="sm:col-span-2">
+              <TextInput
+                label="PLACA VEHICULAR"
+                required
+                placeholder="Ej. P-123ABC, C-456XYZ"
+                value={placa}
+                onChange={(e) => handlePlacaChange(e.target.value)}
+                autoFocus
+                maxLength={20}
+                error={placaError || undefined}
+              />
+            </div>
 
-            <TextInput
-              label="AÑO DEL VEHÍCULO"
-              placeholder="Ej. 2024"
-              value={anio}
-              onChange={(e) => handleAnioChange(e.target.value)}
-              maxLength={4}
-              error={anioError || undefined}
-            />
+            <div className="sm:col-span-1">
+              <TextInput
+                label="AÑO"
+                placeholder="Ej. 2024"
+                value={anio}
+                onChange={(e) => handleAnioChange(e.target.value)}
+                maxLength={4}
+                error={anioError || undefined}
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <TextInput
               label="MARCA"
               required
@@ -245,17 +249,19 @@ export const VehiculoModal: React.FC<VehiculoModalProps> = ({
             />
           </div>
 
-          <Select
-            label="ESTADO OPERATIVO"
-            required
-            value={estado}
-            onChange={(e) => setEstado(e.target.value as any)}
-            options={[
-              { value: 'ACTIVO', label: 'ACTIVO (Disponible para rutas y entregas)' },
-              { value: 'MANTENIMIENTO', label: 'MANTENIMIENTO (En taller o revisión mecánica)' },
-              { value: 'BAJA', label: 'BAJA (Fuera de circulación)' },
-            ]}
-          />
+          <div className="max-w-md">
+            <Select
+              label="ESTADO OPERATIVO"
+              required
+              value={estado}
+              onChange={(e) => setEstado(e.target.value as any)}
+              options={[
+                { value: 'ACTIVO', label: 'ACTIVO (Disponible para rutas y entregas)' },
+                { value: 'MANTENIMIENTO', label: 'MANTENIMIENTO (En taller o revisión mecánica)' },
+                { value: 'BAJA', label: 'BAJA (Fuera de circulación)' },
+              ]}
+            />
+          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

@@ -4,6 +4,8 @@ import { SolicitudCompraController } from '../controllers/solicitudCompra.contro
 const router = Router();
 
 router.get('/', SolicitudCompraController.listar);
+router.get('/empleados', SolicitudCompraController.listarEmpleados);
+router.get('/departamentos', SolicitudCompraController.listarDepartamentos);
 router.get('/:noDocumento', SolicitudCompraController.obtenerPorNoDocumento);
 router.get('/:noDocumento/completa', SolicitudCompraController.obtenerCompleta);
 router.get('/:noDocumento/detalles', SolicitudCompraController.obtenerDetalles);

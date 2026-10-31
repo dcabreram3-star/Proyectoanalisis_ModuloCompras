@@ -120,16 +120,18 @@ export const EstadoModal: React.FC<EstadoModalProps> = ({
             </div>
           )}
 
-          <TextInput
-            label="NOMBRE DEL ESTADO"
-            required
-            placeholder="Ej. PENDIENTE, APROBADO, RECHAZADO, EN PROCESO..."
-            value={nombre}
-            onChange={(e) => handleNombreChange(e.target.value)}
-            maxLength={50}
-            autoFocus
-            error={nombreError || undefined}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NOMBRE DEL ESTADO"
+              required
+              placeholder="Ej. PENDIENTE, APROBADO, RECHAZADO..."
+              value={nombre}
+              onChange={(e) => handleNombreChange(e.target.value)}
+              maxLength={50}
+              autoFocus
+              error={nombreError || undefined}
+            />
+          </div>
 
           <p className="text-[11px] text-slate-400">
             Define la etiqueta descriptiva del estado utilizado en solicitudes, órdenes de compra y facturas (máx. 50 caracteres).

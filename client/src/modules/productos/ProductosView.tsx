@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   FolderTree,
@@ -12,6 +12,7 @@ import {
   BookOpen,
   Layers,
   Sparkles,
+  Info,
 } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { ArticulosCatalogView } from '../inventario/components/ArticulosCatalogView';
@@ -20,7 +21,36 @@ import { MarcasCatalogView } from '../inventario/components/MarcasCatalogView';
 import { UnidadesMedidaCatalogView } from '../inventario/components/UnidadesMedidaCatalogView';
 import { VehiculosCatalogView } from '../inventario/components/VehiculosCatalogView';
 import { ConductoresCatalogView } from '../inventario/components/ConductoresCatalogView';
+import { ModuleTutorialMenu } from '../../shared/tutoriales';
+import { PRODUCTOS_TUTORIALS } from './tutoriales/productosTutorialsData';
 
+/**
+ * =============================================================================
+ * MÓDULO DE PRODUCTOS - VISTA PRINCIPAL (HUB DE CATÁLOGOS)
+ * =============================================================================
+ * 
+ * @architectural_role Capa de Presentación / Facade de Catálogos Maestros (Frontend).
+ * 
+ * DELIMITACIÓN DE DOMINIOS (PROD-001):
+ * 1. Catálogo Maestro de Productos y Artículos (Core Comercial):
+ *    - Artículos (CMP_ARTICULO): Ficha maestra canónica de bienes comerciales y suministros.
+ *    - Categorías (CMP_CATEGORIA): Árbol jerárquico y familias de clasificación.
+ *    - Marcas (CMP_MARCA): Fabricantes y marcas comerciales asociadas.
+ *    - Unidades de Medida (CMP_UNIDAD_MEDIDA): Unidades de medida base y conteo (UND, KG, etc.).
+ *    * Nota: Las existencias físicas, almacenes, bodegas, lotes y movimientos kardex
+ *      residen exclusivamente en el Módulo de Inventario.
+ * 
+ * 2. Recursos Auxiliares de Transporte y Flota Logística (Soporte Operativo):
+ *    - Vehículos (CMP_VEHICULO): Flota corporativa para despachos, transferencias y recepciones.
+ *    - Conductores (CMP_CONDUCTOR): Personal operativo asignado al transporte de carga.
+ *    * Nota: Estos recursos corresponden a activos de transporte y personal operativo,
+ *      delimitados conceptualmente de las mercancías comerciales de venta.
+ * 
+ * INTEGRACIÓN Y CONTRATOS (PROD-003):
+ * Este módulo opera como una capa de agregación frontend que consume los contratos
+ * canónicos (@erp/contracts) servidos por la API REST de Inventario/Almacén,
+ * garantizando una experiencia unificada sin duplicar backend.
+ */
 export type ProductosSection =
   | 'hub'
   | 'articulos'
@@ -40,11 +70,18 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
   onTabChange,
 }) => {
   const [currentSection, setCurrentSection] = useState<ProductosSection>(() => {
-    if (propTab && propTab !== 'hub' && propTab !== 'articulos') {
+    if (propTab && propTab !== 'hub') {
       return propTab as ProductosSection;
     }
     return 'hub';
   });
+
+  // Sincronizar sección interna cuando cambia la prop activeTab (PROD-002)
+  useEffect(() => {
+    if (propTab) {
+      setCurrentSection(propTab as ProductosSection);
+    }
+  }, [propTab]);
 
   const handleNavigate = (section: ProductosSection) => {
     setCurrentSection(section);
@@ -64,20 +101,21 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           <div className="space-y-2.5 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
               <BookOpen size={14} className="text-blue-600" />
-              <span>Maestros y Clasificaciones</span>
+              <span>Maestros y Clasificaciones Comerciales</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Catálogos Maestros del Sistema
+              Catálogos Maestros de Productos
             </h1>
 
             <p className="text-sm text-slate-600 leading-relaxed">
-              Administración unificada de productos, jerarquías de categorías, fabricantes de marcas, unidades de medida y flota logística vehicular con sus conductores asignados.
+              Administración unificada de artículos comerciales, jerarquías de categorías, marcas, unidades de medida y recursos auxiliares de transporte logístico.
             </p>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-blue-600 shadow-xs">
+          <div className="flex items-center gap-3">
+            <ModuleTutorialMenu module="productos" tutorials={PRODUCTOS_TUTORIALS} />
+            <div className="hidden lg:flex w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 items-center justify-center text-blue-600 shadow-xs">
               <Layers size={32} className="text-blue-600" />
             </div>
           </div>
@@ -86,7 +124,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
         {/* CONTENEDOR DE CATEGORÍAS (GRID PRINCIPAL) */}
         <div className="space-y-8">
           {/* ═════════════════════════════════════════════════════════════════════ */}
-          {/* SECCIÓN 1: CATÁLOGOS DE PRODUCTOS E INVENTARIO */}
+          {/* SECCIÓN 1: CATÁLOGOS MAESTROS DE PRODUCTOS (CORE COMERCIAL)         */}
           {/* ═════════════════════════════════════════════════════════════════════ */}
           <div className="space-y-4">
             {/* Header de Sección */}
@@ -97,17 +135,28 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                    Catálogos de Productos e Inventario
+                    Catálogo Maestro de Productos (Core Comercial)
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Gestión de artículos, clasificaciones, marcas y unidades de medida base.
+                    Definición canónica de bienes comerciales, jerarquías de familias, fabricantes y unidades de medida.
                   </p>
                 </div>
               </div>
 
               <span className="hidden sm:inline-flex px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
-                4 Catálogos
+                4 Catálogos Core
               </span>
+            </div>
+
+            {/* Llamada informativa de delimitación de alcance (PROD-001) */}
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/80 text-xs text-slate-700 leading-relaxed">
+              <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-blue-900">Delimitación de Catálogos: </span>
+                Este apartado gestiona exclusivamente la ficha técnica, clasificación y especificaciones maestras de los artículos.
+                El control de existencias en almacenes, stock físico y movimientos de kardex se administra de forma separada en el{' '}
+                <span className="font-semibold text-blue-950">Módulo de Inventario</span>.
+              </div>
             </div>
 
             {/* Grid de Sub-Tarjetas */}
@@ -251,7 +300,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           </div>
 
           {/* ═════════════════════════════════════════════════════════════════════ */}
-          {/* SECCIÓN 2: CATÁLOGOS DE LOGÍSTICA Y FLOTA */}
+          {/* SECCIÓN 2: RECURSOS DE LOGÍSTICA Y TRANSPORTE (SOPORTE OPERATIVO)   */}
           {/* ═════════════════════════════════════════════════════════════════════ */}
           <div className="space-y-4 pt-2">
             {/* Header de Sección */}
@@ -262,17 +311,26 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                    Catálogos de Logística y Flota
+                    Recursos de Logística y Transporte (Soporte Operativo)
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Administración de la flota de vehículos corporativos y personal de conducción.
+                    Administración de la flota vehicular corporativa y personal de conducción para recepción y traslado de mercancías.
                   </p>
                 </div>
               </div>
 
               <span className="hidden sm:inline-flex px-2.5 py-1 rounded-md bg-violet-50 text-violet-700 text-[11px] font-bold border border-violet-100">
-                2 Catálogos
+                2 Recursos Auxiliares
               </span>
+            </div>
+
+            {/* Llamada informativa de delimitación de soporte operativo (PROD-001) */}
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-violet-50/60 border border-violet-200/80 text-xs text-slate-700 leading-relaxed">
+              <Truck size={16} className="text-violet-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-violet-900">Delimitación de Soporte Logístico: </span>
+                Los vehículos y conductores representan activos operativos y personal de transporte auxiliar para las operaciones físicas de almacén y entrega; están delimitados conceptualmente de las existencias de inventario y de los artículos comerciales de venta.
+              </div>
             </div>
 
             {/* Grid de Sub-Tarjetas */}
@@ -360,32 +418,32 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
   > = {
     articulos: {
       title: 'Catálogo de Artículos',
-      category: 'Catálogos de Productos e Inventario',
+      category: 'Catálogo Maestro de Productos',
       icon: <Package size={18} className="text-blue-600" />,
     },
     categorias: {
       title: 'Categorías de Productos',
-      category: 'Catálogos de Productos e Inventario',
+      category: 'Catálogo Maestro de Productos',
       icon: <FolderTree size={18} className="text-indigo-600" />,
     },
     marcas: {
       title: 'Marcas Comerciales',
-      category: 'Catálogos de Productos e Inventario',
+      category: 'Catálogo Maestro de Productos',
       icon: <Award size={18} className="text-amber-600" />,
     },
     'unidades-medida': {
       title: 'Unidades de Medida',
-      category: 'Catálogos de Productos e Inventario',
+      category: 'Catálogo Maestro de Productos',
       icon: <Scale size={18} className="text-emerald-600" />,
     },
     vehiculos: {
       title: 'Flota de Vehículos',
-      category: 'Catálogos de Logística y Flota',
+      category: 'Flota & Logística Auxiliar',
       icon: <Truck size={18} className="text-violet-600" />,
     },
     conductores: {
       title: 'Personal de Conducción',
-      category: 'Catálogos de Logística y Flota',
+      category: 'Flota & Logística Auxiliar',
       icon: <UserCheck size={18} className="text-teal-600" />,
     },
   };
@@ -430,34 +488,71 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           </div>
         </div>
 
-        {/* Acceso rápido a otras secciones relacionadas */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {(
-            [
-              { id: 'articulos', label: 'Artículos' },
-              { id: 'categorias', label: 'Categorías' },
-              { id: 'marcas', label: 'Marcas' },
-              { id: 'unidades-medida', label: 'U. Medida' },
-              { id: 'vehiculos', label: 'Vehículos' },
-              { id: 'conductores', label: 'Conductores' },
-            ] as const
-          ).map((item) => {
-            const isActive = currentSection === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNavigate(item.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+        {/* Acceso rápido a otras secciones agrupado por dominio (PROD-001) y Tutoriales */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <ModuleTutorialMenu module="productos" tutorials={PRODUCTOS_TUTORIALS} />
+          <div className="h-4 w-px bg-slate-200 hidden sm:block shrink-0" />
+          {/* Grupo Core: Productos */}
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 hidden sm:inline">
+              Productos:
+            </span>
+            {(
+              [
+                { id: 'articulos', label: 'Artículos' },
+                { id: 'categorias', label: 'Categorías' },
+                { id: 'marcas', label: 'Marcas' },
+                { id: 'unidades-medida', label: 'U. Medida' },
+              ] as const
+            ).map((item) => {
+              const isActive = currentSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavigate(item.id)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="h-5 w-px bg-slate-300 hidden sm:block" />
+
+          {/* Grupo Auxiliar: Logística & Flota */}
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1.5 hidden sm:inline">
+              Flota:
+            </span>
+            {(
+              [
+                { id: 'vehiculos', label: 'Vehículos' },
+                { id: 'conductores', label: 'Conductores' },
+              ] as const
+            ).map((item) => {
+              const isActive = currentSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavigate(item.id)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

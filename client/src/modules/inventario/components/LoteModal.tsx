@@ -216,7 +216,7 @@ export const LoteModal: React.FC<LoteModalProps> = ({
             </div>
           </div>
 
-          <div>
+          <div className="max-w-sm">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               ESTADO DEL LOTE
             </label>

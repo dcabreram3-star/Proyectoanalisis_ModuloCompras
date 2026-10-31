@@ -23,6 +23,7 @@ import {
   Calendar,
   Printer,
   Download,
+  HelpCircle,
 } from 'lucide-react';
 import {
   Button,
@@ -48,12 +49,14 @@ import {
 import { getStageForSolicitud } from './PipelineProgress';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { generarOrdenCompraPdf } from '../utils/ordenCompraPdfGenerator';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export interface PresupuestoViewProps {
   solicitud?: SolicitudOriginalInfo | null;
   onBack?: () => void;
   onSuccess?: () => void;
   onNavigateToStage?: (stageId: 'aprobacion' | 'matriz' | 'seleccion' | 'presupuesto' | 'bodega' | '3way') => void;
+  onStartTutorial?: () => void;
 }
 
 export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
@@ -61,6 +64,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
   onBack,
   onSuccess,
   onNavigateToStage,
+  onStartTutorial,
 }) => {
   // Estado para la vista de Solicitud Individual (Etapa 4 de Pipeline)
   const [cotizacionGanadora, setCotizacionGanadora] = useState<ICotizacion | null>(null);
@@ -113,6 +117,12 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
 
       setCotizacionGanadora(ganadora || (cots.length > 0 ? cots[0] : null));
       setOrdenCompraExistente(existingPo);
+
+      // Recuperar borrador de notas presupuestarias si el usuario recargó (F5)
+      const draftNotes = draftStorage.get<string>(`erp_draft_presupuesto_${noDoc}`);
+      if (draftNotes) {
+        setNotasPresupuesto(draftNotes);
+      }
     } catch (err: any) {
       console.error('[PresupuestoView]: Error al cargar datos de presupuesto:', err);
       setErrorMsg(err.message || 'Error al obtener la información presupuestaria de la base de datos.');
@@ -120,6 +130,15 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
       setIsLoadingDetalles(false);
     }
   };
+
+  // Autoguardado de notas presupuestarias
+  useEffect(() => {
+    if (!currentSolicitud?.noDocumento) return;
+    const draftKey = `erp_draft_presupuesto_${currentSolicitud.noDocumento}`;
+    if (notasPresupuesto.trim()) {
+      draftStorage.set(draftKey, notasPresupuesto);
+    }
+  }, [notasPresupuesto, currentSolicitud?.noDocumento]);
 
   // Cargar datos de la vista general
   const loadGeneralData = async () => {
@@ -198,6 +217,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         total: finanzas.total,
       });
 
+      draftStorage.remove(`erp_draft_presupuesto_${currentSolicitud.noDocumento}`);
+
       setSuccessMsg(
         `¡Presupuesto Autorizado exitosamente! Se ha generado la Orden de Compra ${poResult.ocoNoPo}.`
       );
@@ -223,8 +244,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
       .trim()
       .slice(0, 300);
 
-    if (!cleanMotivo) {
-      setErrorMsg('Debe detallar el motivo del rechazo presupuestario.');
+    if (!cleanMotivo || cleanMotivo.length < 10) {
+      setErrorMsg('Debe detallar el motivo del rechazo presupuestario (mínimo 10 caracteres explicativos).');
       return;
     }
 
@@ -235,6 +256,8 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
         noDocumento: currentSolicitud.noDocumento,
         motivoRechazo: cleanMotivo,
       });
+
+      draftStorage.remove(`erp_draft_presupuesto_${currentSolicitud.noDocumento}`);
 
       setSuccessMsg('Se ha registrado el rechazo presupuestario exitosamente.');
       setIsRejectModalOpen(false);
@@ -310,7 +333,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
     const isPoEmitida = !!ordenCompraExistente;
 
     return (
-      <div className="space-y-6 w-full pb-12 animate-fadeIn min-w-0">
+      <div data-testid="presupuesto-panel" className="space-y-6 w-full pb-12 animate-fadeIn min-w-0">
         {/* Top Header & Breadcrumb */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
@@ -340,6 +363,17 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onStartTutorial && (
+              <button
+                type="button"
+                onClick={onStartTutorial}
+                className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 shadow-xs transition-all cursor-pointer"
+                title="Iniciar tutorial guiado de Presupuesto y PO"
+              >
+                <HelpCircle size={14} className="text-blue-600" />
+                <span>Tutorial</span>
+              </button>
+            )}
             {isPoEmitida && onNavigateToStage && (
               <Button
                 variant="primary"
@@ -438,6 +472,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                     </Button>
                   )}
                   <Button
+                    data-testid="btn-imprimir-po"
                     variant="primary"
                     size="sm"
                     icon={Printer}
@@ -450,6 +485,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                     Ver / Imprimir PO
                   </Button>
                   <Button
+                    data-testid="btn-descargar-pdf-po"
                     variant="secondary"
                     size="sm"
                     icon={Download}
@@ -544,7 +580,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
             {cotizacionGanadora ? (
               <div className="space-y-6">
                 {/* Resumen del Proveedor Adjudicado */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div data-testid="resumen-adjudicada-po" className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Building2 size={18} className="text-slate-600" />
@@ -565,7 +601,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                       <span className="font-semibold text-slate-800">
                         {cotizacionGanadora.cotTiempoEntregaDias
                           ? `${cotizacionGanadora.cotTiempoEntregaDias} días hábiles`
-                          : 'Inmediato'}
+                          : 'Inmediata'}
                       </span>
                     </div>
                     <div>
@@ -628,7 +664,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                 </div>
 
                 {/* Desglose Financiero */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div data-testid="desglose-financiero-po" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
                     <span className="text-xs text-slate-500 font-medium block mb-1">Subtotal Neto</span>
                     <span className="text-xl font-bold text-slate-800 font-mono">{formatCurrency(finanzas.subtotal)}</span>
@@ -703,6 +739,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                   </Button>
 
                   <Button
+                    data-testid="btn-emitir-orden-compra"
                     variant="primary"
                     size="md"
                     className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm font-semibold transition-all px-6 w-full sm:w-auto"
@@ -809,7 +846,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
                   className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none leading-relaxed shadow-xs transition-all"
                 />
                 <p className="text-[11px] text-slate-400">
-                  Campo obligatorio para registro contable y auditoría (máx. 300 caracteres).
+                  Campo obligatorio para registro contable y auditoría (mínimo 10 caracteres, máx. 300).
                 </p>
               </div>
 
@@ -982,7 +1019,7 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
   ];
 
   return (
-    <div className="space-y-6 w-full pb-12 min-w-0">
+    <div data-testid="presupuesto-panel" className="space-y-6 w-full pb-12 min-w-0">
       {/* Header Corporativo del Módulo Presupuesto */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
@@ -1080,7 +1117,6 @@ export const PresupuestoView: React.FC<PresupuestoViewProps> = ({
             <option value="TODOS">Todos los Registros</option>
             <option value="PENDIENTES">Pendientes de Presupuesto</option>
             <option value="AUTORIZADAS">Autorizadas / PO Emitida</option>
-            <option value="RECHAZADAS">Rechazadas</option>
           </select>
 
           {(filterEstadoPresupuesto !== 'TODOS' || searchQuery) && (

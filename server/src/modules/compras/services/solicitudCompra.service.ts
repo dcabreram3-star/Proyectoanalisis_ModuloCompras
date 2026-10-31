@@ -7,7 +7,11 @@ import {
   IUpdateSolicitudCompraDTO,
   IAprobarSolicitudDTO,
   IRechazarSolicitudDTO,
+  IEmpleadoResponsableOption,
+  IDepartamentoOption,
 } from '@erp/contracts';
+
+import { ComprasMailerService } from './comprasMailer.service.js';
 
 export class SolicitudCompraService {
   static async obtenerSolicitudes(filters: ISolicitudCompraFilterParams = {}): Promise<ISolicitudCompra[]> {
@@ -74,19 +78,70 @@ export class SolicitudCompraService {
       throw new Error(`La solicitud de compra ${noDocumento} no existe.`);
     }
 
+    // 1. Validación de Estado de Origen (COMP-003)
+    const estadoUpper = (existing.solNombreEstado || '').toUpperCase();
+    const notasUpper = (existing.solNotas || '').toUpperCase();
+    if (
+      estadoUpper.includes('RECHAZAD') ||
+      estadoUpper.includes('DENEGAD') ||
+      notasUpper.includes('[RECHAZADA]') ||
+      existing.solIdEstado === 6
+    ) {
+      throw new Error(`No se puede aprobar la solicitud ${noDocumento} porque se encuentra formalmente RECHAZADA.`);
+    }
+    if (
+      estadoUpper.includes('FINALIZADA') ||
+      estadoUpper.includes('CERRADA') ||
+      existing.solIdEstado === 5
+    ) {
+      throw new Error(`No se puede aprobar la solicitud ${noDocumento} porque se encuentra FINALIZADA.`);
+    }
+    if (existing.tienePo || existing.solIdEstado === 4 || estadoUpper.includes('RECIBIDA')) {
+      throw new Error(`No se puede aprobar la solicitud ${noDocumento} porque ya cuenta con Orden de Compra emitida.`);
+    }
+    if (
+      estadoUpper === 'APROBADA' ||
+      estadoUpper.startsWith('APROBAD') ||
+      existing.solIdEstado === 2
+    ) {
+      throw new Error(`La solicitud ${noDocumento} ya fue aprobada y se encuentra en etapa de cotización.`);
+    }
+
+    // 2. Validación de Existencia y Pertenencia de Detalles (COMP-006)
     const detalles = await this.obtenerDetalles(noDocumento);
     if (detalles.length === 0) {
       throw new Error(`La solicitud ${noDocumento} no contiene artículos para aprobar.`);
     }
 
+    const mapDetalles = new Map<number, ISolicitudCompraDetalle>();
+    for (const d of detalles) {
+      mapDetalles.set(d.dsoIdDetalleSolicitud, d);
+    }
+
     if (dto.detalles && dto.detalles.length > 0) {
       for (const d of dto.detalles) {
+        const matching = mapDetalles.get(d.idDetalle);
+        if (!matching) {
+          throw new Error(
+            `El detalle #${d.idDetalle} no pertenece a la solicitud ${noDocumento}. Validación de integridad fallida.`
+          );
+        }
+
         const cant = Number(d.cantidadAprobada);
         if (!Number.isInteger(cant) || cant < 0) {
           throw new Error(`La cantidad aprobada (${d.cantidadAprobada}) debe ser un número entero mayor o igual a 0.`);
         }
+
+        // Validación estricta: cantidad aprobada NO debe superar a la solicitada
+        if (cant > matching.dsoCantidadPedida) {
+          throw new Error(
+            `La cantidad aprobada (${cant}) no puede superar a la cantidad solicitada (${matching.dsoCantidadPedida}) para el detalle #${d.idDetalle} (${matching.dsoCodigoArticulo}).`
+          );
+        }
+
         d.cantidadAprobada = cant;
       }
+
       const algunAprobado = dto.detalles.some((d) => d.cantidadAprobada > 0);
       if (!algunAprobado) {
         throw new Error('Debe aprobar al menos 1 unidad entera en algún artículo de la solicitud.');
@@ -100,16 +155,43 @@ export class SolicitudCompraService {
     noDocumento: string,
     dto: IRechazarSolicitudDTO
   ): Promise<ISolicitudCompraCompleta> {
+    if (!noDocumento || noDocumento.trim() === '') {
+      throw new Error('El número de documento de solicitud es requerido.');
+    }
+
+    if (!dto.motivoRechazo || dto.motivoRechazo.trim().length < 10) {
+      throw new Error('El motivo de rechazo debe contener al menos 10 caracteres explicativos para fines de auditoría.');
+    }
+
     const existing = await this.obtenerSolicitudPorNoDocumento(noDocumento);
     if (!existing) {
       throw new Error(`La solicitud de compra ${noDocumento} no existe.`);
     }
 
-    if (!dto.motivoRechazo || dto.motivoRechazo.trim() === '') {
-      throw new Error('Debe proporcionar un motivo de rechazo o denegación.');
+    const estadoUpper = (existing.solNombreEstado || '').toUpperCase();
+    if (
+      estadoUpper.includes('RECHAZAD') ||
+      estadoUpper.includes('DENEGAD') ||
+      existing.solIdEstado === 6
+    ) {
+      throw new Error(`La solicitud ${noDocumento} ya se encuentra formalmente RECHAZADA.`);
+    }
+    if (estadoUpper.includes('FINALIZADA') || existing.solIdEstado === 5) {
+      throw new Error(`No se puede rechazar la solicitud ${noDocumento} porque ya fue FINALIZADA.`);
     }
 
-    return await SolicitudCompraRepository.rechazar(noDocumento.trim(), dto);
+    const rechazada = await SolicitudCompraRepository.rechazar(noDocumento.trim(), dto);
+
+    // Notificación por correo con reintentos automáticos (COMP-009)
+    ComprasMailerService.notificarRechazoSolicitud({
+      noDocumento: noDocumento.trim(),
+      motivoRechazo: dto.motivoRechazo.trim(),
+      nombreSolicitante: existing.solNombreResponsable || undefined,
+    }).catch((err) => {
+      console.warn(`[SolicitudCompraService] Advertencia al notificar rechazo de solicitud ${noDocumento}:`, err.message);
+    });
+
+    return rechazada;
   }
 
   static async crearSolicitud(data: import('@erp/contracts').ISolicitudCompraCreateDTO): Promise<ISolicitudCompra> {
@@ -126,11 +208,8 @@ export class SolicitudCompraService {
       d.cantidadPedida = cant;
     }
 
-    // Para efectos de prueba sin secuencia PL/SQL conocida: generar ID alfanumérico basado en timestamp/random
-    const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const noDocumento = `SOL-2026-${randomSuffix}`;
-
-    await SolicitudCompraRepository.create(data, noDocumento);
+    // Folio atómico generado dentro de la transacción de base de datos
+    const noDocumento = await SolicitudCompraRepository.create(data);
 
     // Recuperar la solicitud recién creada para devolverla completa
     const solicitudCreada = await this.obtenerSolicitudPorNoDocumento(noDocumento);
@@ -139,6 +218,14 @@ export class SolicitudCompraService {
     }
     
     return solicitudCreada;
+  }
+
+  static async obtenerEmpleados(): Promise<IEmpleadoResponsableOption[]> {
+    return await SolicitudCompraRepository.getEmpleados();
+  }
+
+  static async obtenerDepartamentos(): Promise<IDepartamentoOption[]> {
+    return await SolicitudCompraRepository.getDepartamentos();
   }
 }
 

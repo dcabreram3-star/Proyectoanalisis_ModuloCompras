@@ -92,6 +92,15 @@ export class RecepcionBodegaController {
       }
 
       if (req.file) {
+        const { validatePdfBuffer } = await import('../utils/fileValidator.js');
+        const valRes = validatePdfBuffer(req.file.buffer);
+        if (!valRes.valid) {
+          res.status(400).json({
+            success: false,
+            message: `Documento adjunto inválido: ${valRes.error}`,
+          });
+          return;
+        }
         payload.documentoBlob = req.file.buffer;
         payload.nombreArchivoPdf = req.file.originalname;
       }
@@ -149,6 +158,17 @@ export class RecepcionBodegaController {
         res.status(400).json({
           success: false,
           message: 'No se recibió ningún archivo para adjuntar a la recepción.',
+        });
+        return;
+      }
+
+      // Validación binaria estricta de PDF (COMP-008)
+      const { validatePdfBuffer } = await import('../utils/fileValidator.js');
+      const valRes = validatePdfBuffer(file.buffer);
+      if (!valRes.valid) {
+        res.status(400).json({
+          success: false,
+          message: valRes.error,
         });
         return;
       }

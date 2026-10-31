@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Building2, Save, AlertCircle } from 'lucide-react';
 import { Button, TextInput, Checkbox } from '../../../components/ui';
 import type { IProveedor, ICreateProveedorDTO, IUpdateProveedorDTO } from '@erp/contracts';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 
 export const PROVEEDOR_NIT_MIN_LENGTH = 8;
 export const PROVEEDOR_NIT_MAX_LENGTH = 13;
@@ -80,14 +81,30 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
       setNit((proveedor.proNit || '').replace(/\D/g, '').slice(0, PROVEEDOR_NIT_MAX_LENGTH));
       setActivo(proveedor.proActivo === 1);
     } else {
-      setNombreEntidad('');
-      setNit('');
-      setActivo(true);
+      // Recuperar borrador si el usuario recargó la página
+      const draft = draftStorage.get<{ nombreEntidad?: string; nit?: string; activo?: boolean }>('erp_draft_proveedor_nuevo');
+      if (draft && isOpen) {
+        setNombreEntidad(draft.nombreEntidad || '');
+        setNit(draft.nit || '');
+        setActivo(draft.activo !== undefined ? draft.activo : true);
+      } else {
+        setNombreEntidad('');
+        setNit('');
+        setActivo(true);
+      }
     }
     setError(null);
     setNombreError(null);
     setNitError(null);
   }, [proveedor, isOpen]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (nombreEntidad.trim() || nit.trim()) {
+      draftStorage.set('erp_draft_proveedor_nuevo', { nombreEntidad, nit, activo });
+    }
+  }, [nombreEntidad, nit, activo, isOpen, isEditing]);
 
   if (!isOpen) return null;
 
@@ -187,6 +204,7 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
           proActivo: activo ? 1 : 0,
         });
       }
+      draftStorage.remove('erp_draft_proveedor_nuevo');
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar el proveedor.');
@@ -241,16 +259,18 @@ export const ProveedorModal: React.FC<ProveedorModalProps> = ({
             autoFocus
           />
 
-          <TextInput
-            label="NIT / DPI (IDENTIFICACIÓN TRIBUTARIA O PERSONAL)"
-            required
-            placeholder="Ej. 12345678 (8 a 13 dígitos)"
-            value={nit}
-            onChange={(e) => handleNitChange(e.target.value)}
-            error={nitError || undefined}
-            helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9). Los NITs no pueden iniciar con 0 (permitido para DPI de 13 dígitos)."
-            maxLength={PROVEEDOR_NIT_MAX_LENGTH}
-          />
+          <div className="max-w-sm">
+            <TextInput
+              label="NIT / DPI (IDENTIFICACIÓN)"
+              required
+              placeholder="Ej. 12345678 (8 a 13 dígitos)"
+              value={nit}
+              onChange={(e) => handleNitChange(e.target.value)}
+              error={nitError || undefined}
+              helperText="Mínimo 8 y máximo 13 dígitos numéricos (0-9)."
+              maxLength={PROVEEDOR_NIT_MAX_LENGTH}
+            />
+          </div>
 
           <div className="pt-1">
             <Checkbox

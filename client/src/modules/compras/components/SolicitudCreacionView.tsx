@@ -1,25 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ShoppingCart, Plus, Save, Trash2, AlertCircle, ChevronDown, Search, RefreshCw, Sparkles, Box, Tag, Scale, Briefcase } from 'lucide-react';
 import { Button } from '../../../components/ui';
-import { ISolicitudCompraCreateDTO, ISolicitudCompraDetalleCreateDTO, IArticulo } from '@erp/contracts';
+import { ISolicitudCompraCreateDTO, ISolicitudCompraDetalleCreateDTO, IArticulo, IEmpleadoResponsableOption } from '@erp/contracts';
 import { SolicitudCompraClientService } from '../services/solicitudCompraClientService';
 import { articuloService } from '../../inventario/services/articulo.service';
 import { CategoriaClientService } from '../../inventario/services/categoriaClientService';
 import { MarcaClientService } from '../../inventario/services/marcaClientService';
 import { UnidadMedidaClientService } from '../../inventario/services/unidadMedidaClientService';
 import { InlineValidationCard } from './InlineValidationCard';
+import { useFormDraft } from '../../../shared/hooks/useFormDraft';
 
 interface SolicitudCreacionViewProps {
   onSuccess?: () => void;
   onReload?: () => void;
   isModal?: boolean;
 }
-
-const USUARIOS_RESPONSABLES = [
-  { id: 1, nombre: 'Ana López - Compras y Adquisiciones' },
-  { id: 2, nombre: 'Luis Ramírez - Gestión de Compras' },
-  { id: 3, nombre: 'Marta Girón - Bodega e Inventario' },
-];
 
 // === Componente de Selección con Búsqueda y Refetch Automático ===
 interface AutocompleteSelectProps {
@@ -167,10 +162,12 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
 
   // Form State (Master)
   const [notas, setNotas] = useState('');
-  const [idUsuarioResponsable, setIdUsuarioResponsable] = useState<number | ''>(1);
+  const [idUsuarioResponsable, setIdUsuarioResponsable] = useState<number | ''>('');
   const idDepartamento = 2; // Bodega / Logística
 
   // Catalogs State
+  const [empleados, setEmpleados] = useState<IEmpleadoResponsableOption[]>([]);
+  const [isLoadingEmpleados, setIsLoadingEmpleados] = useState<boolean>(true);
   const [articulosActivos, setArticulosActivos] = useState<{ codigo: string; nombre: string; categoriaId?: number; unidadId?: number }[]>([]);
   const [categorias, setCategorias] = useState<{ value: number; label: string }[]>([]);
   const [marcas, setMarcas] = useState<{ value: number; label: string }[]>([]);
@@ -181,6 +178,33 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
   const [detalles, setDetalles] = useState<ISolicitudCompraDetalleCreateDTO[]>([
     { cantidadPedida: 1, isNuevo: false, codigoArticulo: '', idCategoria: 1, idMarca: 1, idUnidadMedida: 1 }
   ]);
+
+  // Persistencia de borrador ante recarga accidental (F5)
+  const { clearDraft } = useFormDraft<{
+    notas?: string;
+    idUsuarioResponsable?: number | '';
+    detalles?: ISolicitudCompraDetalleCreateDTO[];
+  }>({
+    key: 'erp_draft_solicitud_compra',
+    data: { notas, idUsuarioResponsable, detalles },
+    shouldSave: (d) =>
+      Boolean(
+        d.notas?.trim() ||
+          (d.detalles &&
+            d.detalles.some(
+              (item) => item.codigoArticulo || item.nombreArticuloNuevo || (item.cantidadPedida && Number(item.cantidadPedida) > 1)
+            ))
+      ),
+    onRestore: (saved) => {
+      if (saved.notas !== undefined) setNotas(saved.notas);
+      if (saved.idUsuarioResponsable !== undefined && saved.idUsuarioResponsable !== '') {
+        setIdUsuarioResponsable(saved.idUsuarioResponsable);
+      }
+      if (saved.detalles && saved.detalles.length > 0) {
+        setDetalles(saved.detalles);
+      }
+    },
+  });
 
   // Cargar Catálogo de Artículos Activos y Siguiente Código desde DB
   const loadArticulos = useCallback(async (silent = false) => {
@@ -213,15 +237,24 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
     }
   }, []);
 
-  // Cargar Catálogos Iniciales (Artículos Activos, Categorías, Marcas y Unidades de Medida)
+  // Cargar Catálogos Iniciales (Empleados Activos de Oracle DB, Artículos, Categorías, Marcas y Unidades)
   useEffect(() => {
     const loadInitialCatalogs = async () => {
       try {
-        const [catData, marData, uniData] = await Promise.allSettled([
+        const [empData, catData, marData, uniData] = await Promise.allSettled([
+          SolicitudCompraClientService.getEmpleados(),
           CategoriaClientService.getCategorias({ activo: 1 }),
           MarcaClientService.getMarcas({ activo: 1 }),
           UnidadMedidaClientService.getUnidadesMedida({ activo: 1 }),
         ]);
+
+        if (empData.status === 'fulfilled' && empData.value.length > 0) {
+          setEmpleados(empData.value);
+          setIdUsuarioResponsable(empData.value[0].idEmpleado);
+        } else {
+          setEmpleados([]);
+        }
+        setIsLoadingEmpleados(false);
 
         if (catData.status === 'fulfilled' && catData.value.length > 0) {
           setCategorias(catData.value.map((c) => ({ value: c.catIdCategoria, label: c.catNombreCategoria })));
@@ -256,6 +289,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
         await loadArticulos(true);
       } catch (err) {
         console.error('[SolicitudCreacionView] Error cargando catálogos iniciales:', err);
+        setIsLoadingEmpleados(false);
       }
     };
 
@@ -405,6 +439,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
           idUnidadMedida: unidades[0]?.value || 1,
         },
       ]);
+      clearDraft();
 
       if (onSuccess) {
         onSuccess();
@@ -440,29 +475,38 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         {/* Cabecera */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-w-md">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
               Responsable Solicitante <span className="text-red-500">*</span>
             </label>
             <select
+              data-testid="select-responsable-solicitud"
               value={idUsuarioResponsable}
-              onChange={(e) => setIdUsuarioResponsable(Number(e.target.value))}
-              className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
+              onChange={(e) => setIdUsuarioResponsable(e.target.value ? Number(e.target.value) : '')}
+              className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={isLoadingEmpleados}
               required
             >
-              {USUARIOS_RESPONSABLES.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
+              {isLoadingEmpleados ? (
+                <option value="">Cargando empleados desde la base de datos...</option>
+              ) : empleados.length === 0 ? (
+                <option value="">No hay empleados disponibles</option>
+              ) : (
+                empleados.map((emp) => (
+                  <option key={emp.idEmpleado} value={emp.idEmpleado}>
+                    {emp.nombreCompleto} {emp.puesto ? `— ${emp.puesto}` : ''}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-w-lg">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
               Notas o Justificación de Compra
             </label>
             <input
+              data-testid="input-notas-solicitud"
               type="text"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
@@ -475,7 +519,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
         <hr className="border-slate-100" />
 
         {/* Detalles / Artículos */}
-        <div className="space-y-4">
+        <div data-testid="contenedor-lineas-articulos" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -497,7 +541,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                 <RefreshCw size={13} className={isRefreshingArticles ? 'animate-spin text-blue-600' : ''} />
                 <span>Actualizar Catálogo</span>
               </button>
-              <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={handleAddDetalle}>
+              <Button data-testid="btn-agregar-linea-articulo" type="button" variant="secondary" size="sm" icon={Plus} onClick={handleAddDetalle}>
                 Añadir Línea
               </Button>
             </div>
@@ -514,9 +558,9 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                     : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="flex flex-col md:flex-row md:items-start gap-4">
+                <div className="flex flex-col md:flex-row md:items-end gap-3.5">
                   {/* Checkbox Ítem Nuevo */}
-                  <div className="flex items-center gap-2 pt-2 md:w-32 shrink-0">
+                  <div className="flex items-center gap-2 pb-2 md:w-28 shrink-0">
                     <label className="relative flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -534,7 +578,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                   </div>
 
                   {/* Selector o Formulario Expandido */}
-                  <div className="flex-1 space-y-3">
+                  <div className={detalle.isNuevo ? 'flex-1 space-y-3' : 'w-full md:w-80 lg:w-96 shrink-0 space-y-1'}>
                     {detalle.isNuevo ? (
                       /* Formulario Expandido para Ítem Nuevo (Estilos Corporativos) */
                       <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
@@ -550,7 +594,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         </div>
 
                         {/* Campo Nombre / Descripción */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 max-w-xl">
                           <label className="text-xs font-semibold text-slate-700 block">
                             Nombre o Descripción del Artículo <span className="text-red-500">*</span>
                           </label>
@@ -565,7 +609,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         </div>
 
                         {/* Campos Obligatorios: Categoría, Marca y Unidad de Medida */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                               <Tag size={12} className="text-slate-500" />
@@ -625,8 +669,8 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         </div>
                       </div>
                     ) : (
-                      /* Buscador de Artículos Activos */
-                      <div className="space-y-1">
+                      /* Buscador de Artículos Activos con Ancho Compacto y Equilibrado */
+                      <div className="space-y-1 w-full">
                         <label className="text-xs font-semibold text-slate-700 block">
                           Artículo del Catálogo Activo <span className="text-red-500">*</span>
                         </label>
@@ -634,7 +678,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                           options={articulosActivos}
                           value={detalle.codigoArticulo || ''}
                           onChange={(val) => handleChangeDetalle(index, 'codigoArticulo', val)}
-                          placeholder="Buscar artículo activo en catálogo..."
+                          placeholder="Buscar artículo activo..."
                           onTriggerRefetch={() => loadArticulos(true)}
                           isLoading={isRefreshingArticles}
                         />
@@ -642,12 +686,13 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                     )}
                   </div>
 
-                  {/* Cantidad */}
-                  <div className="w-full md:w-32 shrink-0 space-y-1">
-                    <label className="text-xs font-semibold text-slate-700 block">
+                  {/* Cantidad (Input numérico compacto) */}
+                  <div className="w-16 sm:w-20 shrink-0 space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 block text-center">
                       Cantidad <span className="text-red-500">*</span>
                     </label>
                     <input
+                      data-testid="input-cantidad-articulo"
                       type="number"
                       step="1"
                       min="1"
@@ -661,13 +706,16 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
                         const parsed = parseInt(e.target.value, 10);
                         handleChangeDetalle(index, 'cantidadPedida', isNaN(parsed) ? 1 : Math.max(1, parsed));
                       }}
-                      className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-800 text-center font-bold focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-800 text-center font-bold font-mono focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20"
                       required
                     />
                   </div>
 
+                  {/* Espacio flexible cuando no es item nuevo para mantener alineación limpia */}
+                  {!detalle.isNuevo && <div className="hidden md:block flex-1" />}
+
                   {/* Botón Eliminar Fila */}
-                  <div className="pt-6 shrink-0 flex justify-end">
+                  <div className="pb-1 shrink-0 flex justify-end">
                     <button
                       type="button"
                       onClick={() => handleRemoveDetalle(index)}
@@ -697,6 +745,7 @@ export const SolicitudCreacionView: React.FC<SolicitudCreacionViewProps> = ({ on
             Total de líneas: <span className="font-bold text-slate-800">{detalles.length}</span>
           </div>
           <Button
+            data-testid="btn-guardar-solicitud"
             type="submit"
             variant="primary"
             icon={Save}

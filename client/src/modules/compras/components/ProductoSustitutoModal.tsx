@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Repeat, DollarSign, Check, Tag, ShieldCheck, Lock } from 'lucide-react';
 import { Button, TextInput, Select, TextArea } from '../../../components/ui';
 import { formatCurrency } from '../../../utils/formatters';
+import { draftStorage } from '../../../shared/hooks/useFormDraft';
 import { MarcaClientService } from '../../inventario/services/marcaClientService';
 import { UnidadMedidaClientService } from '../../inventario/services/unidadMedidaClientService';
 import { CategoriaClientService } from '../../inventario/services/categoriaClientService';
@@ -114,20 +115,58 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
     loadData();
     loadNextSkuCode();
 
-    // Valores iniciales
-    setNombre(initialData?.nombreSustituto || '');
-    setIdMarca(initialData?.idMarca ? Number(initialData.idMarca) : 1);
-    setIdCategoria(initialData?.idCategoria ? Number(initialData.idCategoria) : 1);
-    setIdUnidad(initialData?.idUnidadMedida ? Number(initialData.idUnidadMedida) : 1);
-    setEspecificaciones(initialData?.especificacionesTecnicas || '');
-    setCantidad(initialData?.cantidadCotizada ? Number(initialData.cantidadCotizada) : 1);
-    setPrecioUnitario(initialData?.precioUnitario !== undefined ? String(initialData.precioUnitario) : '');
+    // Valores iniciales y recuperación de borrador
+    const draft = !initialData?.nombreSustituto
+      ? draftStorage.get<{
+          nombre?: string;
+          idMarca?: number;
+          idCategoria?: number;
+          idUnidad?: number;
+          especificaciones?: string;
+          cantidad?: number;
+          precioUnitario?: string;
+        }>('erp_draft_producto_sustituto_nuevo')
+      : null;
+
+    if (draft) {
+      setNombre(draft.nombre || '');
+      if (draft.idMarca) setIdMarca(draft.idMarca);
+      if (draft.idCategoria) setIdCategoria(draft.idCategoria);
+      if (draft.idUnidad) setIdUnidad(draft.idUnidad);
+      setEspecificaciones(draft.especificaciones || '');
+      setCantidad(draft.cantidad || 1);
+      setPrecioUnitario(draft.precioUnitario || '');
+    } else {
+      setNombre(initialData?.nombreSustituto || '');
+      setIdMarca(initialData?.idMarca ? Number(initialData.idMarca) : 1);
+      setIdCategoria(initialData?.idCategoria ? Number(initialData.idCategoria) : 1);
+      setIdUnidad(initialData?.idUnidadMedida ? Number(initialData.idUnidadMedida) : 1);
+      setEspecificaciones(initialData?.especificacionesTecnicas || '');
+      setCantidad(initialData?.cantidadCotizada ? Number(initialData.cantidadCotizada) : 1);
+      setPrecioUnitario(initialData?.precioUnitario !== undefined ? String(initialData.precioUnitario) : '');
+    }
     setError(null);
 
     return () => {
       isMounted = false;
     };
   }, [isOpen, initialData, sugerirCodigo]);
+
+  // Autoguardado de borrador
+  useEffect(() => {
+    if (!isOpen || Boolean(initialData?.nombreSustituto)) return;
+    if (nombre.trim() || especificaciones.trim() || precioUnitario.trim()) {
+      draftStorage.set('erp_draft_producto_sustituto_nuevo', {
+        nombre,
+        especificaciones,
+        idMarca,
+        idCategoria,
+        idUnidad,
+        cantidad,
+        precioUnitario,
+      });
+    }
+  }, [nombre, especificaciones, idMarca, idCategoria, idUnidad, cantidad, precioUnitario, isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -161,6 +200,7 @@ export const ProductoSustitutoModal: React.FC<ProductoSustitutoModalProps> = ({
       cantidadCotizada: numCant,
       precioUnitario: precioUnitario === '' ? '' : numPrecio,
     });
+    draftStorage.remove('erp_draft_producto_sustituto_nuevo');
     onClose();
   };
 

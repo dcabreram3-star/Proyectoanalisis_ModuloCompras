@@ -4,12 +4,14 @@ import { SolicitudCompraService } from '../services/solicitudCompra.service.js';
 export class SolicitudCompraController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
-      const { noDocumento, idDepartamento, idEstado } = req.query;
+      const { noDocumento, idDepartamento, idEstado, soloActivas, soloHistorial } = req.query;
 
       const filters = {
         noDocumento: noDocumento ? String(noDocumento) : undefined,
         idDepartamento: idDepartamento ? Number(idDepartamento) : undefined,
         idEstado: idEstado ? Number(idEstado) : undefined,
+        soloActivas: soloActivas === 'true' || soloActivas === '1',
+        soloHistorial: soloHistorial === 'true' || soloHistorial === '1',
       };
 
       const solicitudes = await SolicitudCompraService.obtenerSolicitudes(filters);
@@ -172,6 +174,42 @@ export class SolicitudCompraController {
         success: false,
         message: 'Error al crear la solicitud de compra',
         error: error.message,
+      });
+    }
+  }
+
+  static async listarEmpleados(_req: Request, res: Response): Promise<void> {
+    try {
+      const empleados = await SolicitudCompraService.obtenerEmpleados();
+      res.status(200).json({
+        success: true,
+        data: empleados,
+      });
+    } catch (error: any) {
+      console.error('[SolicitudCompraController.listarEmpleados Error]:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener la lista de empleados de la base de datos',
+        error: error.message,
+        data: [],
+      });
+    }
+  }
+
+  static async listarDepartamentos(_req: Request, res: Response): Promise<void> {
+    try {
+      const departamentos = await SolicitudCompraService.obtenerDepartamentos();
+      res.status(200).json({
+        success: true,
+        data: departamentos,
+      });
+    } catch (error: any) {
+      console.error('[SolicitudCompraController.listarDepartamentos Error]:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener los departamentos de la base de datos',
+        error: error.message,
+        data: [],
       });
     }
   }

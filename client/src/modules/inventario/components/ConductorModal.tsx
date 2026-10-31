@@ -226,13 +226,15 @@ export const ConductorModal: React.FC<ConductorModalProps> = ({
             </div>
           )}
 
-          <Select
-            label="EMPLEADO TITULAR *"
-            required
-            value={idEmpleado}
-            onChange={(e) => handleEmpleadoChange(e.target.value)}
-            options={empleadoOptions}
-          />
+          <div className="max-w-md">
+            <Select
+              label="EMPLEADO TITULAR *"
+              required
+              value={idEmpleado}
+              onChange={(e) => handleEmpleadoChange(e.target.value)}
+              options={empleadoOptions}
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -284,7 +286,7 @@ export const ConductorModal: React.FC<ConductorModalProps> = ({
                 required
                 value={fechaVencimiento}
                 onChange={(e) => handleFechaChange(e.target.value)}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs bg-white text-slate-800 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                className={`w-full h-10 px-3 rounded-xl border text-xs bg-white text-slate-800 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
                   fechaError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
                 }`}
               />
@@ -296,17 +298,19 @@ export const ConductorModal: React.FC<ConductorModalProps> = ({
             </div>
           </div>
 
-          <Select
-            label="ESTADO DEL CONDUCTOR *"
-            required
-            value={estado}
-            onChange={(e) => setEstado(e.target.value as any)}
-            options={[
-              { value: 'ACTIVO', label: 'ACTIVO (Habilitado para conducir y despachos)' },
-              { value: 'SUSPENDIDO', label: 'SUSPENDIDO (Temporalmente no autorizado)' },
-              { value: 'INACTIVO', label: 'INACTIVO (Baja o desvinculado)' },
-            ]}
-          />
+          <div className="max-w-md">
+            <Select
+              label="ESTADO DEL CONDUCTOR *"
+              required
+              value={estado}
+              onChange={(e) => setEstado(e.target.value as any)}
+              options={[
+                { value: 'ACTIVO', label: 'ACTIVO (Habilitado para conducir y despachos)' },
+                { value: 'SUSPENDIDO', label: 'SUSPENDIDO (Temporalmente no autorizado)' },
+                { value: 'INACTIVO', label: 'INACTIVO (Baja o desvinculado)' },
+              ]}
+            />
+          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
